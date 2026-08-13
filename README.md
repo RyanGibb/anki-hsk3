@@ -8,4 +8,7 @@
 [hsk-syllabus-vocabulary-parser](https://github.com/Punpuf/hsk-syllabus-vocabulary-parser),
 [CC-CEDICT](https://cc-cedict.org/) (CC-BY-SA),
 [Shtooka/Yue Tan](https://github.com/hugolpz/audio-cmn) (CC-BY-SA),
-[makemeahanzi](https://github.com/skishore/makemeahanzi).
+[makemeahanzi](https://github.com/skishore/makemeahanzi),
+[DeepL](https://deepl.com) for the grammar translations.
+
+*Programmed with [Claude Code](https://claude.ai/code)*

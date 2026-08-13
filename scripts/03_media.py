@@ -140,8 +140,8 @@ def main() -> int:
                 # bare name: the collection already holds these, byte-identical
                 name = f"{c}.svg"
                 strokes_needed.add(c)
-                # width required: these SVGs carry no intrinsic size
-                imgs.append(f'<img width="640" src="{name}">')
+                # these SVGs carry no intrinsic size; style.css sizes them
+                imgs.append(f'<img class=stroke src="{name}">')
         w["stroke_order"] = "".join(imgs)
         if imgs:
             stats["with strokes"] += 1
