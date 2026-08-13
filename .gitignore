@@ -1,0 +1,6 @@
+data/raw/kaikki-zh.jsonl
+data/raw/cedict_ts.u8
+data/raw/*.pdf
+build/
+.cache/
+__pycache__/

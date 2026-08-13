@@ -1,0 +1,27 @@
+<div class=hanzi><a href="https://en.wiktionary.org/wiki/{{Traditional}}#Chinese">{{Character}}</a></div>
+<div class=pinyin>{{Pinyin}}</div>
+<div class=english>{{Meaning}}</div>
+{{Audio}}
+<hr>
+<div class="horizontal-container">
+  <div class="vertical-column">
+    {{StrokeOrder}}
+  </div>
+  <div class="vertical-column" id="drawing-review"></div>
+</div>
+
+<script>
+setTimeout(function () {
+  const drawings = JSON.parse(sessionStorage.getItem("anki-drawings") || "[]");
+  const container = document.getElementById("drawing-review");
+
+  drawings.forEach(dataURL => {
+    const img = document.createElement("img");
+    img.src = dataURL;
+    img.style.border = "1px solid #ccc";
+    img.style.margin = "5px";
+    img.width = 640;
+    container.appendChild(img);
+  });
+}, 0);
+</script>
