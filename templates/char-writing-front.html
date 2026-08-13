@@ -1,0 +1,150 @@
+<div class=pinyin>{{Pinyin}}</div>
+<div class=english>{{Meaning}}</div>
+<hr>
+<div>
+  <canvas id="canvas" class="drawbox"></canvas>
+  <br />
+  <div style="text-align: center; margin-top: 10px;">
+    <button type="button" class="big-button" id="undo-btn">Undo</button>
+    <button type="button" class="big-button" id="clear-btn">Clear</button>
+    <button type="button" class="big-button" id="next-btn">Next</button>
+    <button type="button" class="big-button" id="submit-btn">Submit</button>
+    <button type="button" class="big-button" id="reset-btn">Reset</button>
+  </div>
+  <div id="submitted-images" style="margin-top:10px;"></div>
+</div>
+
+<script>
+setTimeout(function () {
+  const canvas = document.getElementById("canvas");
+  const ctx    = canvas.getContext("2d");
+
+  // Follow Anki's theme rather than hardcoding: the pen takes the card's text colour,
+  // the guide grid a faded version of it. Otherwise the stroke is invisible in one mode.
+  const INK = getComputedStyle(document.querySelector(".card") || document.body).color;
+  const GRID = INK.replace(/^rgb\((.*)\)$/, "rgba($1, 0.35)");
+
+  const size = Math.min(window.innerWidth - 25, window.innerHeight - 50, 640);
+  canvas.width  = size;
+  canvas.height = size;
+
+  let strokes = [];
+  function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = GRID;
+    ctx.lineWidth = 1;
+    const w = canvas.width, h = canvas.height;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 0);    ctx.lineTo(w / 2, h);
+    ctx.moveTo(0, h / 2);    ctx.lineTo(w, h / 2);
+    ctx.moveTo(0, 0);        ctx.lineTo(w, h);
+    ctx.moveTo(w, 0);        ctx.lineTo(0, h);
+    ctx.stroke();
+    ctx.beginPath();
+  }
+
+  function redraw() {
+    drawGrid();
+    ctx.lineCap = "round";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = INK;
+    for (let stroke of strokes) {
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      for (let pt of stroke.slice(1)) {
+        ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+    }
+    ctx.beginPath();
+  }
+
+  drawGrid();
+
+  let drawing = false, currentStroke = [];
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  canvas.style.touchAction = 'none';
+
+  canvas.addEventListener("pointerdown", e => {
+    drawing = true;
+    currentStroke = [];
+    const p = getPos(e);
+    currentStroke.push(p);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  });
+
+  canvas.addEventListener("pointermove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    currentStroke.push(p);
+    ctx.lineCap = "round";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = INK;
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  });
+
+  canvas.addEventListener("pointerup", () => {
+    drawing = false;
+    if (currentStroke.length) strokes.push(currentStroke);
+  });
+
+  canvas.addEventListener("pointerleave", () => drawing = false);
+
+  function clearCanvas() {
+    strokes = [];
+    drawGrid();
+  }
+
+  function undo() {
+    if (strokes.length) {
+      strokes.pop();
+      redraw();
+    }
+  }
+
+  sessionStorage.removeItem("anki-drawings");
+
+  function nextCanvas() {
+    const dataURL = canvas.toDataURL("image/png");
+    let arr = JSON.parse(sessionStorage.getItem("anki-drawings") || "[]");
+    arr.push(dataURL);
+    sessionStorage.setItem("anki-drawings", JSON.stringify(arr));
+    const img = document.createElement("img");
+    img.src = dataURL;
+    img.width = canvas.width;
+    img.style.border = "1px solid #ccc";
+    img.style.marginRight = "5px";
+    document.getElementById("submitted-images").appendChild(img);
+    clearCanvas();
+  }
+
+  function flipToBack() {
+    if (typeof pycmd !== "undefined")            pycmd("ans");
+    else if (typeof study !== "undefined")        study.drawAnswer();
+    else if (typeof AnkiDroidJS !== "undefined") showAnswer();
+    else if (window.anki && window.sendMessage2)  window.sendMessage2("ankitap", "midCenter");
+  }
+
+  window.submit = () => { nextCanvas(); flipToBack(); };
+
+  function resetSubmitted() {
+    sessionStorage.removeItem("anki-drawings");
+    document.getElementById("submitted-images").innerHTML = "";
+    clearCanvas();
+  }
+
+  document.getElementById("undo-btn")   .addEventListener("pointerup", undo);
+  document.getElementById("clear-btn")  .addEventListener("pointerup", clearCanvas);
+  document.getElementById("next-btn")   .addEventListener("pointerup", nextCanvas);
+  document.getElementById("submit-btn") .addEventListener("pointerup", window.submit);
+  document.getElementById("reset-btn")  .addEventListener("pointerup", resetSubmitted);
+
+}, 0);
+</script>

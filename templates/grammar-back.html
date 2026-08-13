@@ -1,0 +1,9 @@
+<div class=description>HSK {{Level}}</div>
+{{#ExamplesPinyin}}<ul class=examples>{{ExamplesPinyin}}</ul>{{/ExamplesPinyin}}
+{{^ExamplesPinyin}}<div class=sentence>{{Point}}</div>{{/ExamplesPinyin}}
+<hr id=answer>
+<div class=sentence>{{Point}}</div>
+{{#PointEn}}<div class=description><span class=en>{{PointEn}}</span></div>{{/PointEn}}
+<div class=description>{{Type}}{{#TypeEn}} <span class=en>{{TypeEn}}</span>{{/TypeEn}}</div>
+{{#Category}}<div class=description>{{Category}}{{#CategoryEn}} <span class=en>{{CategoryEn}}</span>{{/CategoryEn}}</div>{{/Category}}
+{{#Detail}}<div class=description>{{Detail}}{{#DetailEn}} <span class=en>{{DetailEn}}</span>{{/DetailEn}}</div>{{/Detail}}

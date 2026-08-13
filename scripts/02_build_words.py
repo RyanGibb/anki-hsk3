@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Merge two independent extractions of the 2025 syllabus into one word table.
+
+They agree on 10,940 words; this asserts that rather than trusting it.
+"""
+import collections
+import csv
+import json
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+RAW = ROOT / "data/raw"
+BUILD = ROOT / "build"
+
+LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
+LEVEL_ORDER = {lv: i for i, lv in enumerate(LEVELS)}
+CJK = re.compile(r"[㐀-鿿豈-﫿]")
+
+HOMOGRAPH = re.compile(r"^(.+?)(\d+)$")
+
+
+def read_tsv(path):
+    with path.open(encoding="utf-8") as fh:
+        return list(csv.DictReader(fh, delimiter="\t"))
+
+
+def split_homograph(entry: str) -> tuple[str, str]:
+    m = HOMOGRAPH.match(entry)
+    if m and CJK.search(m.group(1)):
+        return m.group(1), m.group(2)
+    return entry, ""
+
+
+CEDICT_LINE = re.compile(r"^(\S+) (\S+) \[([^]]*)\] /(.*)/$")
+
+CL_GLOSS = re.compile(r"^CL:(.+)$")
+CL_INLINE = re.compile(r"\(CL:([^)]*)\)")
+CL_ITEM = re.compile(r"^(?:[^|\[]+\|)?([^\[]+)(?:\[[^]]*\])?$")
+
+
+def split_classifiers(defs: list[str]) -> tuple[list[str], str]:
+    keep, cls = [], []
+
+    def collect(spec: str) -> None:
+        for item in spec.split(","):
+            n = CL_ITEM.match(item.strip())
+            if n and n.group(1).strip() not in cls:
+                cls.append(n.group(1).strip())
+
+    for d in defs:
+        m = CL_GLOSS.match(d)
+        if m:
+            collect(m.group(1))
+            continue
+        d = CL_INLINE.sub(lambda m: "(classifier " + "、".join(
+            n.group(1).strip()
+            for item in m.group(1).split(",")
+            if (n := CL_ITEM.match(item.strip()))) + ")", d).strip()
+        if d:
+            keep.append(d)
+    return keep, "、".join(cls)
+
+# Glosses describing a spelling, not a meaning: "variant of 藥|药" against "medicine".
+META = re.compile(
+    r"^(?:old |erroneous |archaic )?variant of "
+    r"|^see (?:also )?[㐀-鿿豈-﫿]"
+    r"|^used in \S"
+    r"|^surname \S+$"
+    r"|^\S+ \(surname\)$"
+    r"|^also written "
+    r"|^abbr\. for "
+)
+
+POINTER = re.compile(r"(?:variant of|also written|see) ([㐀-鿿豈-﫿]+)(?:\||\[|$)")
+POINTER_SIMP = re.compile(
+    r"(?:variant of|also written|see(?: also)?) (?:[㐀-鿿豈-﫿]+\|)?([㐀-鿿豈-﫿]+)")
+
+
+def pointer_targets(entry) -> set[str]:
+    out = set()
+    for d in entry["defs"]:
+        if META.match(d):
+            m = POINTER.search(d)
+            if m:
+                out.add(m.group(1))
+    return out
+
+
+def load_cedict(path) -> dict[str, list[dict]]:
+    """simplified -> [{trad, pinyin, defs}], each gloss kept with its own traditional
+    form."""
+    out: dict[str, list[dict]] = collections.defaultdict(list)
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("#"):
+                continue
+            m = CEDICT_LINE.match(line.rstrip("\n"))
+            if not m:
+                continue
+            trad, simp, pinyin, defs = m.groups()
+            out[simp].append(
+                {"trad": trad, "pinyin": pinyin.lower(),
+                 "proper": pinyin[:1].isupper(),
+                 "defs": [d for d in defs.split("/") if d]}
+            )
+    return out
+
+
+def norm_pinyin(p: str) -> str:
+    return p.lower().replace(" ", "").replace("u:", "v").replace("ü", "v")
+
+
+def pick_entry(pinyin_numbered, entries, wikt):
+    """Choose ONE entry, so traditional and meaning stay consistent: 台风 is either
+    臺風 "poise" or 颱風 "typhoon"."""
+    if not entries:
+        return None, "none"
+    cands = entries
+    want = norm_pinyin(pinyin_numbered)
+    def substantive_defs(e):
+        return [d for d in e["defs"] if not META.match(d)]
+
+    same_pinyin = [e for e in cands if norm_pinyin(e["pinyin"]) == want]
+    if same_pinyin and any(substantive_defs(e) for e in same_pinyin):
+        cands = same_pinyin
+
+    votes: collections.Counter = collections.Counter()
+    for e in cands:
+        votes.update(pointer_targets(e))
+
+    common = [e for e in cands if not e["proper"]]
+    if common and any(substantive_defs(e) for e in common):
+        cands = common
+
+    real = [e for e in cands if substantive_defs(e)]
+    if real:
+        cands = real
+
+    def merge(group, source):
+        defs, seen = [], set()
+        for e in group:
+            for d in e["defs"]:
+                if d not in seen:
+                    seen.add(d)
+                    defs.append(d)
+        return {"trad": group[0]["trad"], "pinyin": group[0]["pinyin"],
+                "defs": defs}, source
+
+    by_trad: dict[str, list[dict]] = collections.defaultdict(list)
+    for e in cands:
+        by_trad[e["trad"]].append(e)
+    if len(by_trad) == 1:
+        return merge(cands, "cedict")
+
+    weight = {t: sum(len(substantive_defs(e)) for e in g) for t, g in by_trad.items()}
+    best = max(weight.values())
+    top = [t for t, n in weight.items() if n == best]
+    if len(top) == 1:
+        return merge(by_trad[top[0]], "cedict:primary")
+
+    pointed = [t for t in top if votes[t]]
+    if len(pointed) == 1:
+        return merge(by_trad[pointed[0]], "cedict:pointer")
+
+    live = [t for t in top if wikt.get(t, {}).get("live")]
+    if len(live) == 1:
+        return merge(by_trad[live[0]], "cedict+wiktionary")
+    return merge(by_trad[top[0]], "cedict-ambiguous")
+
+
+def main() -> int:
+    wikt_path = BUILD / "wiktionary.json"
+    if not wikt_path.exists():
+        sys.exit("run scripts/01_wiktionary_index.py first")
+    wikt = json.loads(wikt_path.read_text(encoding="utf-8"))
+    cedict = load_cedict(RAW / "cedict_ts.u8")
+    print(f"cc-cedict simplified headwords: {len(cedict)}")
+
+    punpuf = read_tsv(RAW / "punpuf_hsk_word_list.tsv")
+    chelsea = read_tsv(RAW / "chelsea_vocabulary.tsv")
+
+    p_words = {r["word"] for r in punpuf}
+    c_words = {r["word"] for r in chelsea}
+    if p_words != c_words:
+        sys.exit(
+            f"sources disagree: {len(p_words - c_words)} only in punpuf, "
+            f"{len(c_words - p_words)} only in chelsea"
+        )
+    print(f"cross-validated: {len(p_words)} unique words, zero set difference")
+
+    levels: dict[str, set[str]] = collections.defaultdict(set)
+    for r in punpuf:
+        levels[r["word"]].add(r["level"])
+
+    POS_SPLIT = re.compile(r"[、,／/（）()]+")
+
+    def pos_tokens(s: str) -> frozenset:
+        return frozenset(t for t in POS_SPLIT.split(s) if t.strip())
+
+    raw_pos: dict[str, list[str]] = collections.defaultdict(list)
+    for r in chelsea:
+        v = (r.get("cixing") or "").strip()
+        if v and v not in raw_pos[r["word"]]:
+            raw_pos[r["word"]].append(v)
+    for r in punpuf:
+        v = (r.get("part_of_speech") or "").strip()
+        if v and v not in raw_pos[r["word"]]:
+            raw_pos[r["word"]].append(v)
+
+    pos: dict[str, list[str]] = {}
+    for word, variants in raw_pos.items():
+        keep = []
+        for i, v in enumerate(variants):
+            tv = pos_tokens(v)
+            covered = any(
+                tv < pos_tokens(o) or (tv == pos_tokens(o) and j < i)
+                for j, o in enumerate(variants) if j != i
+            )
+            if not covered:
+                keep.append(v)
+        pos[word] = keep
+
+    first: dict[str, dict] = {}
+    for r in punpuf:
+        first.setdefault(r["word"], r)
+
+    # Not the gold set: that is the test, and feeding it back would make 05_verify
+    # circular.
+    adjudicated = {
+        row["entry"]: row["traditional"]
+        for row in csv.DictReader(
+            (ROOT / "data/traditional-overrides.csv").open(encoding="utf-8")
+        )
+    }
+
+    def follow_pointer(defs, depth=0):
+        """Resolve "variant of 標誌|标志" to the target's glosses."""
+        if depth > 2 or not defs:
+            return defs
+        if not all(META.match(d) for d in defs):
+            return defs
+        for d in defs:
+            m = POINTER_SIMP.search(d)
+            if not m:
+                continue
+            for e in cedict.get(m.group(1), []):
+                got = [x for x in e["defs"] if not META.match(x)]
+                if got:
+                    return got
+                nxt = follow_pointer(e["defs"], depth + 1)
+                if nxt and nxt != e["defs"]:
+                    return nxt
+        return defs
+
+    words = []
+    overridden = 0
+    for entry in sorted(p_words, key=lambda w: int(first[w]["word_index"])):
+        r = first[entry]
+        simplified, homograph_idx = split_homograph(entry)
+        lv = sorted(levels[entry], key=lambda x: LEVEL_ORDER[x])
+        entries = cedict.get(simplified, [])
+        chosen, trad_src = pick_entry(r["pinyin_numbered"], entries, wikt)
+        if chosen:
+            traditional = chosen["trad"]
+            defs, classifier = split_classifiers(follow_pointer(chosen["defs"]))
+            meaning = "/".join(defs)
+        else:
+            traditional = simplified
+            trad_src = "fallback:unchanged"
+            classifier = ""
+            meaning = (r.get("definition_cc-cedict") or "").strip()
+        traditional_auto = traditional  # kept so verification isn't circular
+
+        decided = adjudicated.get(entry, adjudicated.get(simplified))
+        if decided:
+            if decided != traditional:
+                overridden += 1
+                match = [e for e in entries if e["trad"] == decided]
+                if match:
+                    defs, classifier = split_classifiers(
+                        list(dict.fromkeys(d for e in match for d in e["defs"])))
+                    meaning = "/".join(defs)
+            traditional = decided
+            trad_src = "adjudicated"
+        words.append(
+            {
+                "key": r["word_index"],
+                "entry": entry,
+                "simplified": simplified,
+                "homograph_index": homograph_idx,
+                "level": lv[0],
+                "also_levels": lv[1:],
+                "pinyin": r["pinyin"],
+                "pinyin_numbered": r["pinyin_numbered"],
+                "traditional": traditional,
+                "traditional_auto": traditional_auto,
+                "traditional_source": trad_src,
+                "cedict_candidates": "/".join(e["trad"] for e in entries),
+                "meaning": meaning,
+                "classifier": classifier,
+                "pos": pos.get(entry, []),
+            }
+        )
+
+    curated = {
+        row["entry"]: row["meaning"]
+        for row in csv.DictReader(
+            (ROOT / "data/homograph-glosses.csv").open(encoding="utf-8")
+        )
+    }
+    curated_used = 0
+    for w in words:
+        if w["entry"] in curated:
+            w["meaning"] = curated[w["entry"]]
+            w["meaning_source"] = "curated"
+            curated_used += 1
+        else:
+            w["meaning_source"] = "cc-cedict"
+
+    by_pinyin: dict[str, list[str]] = collections.defaultdict(list)
+    by_simplified: dict[str, list[str]] = collections.defaultdict(list)
+    for w in words:
+        by_pinyin[w["pinyin_numbered"].replace(" ", "")].append(w["entry"])
+        by_simplified[w["simplified"]].append(w["entry"])
+    for w in words:
+        key = w["pinyin_numbered"].replace(" ", "")
+        w["homograph"] = [e for e in by_simplified[w["simplified"]] if e != w["entry"]]
+        same_word = set(by_simplified[w["simplified"]])
+        w["homophone"] = [e for e in by_pinyin[key] if e not in same_word]
+
+    chars = {r["word"] for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
+    char_info = {}
+    for c in sorted(chars):
+        entries = cedict.get(c, [])
+        chosen, _ = pick_entry("", entries, wikt)
+        if not chosen:
+            continue
+        defs = [d for d in follow_pointer(chosen["defs"])
+                if not META.match(d) and not d.startswith("CL:")]
+        char_info[c] = {"meaning": "/".join(defs), "traditional": chosen["trad"]}
+    (BUILD / "char-meanings.json").write_text(
+        json.dumps(char_info, ensure_ascii=False), encoding="utf-8")
+    got = sum(1 for v in char_info.values() if v["meaning"])
+    print(f"  character glosses      : {got}/{len(chars)}")
+
+    BUILD.mkdir(parents=True, exist_ok=True)
+    (BUILD / "words.json").write_text(
+        json.dumps(words, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+
+    multi = [w for w in words if w["also_levels"]]
+    homographs = [w for w in words if w["homograph_index"]]
+    ambiguous = [w for w in words if w["traditional_source"] == "cedict-ambiguous"]
+    variant_pairs = [w for w in words if "/" in w["cedict_candidates"]]
+    unchanged = [w for w in words if w["traditional"] == w["simplified"]]
+    tie_broken = [w for w in words if w["traditional_source"] == "cedict+wiktionary"]
+    print(f"words written            : {len(words)}")
+    print(f"  multi-level            : {len(multi)}")
+    print(f"  curated homograph gloss: {curated_used}")
+    print(f"  wiktionary broke a tie : {len(tie_broken)}")
+    print(f"  adjudicated override   : {overridden}")
+    print(f"  homograph entries      : {len(homographs)}  e.g. "
+          f"{[w['entry'] for w in homographs[:6]]}")
+    print(f"  traditional == simp    : {len(unchanged)}")
+    print(f"  still ambiguous        : {len(ambiguous)}")
+    print(f"  cedict variant pairs   : {len(variant_pairs)}")
+    by_level = collections.Counter(w["level"] for w in words)
+    print("  per level              : "
+          + ", ".join(f"L{lv}={by_level[lv]}" for lv in LEVELS))
+
+    (BUILD / "traditional-review.csv").write_text(
+        "entry,simplified,wiktionary,cedict,source\n"
+        + "\n".join(
+            f"{w['entry']},{w['simplified']},{w['traditional']},"
+            f"{w['cedict_candidates']},{w['traditional_source']}"
+            for w in ambiguous + variant_pairs
+        ),
+        encoding="utf-8",
+    )
+    print(f"wrote {BUILD/'words.json'} and {BUILD/'traditional-review.csv'}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
