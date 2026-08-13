@@ -49,6 +49,7 @@
   flex-direction: column;
   gap: 1rem;
   align-items: center;
+  min-width: 0;
 }
 
 .big-button {
@@ -68,6 +69,10 @@ a {
   text-decoration: none;
 }
 
+.hanzi a {
+  color: inherit;
+}
+
 a:hover {
   text-decoration: underline;
 }
@@ -79,12 +84,19 @@ a:hover {
 
 .examples {
     font-family: SimSun;
-    font-size: 20px;
+    font-size: 22px;
     text-align: left;
     display: inline-block;
 }
 
 .examples li { margin: 6px 0; }
+
+.strokes {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 
 .vertical-column img {
   max-width: 100%;
@@ -92,6 +104,26 @@ a:hover {
   margin: 2px;
 }
 
+img.stroke {
+  width: 640px;
+  height: auto;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.9;
+}
+
+/* a word has several characters; the writing card has one, beside your attempt */
+.strokes img.stroke {
+  width: 180px;
+  max-width: 45vw;
+  margin: 2px;
+  cursor: pointer;
+}
+
+.strokes img.stroke.big {
+  width: 640px;
+  max-width: 96vw;
+}
 
 
 .drawbox {
@@ -113,6 +145,53 @@ a:hover {
 
 .pinyinSen {
   font-family: Gentium Plus;
-  font-size: 0.8em;
+  font-size: 0.72em;
   opacity: 0.7;
+}
+
+.etym {
+  font-family: Georgia;
+  font-size: 13px;
+  text-align: left;
+  max-width: min(34em, 94vw);
+  margin: 10px auto 0;
+  opacity: 0.75;
+}
+
+.etymItem { margin: 4px 0; }
+
+.etymTrad {
+  font-family: SimSun;
+  font-size: 22px;
+  float: right;
+  margin-left: 8px;
+  opacity: 0.5;
+}
+
+.example {
+  font-family: Georgia;
+  font-size: 15px;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
+.exPinyin { font-family: Gentium Plus; }
+
+.meaningSen {
+  font-family: Georgia;
+  font-size: 0.72em;
+  opacity: 0.65;
+}
+
+.literal {
+  font-family: Georgia;
+  font-size: 15px;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
+.origin {
+  font-size: 0.92em;
+  opacity: 0.75;
+  margin: 1px 0 0 1.2em;
 }

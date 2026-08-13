@@ -2,6 +2,7 @@
 <div class=pinyin>{{Pinyin}}</div>
 <div class=english>{{Meaning}}</div>
 {{Audio}}
+{{#Etymology}}<div class=etym><span class=etymTrad>{{Traditional}}</span>{{Etymology}}</div>{{/Etymology}}
 <hr>
 <div class="horizontal-container">
   <div class="vertical-column">
@@ -18,9 +19,7 @@ setTimeout(function () {
   drawings.forEach(dataURL => {
     const img = document.createElement("img");
     img.src = dataURL;
-    img.style.border = "1px solid #ccc";
-    img.style.margin = "5px";
-    img.width = 640;
+    img.className = "stroke";
     container.appendChild(img);
   });
 }, 0);

@@ -5,5 +5,13 @@
 <div class=description>{{PartOfSpeechGlossed}}{{#Classifier}} &middot; {{Classifier}} <span class=en>classifier</span>{{/Classifier}}</div>
 <hr>
 {{Audio}}
+{{#Literal}}<div class=literal>literally &ldquo;{{Literal}}&rdquo;</div>{{/Literal}}
+{{#Components}}<div class=etym>{{Components}}</div>{{/Components}}
 <br>
-<div class="vertical-column">{{StrokeOrder}}</div>
+<div class=strokes>{{StrokeOrder}}</div>
+
+<script>
+document.querySelectorAll(".strokes img.stroke").forEach(function (i) {
+  i.addEventListener("click", function () { i.classList.toggle("big"); });
+});
+</script>

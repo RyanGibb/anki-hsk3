@@ -35,7 +35,8 @@ def tpl(name: str) -> str:
 VOCAB_FIELDS = ["Key", "Level", "Simplified", "Sense", "Traditional", "Pinyin",
                 "PinyinNumbered", "Meaning", "PartOfSpeech", "PartOfSpeechGlossed",
                 "Classifier", "Audio",
-                "Homophones", "Homographs", "StrokeOrder"]
+                "Homophones", "Homographs", "StrokeOrder", "Etymology",
+                "Components", "Literal"]
 
 vocab_model = genanki.Model(
     MID_VOCAB, "HSK 3.0 Vocabulary",
@@ -65,7 +66,7 @@ char_model = genanki.Model(
     MID_CHAR, "HSK 3.0 Character",
     fields=[{"name": f} for f in
             ["Key", "Character", "Level", "WritingLevel", "Traditional", "Pinyin",
-             "Meaning", "Audio", "StrokeOrder"]],
+             "Meaning", "Audio", "StrokeOrder", "Etymology", "Example"]],
     css=tpl("style.css"),
     # Writing only: all 3,088 recognition characters appear in a vocabulary word.
     templates=[{
@@ -95,10 +96,15 @@ def read_tsv(path):
         return list(csv.DictReader(fh, delimiter="\t"))
 
 
+PROPER = {"ns", "nt", "nz"}   # place, organisation, other proper noun -- 上海 is not 上 + 海
+SUFFIX = set("们儿子头过着")    # attaches to its stem: 人们, 点儿, 看过
+
+
 def make_pinyin(words):
     """Sentence reading: the syllabus's pinyin where the token is an HSK word, pypinyin
     for the rest. pypinyin has no erhua, rendering 哪儿 as "nǎér"."""
     import jieba
+    import jieba.posseg as posseg
     from pypinyin import pinyin as py
     jieba.setLogLevel(60)
     # Unambiguous forms only. 为 is listed as both wèi and wéi, so a dict keyed on the
@@ -107,11 +113,16 @@ def make_pinyin(words):
     for w in words:
         readings[w["simplified"]].add(w["pinyin"])
     known = {k: next(iter(v)) for k, v in readings.items() if len(v) == 1}
+    vocab = {w["simplified"] for w in words}
+    for w in vocab:
+        if len(w) > 1:
+            jieba.add_word(w, freq=500000)   # outranks 文书 in 中文书, 今天天气
     override = {}
     path = ROOT / "data/pinyin-overrides.csv"
     if path.exists():
         override = {r["token"]: r["pinyin"]
                     for r in csv.DictReader(path.open(encoding="utf-8"))}
+    whole = vocab | set(override)   # a hand-written reading means keep the token whole
     stats = collections.Counter()
 
     def read(token: str) -> str:
@@ -127,10 +138,27 @@ def make_pinyin(words):
             out = out[:-2] + "r"          # 玩儿 -> wánr, not wánér
         return out
 
+    def split(token: str) -> list:
+        """Break up what jieba glued. The syllabus is the whitelist: 一起 and 一点儿
+        are words; 一个, 本书 and 多少钱 are words standing next to each other."""
+        if len(token) < 2 or token in whole or token[0] == token[1]:
+            return [token]                       # 看看, and anything hand-listed
+        for n in range(len(token) - 1, 0, -1):
+            if token[:n] in vocab and token[n] not in SUFFIX:
+                return [token[:n]] + split(token[n:])
+        return [token]
+
+    def cut(hanzi: str) -> list:
+        out: list = []
+        for t in posseg.cut(hanzi, HMM=False):
+            out += [t.word] if t.flag in PROPER else split(t.word)
+        return out
+
     def gen(hanzi: str) -> str:
-        out = " ".join(read(t) for t in jieba.cut(hanzi))
+        out = " ".join(read(t) for t in cut(hanzi))
         for a, b in (("！", "!"), (" !", "!"), ("。", "."), (" .", "."), ("？", "?"),
-                     (" ?", "?"), ("，", ","), (" ,", ","), ("：", ":"), (" :", ":")):
+                     (" ?", "?"), ("，", ","), ("、", ","), (" ,", ","),
+                     ("：", ":"), (" :", ":")):
             out = out.replace(a, b)
         return out.strip()
 
@@ -182,9 +210,99 @@ def lvl_of(exam_level_id: str) -> str:
     return exam_level_id.replace("HSK", "")
 
 
+BULLET = re.compile(r"^[*#]+\s*")
+
+
+def load_etymology():
+    """character -> its Wiktionary glyph origin, keyed on the TRADITIONAL form: the
+    etymology of 條 says nothing about the shape of 条."""
+    etym = json.loads((BUILD / "etymology.json").read_text(encoding="utf-8"))
+    info = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
+    trad = {c: (v.get("traditional") or c) for c, v in info.items()}
+
+    def paragraphs(ch: str) -> list[tuple[bool, str]]:
+        e = etym.get(trad.get(ch, ch)) or etym.get(ch)
+        if not e:
+            return []
+        out = []
+        for p in e["text"].split("\n"):
+            p = p.strip()
+            if p:
+                out.append((bool(BULLET.match(p)), BULLET.sub("", p).strip()))
+        return out
+
+    def one(ch: str, full: bool) -> str:
+        ps = paragraphs(ch)
+        if not ps:
+            return ""
+        # "Two theories:" and "a standing man with four head variants:" head the bullets
+        # under them; alone they say nothing, so pull the list up into the lead.
+        head, i = ps[0][1], 1
+        items = []
+        while i < len(ps) and ps[i][0]:
+            items.append(ps[i][1])
+            i += 1
+        if items:
+            head = head.rstrip(":") + ": " + "; ".join(items)
+        head = html.escape(head, quote=False)
+        if not full or i >= len(ps):
+            return head
+        rest = " ".join(html.escape(p, quote=False) for _, p in ps[i:])
+        return f'{head}<div class="more">{rest}</div>'
+
+    def word(simplified: str) -> str:
+        out = []
+        for ch in dict.fromkeys(c for c in simplified if CJK.match(c)):
+            body = one(ch, full=False)
+            if body:
+                t = trad.get(ch, ch)
+                label = ch if t == ch else f"{ch} {t}"
+                out.append(f'<div class="etymItem"><b>{label}</b> {body}</div>')
+        return "".join(out)
+
+    return one, word
+
+
 def main() -> int:
     decks, media = [], set()
     words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
+    etym_char, etym_word = load_etymology()
+
+    char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
+    literal = json.loads((BUILD / "literal-meanings.json").read_text(encoding="utf-8"))
+
+    def components(simplified: str) -> str:
+        """One entry per character: what it means, then where the glyph came from.
+
+        Not which sense the compound uses -- Wiktionary records that for six words in
+        the whole dump -- so 机 is listed as machine, opportunity and aircraft alike.
+        """
+        out = []
+        for ch in dict.fromkeys(c for c in simplified if CJK.match(c)):
+            senses = (char_meta.get(ch) or {}).get("meaning", "")
+            senses = " / ".join(p.strip() for p in senses.split("/")[:3] if p.strip())
+            origin = etym_char(ch, full=False)
+            if not (senses or origin):
+                continue
+            trad = (char_meta.get(ch) or {}).get("traditional") or ch
+            label = ch if trad == ch else f"{ch} {trad}"
+            body = f'<b>{label}</b> {html.escape(senses, quote=False)}'
+            if origin:
+                body += f'<div class=origin>{origin}</div>'
+            out.append(f'<div class="etymItem">{body}</div>')
+        return "".join(out)
+
+    def example_of(ch: str) -> str:
+        """The earliest HSK word using this character, as a cue for which one is meant.
+
+        Pinyin and English only: the point is to pin down the sense without showing the
+        character on the side of the card where you are asked to produce it.
+        """
+        e = (char_meta.get(ch) or {}).get("example") or {}
+        if not e:
+            return ""
+        return (f'<span class=exPinyin>{html.escape(e["pinyin"], quote=False)}</span>'
+                f' &mdash; {html.escape(e["meaning"], quote=False)}')
 
     vocab_decks = {lv: deck("vocab", lv) for lv in LEVELS}
     pos_en = {row["zh"]: row["en"] for row in
@@ -223,7 +341,9 @@ def main() -> int:
                 "、".join(w["pos"]), pos_glossed(w["pos"]),
                 w.get("classifier", ""), w["audio"],
                 " ".join(w["homophone"][:12]), " ".join(w["homograph"]),
-                w["stroke_order"],
+                w["stroke_order"], "",
+                components(w["simplified"]) if len(w["simplified"]) > 1 else "",
+                html.escape(literal.get(w["traditional"], ""), quote=False),
             ],
             tags=tags,
         )
@@ -249,6 +369,11 @@ def main() -> int:
         return ""
 
     gen_pinyin, py_stats = make_pinyin(words)
+    translated = {}
+    path = ROOT / "data/grammar-translations.csv"
+    if path.exists():
+        translated = {r["chinese"]: r["english"]
+                      for r in csv.DictReader(path.open(encoding="utf-8"))}
     for n, r in enumerate(read_tsv(RAW / "chelsea_grammar.tsv"), 1):
         lv = lvl_of(r["examLevelId"])
         cases = [c.strip() for c in (r.get("cases") or "").split("|") if c.strip()]
@@ -268,7 +393,11 @@ def main() -> int:
                 "".join(
                     f"<li>{html.escape(c, quote=False)}"
                     f'<div class=pinyinSen>{html.escape(gen_pinyin(c), quote=False)}'
-                    f"</div></li>"
+                    "</div>"
+                    + (f'<div class=meaningSen>'
+                       f'{html.escape(translated[c], quote=False)}</div>'
+                       if c in translated else "")
+                    + "</li>"
                     for c in cases
                 ),
                 label_en(r.get("grammarType", "")),
@@ -302,7 +431,7 @@ def main() -> int:
         lv = lvl_of(r["examLevelId"])
         info = mmah.get(c, {})
         svg = MEDIA / f"{c}.svg"
-        stroke = f'<img width="640" src="{c}.svg">' if svg.exists() else ""
+        stroke = f'<img class=stroke src="{c}.svg">' if svg.exists() else ""
         if stroke:
             media.add(f"{c}.svg")
         for m in re.findall(r"\[sound:([^]]+)\]", char_audio.get(c, "")):
@@ -315,10 +444,10 @@ def main() -> int:
                 str(n), c, lv, writing.get(c, ""),
                 char_info.get(c, {}).get("traditional") or c,
                 " ".join(info.get("pinyin") or []),
-                html.escape(clean_xrefs(char_info.get(c, {}).get("meaning")
-                                        or info.get("definition") or ""),
-                            quote=False).replace("/", " / "),
-                char_audio.get(c, ""), stroke,
+                render_senses(char_info.get(c, {}).get("meaning")
+                              or info.get("definition") or ""),
+                char_audio.get(c, ""), stroke, etym_char(c, full=True),
+                example_of(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
         ))

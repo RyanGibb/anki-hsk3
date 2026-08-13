@@ -161,6 +161,11 @@ def main() -> int:
             n_notes = con.execute("select count(*) from notes").fetchone()[0]
             n_cards = con.execute("select count(*) from cards").fetchone()[0]
             check(f"{n_notes} notes in db", n_notes == 12733)
+            # forgetting HSK_DECK_ROOT silently leaves an empty deck tree on import
+            decks = json.loads(con.execute("select decks from col").fetchone()[0])
+            roots = {d["name"].split("::")[0] for d in decks.values()
+                     if d["name"] != "Default"}
+            check(f"deck root: {', '.join(sorted(roots))}", len(roots) == 1)
             # a duplicate guid drops notes on import, silently
             dupes = [g for g, k in collections.Counter(
                 x for (x,) in con.execute("select guid from notes")).items() if k > 1]
@@ -185,16 +190,23 @@ def main() -> int:
             present = bundled
             missing = set()
             refs = set()
-            # the cross-reference rewrite happens at render time, so check the package
+            # Meaning only: etymology prose carries [b], [Song] and other bracketed
+            # notation of its own. The rewrite happens at render time, so check the
+            # package rather than words.json.
+            gloss = {int(m): [f["name"] for f in x["flds"]].index("Meaning")
+                     for m, x in models.items()
+                     if any(f["name"] == "Meaning" for f in x["flds"])}
             leaked = 0
-            for (flds,) in con.execute("select flds from notes"):
-                leaked += bool(re.search(r"\[[A-Za-z0-9:, ]+\]", flds))
+            for mid, flds in con.execute("select mid,flds from notes"):
+                v = flds.split("\x1f")
+                if mid in gloss:
+                    leaked += bool(re.search(r"\[[A-Za-z0-9:, ]+\]", v[gloss[mid]]))
                 for ref in (re.findall(r"\[sound:([^]]+)\]", flds)
                             + re.findall(r'<img [^>]*src="([^"]+)"', flds)):
                     refs.add(ref)
                     if ref not in present:
                         missing.add(ref)
-            check("no [numbered pinyin] left in fields", leaked == 0,
+            check("no [numbered pinyin] left in Meaning", leaked == 0,
                   f"{leaked} notes" if leaked else "")
             ooo = con.execute(
                 "select count(*) from cards c join notes n on n.id=c.nid "

@@ -330,16 +330,81 @@ def main() -> int:
         same_word = set(by_simplified[w["simplified"]])
         w["homophone"] = [e for e in by_pinyin[key] if e not in same_word]
 
+    # every character in the vocabulary, not just the 1200 that get a writing card:
+    # the etymology on a word's answer side is keyed on each character's traditional form
     chars = {r["word"] for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
+    chars |= {c for w in words for c in w["simplified"] if CJK.match(c)}
+    # Without a reading, every entry for the form merges and 打 opens on 打 (dá)
+    # "a dozen". A character is met inside a word long before it is taught alone -- 调
+    # is 空调 at level 3, diào only at 7-9 -- so the earliest word to use it decides
+    # both which reading leads and which example the card shows.
+    order = sorted(words, key=lambda w: (LEVEL_ORDER[w["level"]], int(w["key"])))
+    char_example: dict[str, dict] = {}
+    solo_reading: dict[str, str] = {}
+    for w in order:
+        if len(w["simplified"]) == 1:
+            solo_reading.setdefault(w["simplified"], w["pinyin_numbered"])
+            continue
+        syllables = w["pinyin_numbered"].split()
+        if len(syllables) != len(w["simplified"]):
+            continue
+        for ch, syllable in zip(w["simplified"], syllables):
+            char_example.setdefault(ch, {
+                "word": w["simplified"], "pinyin": w["pinyin"],
+                "meaning": w["meaning"].split("/")[0], "reading": syllable.lower()})
+
+    def settle(ch: str, entries: list[dict]) -> str:
+        """The reading to narrow on, as CC-CEDICT spells it.
+
+        A compound may neutralise the tone -- 多少 gives shao5, which is no entry at
+        all -- so fall back to the toneless match when it is unambiguous, then to the
+        character's own entry in the syllabus.
+        """
+        have = {norm_pinyin(e["pinyin"]) for e in entries}
+        want = char_example.get(ch, {}).get("reading", "")
+        if want and norm_pinyin(want) in have:
+            return want
+        if want.endswith("5"):
+            bare = norm_pinyin(want)[:-1]
+            same = [p for p in have if p[:-1] == bare]
+            if len(same) == 1:
+                return same[0]
+        return solo_reading.get(ch, "")
+
+    # The example word's own traditional form has already been through adjudication, so
+    # it beats re-deriving the character's: 仿佛 is 彷彿, which settles 佛 as 彿 and not
+    # 髴 "female head ornament".
+    by_form = {}
+    for w in words:
+        by_form.setdefault(w["simplified"], w)
+    from_word: dict[str, str] = {}
+    for c, e in char_example.items():
+        w = by_form.get(e["word"])
+        if w and len(w["simplified"]) == len(w["traditional"]):
+            from_word[c] = w["traditional"][w["simplified"].index(c)]
+
     char_info = {}
     for c in sorted(chars):
         entries = cedict.get(c, [])
-        chosen, _ = pick_entry("", entries, wikt)
+        want = from_word.get(c)
+        # The word decides which entry LEADS; every other sense still follows it.
+        pool = [e for e in entries if e["trad"] == want] or entries if want else entries
+        chosen, _ = pick_entry(settle(c, pool), pool, wikt)
         if not chosen:
             continue
         defs = [d for d in follow_pointer(chosen["defs"])
                 if not META.match(d) and not d.startswith("CL:")]
-        char_info[c] = {"meaning": "/".join(defs), "traditional": chosen["trad"]}
+        rest = [d for e in entries if e["trad"] != chosen["trad"]
+                or e["pinyin"] != chosen["pinyin"]
+                for d in e["defs"]
+                if not META.match(d) and not d.startswith("CL:") and d not in defs]
+        # The word decides the senses, not the character's identity. 面包 is 麵包, but
+        # the glyph being written is 面, whose origin is a face and not wheat, so the
+        # traditional form stays with the unnarrowed ranking that gets 万 -> 萬.
+        main, _ = pick_entry(solo_reading.get(c, ""), entries, wikt)
+        char_info[c] = {"meaning": "/".join(defs + rest),
+                        "traditional": (main or chosen)["trad"],
+                        "example": char_example.get(c, {})}
     (BUILD / "char-meanings.json").write_text(
         json.dumps(char_info, ensure_ascii=False), encoding="utf-8")
     got = sum(1 for v in char_info.values() if v["meaning"])
