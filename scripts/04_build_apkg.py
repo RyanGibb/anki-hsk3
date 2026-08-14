@@ -8,12 +8,13 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import sys
 
 import genanki
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from pinyin_align import align   # noqa: E402
+from pinyin_align import ALIGNABLE, align   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -71,10 +72,10 @@ sentence_model = genanki.Model(
     MID_SENTENCE, "HSK 3.0 Sentence",
     fields=[{"name": f} for f in
             ["Key", "Level", "Hanzi", "HanziLinked", "Pinyin", "English",
-             "Words", "Point", "PointEn", "Labels"]],
+             "Words", "Point", "PointEn", "Labels", "Audio"]],
     css=tpl("style.css"),
     templates=[{
-        "name": "Reading",
+        "name": "Sentence",
         "qfmt": tpl("sentence-front.html"),
         "afmt": tpl("sentence-back.html"),
     }],
@@ -118,6 +119,13 @@ def read_tsv(path):
 TONE_MARK = {"1": "ˉ", "2": "ˊ", "3": "ˇ", "4": "ˋ", "5": "·"}
 
 
+def also_read(w, by_entry={}) -> str:
+    """The other way this word is read, for the card to name. The entry keys it is
+    cross-referenced by -- 长1, 长2 -- mean nothing to a reader."""
+    others = [by_entry[e]["pinyin"] for e in w.get("homograph", []) if e in by_entry]
+    return "also " + ", ".join(others) if others else ""
+
+
 def tone_hint(w) -> str:
     """Which of 长 cháng and 长 zhǎng is being asked for, without giving away the
     syllable. Empty for a word that has no homograph to be confused with."""
@@ -127,6 +135,7 @@ def tone_hint(w) -> str:
 
 
 PROPER = {"ns", "nt", "nz"}   # place, organisation, other proper noun -- 上海 is not 上 + 海
+SPEAKER = re.compile(r"^[A-Z]：")
 SUFFIX = set("们儿子头过着")    # attaches to its stem: 人们, 点儿, 看过
 
 
@@ -196,6 +205,7 @@ def make_pinyin(words):
     return gen, stats
 
 
+POINTER = re.compile(r"^(variant of|old variant of|see|abbr\. for)\b", re.I)
 # "abbr. for 超級市場|超级市场[chao1 ji2 shi4 chang3]"
 XREF = re.compile(r"(?:([㐀-鿿]+)\|)?([㐀-鿿]+)\[([A-Za-z0-9:, ]+)\]")
 # "also pr. [di4]", "Taiwan pr. [zhi1dao5]" -- not reliably spaced, so split on digits
@@ -332,6 +342,7 @@ def load_etymology():
 def main() -> int:
     decks, media = [], set()
     words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
+    also_read.__defaults__ = ({w["entry"]: w for w in words},)
 
     # Links go to the traditional entry, as they do everywhere else on the cards. The
     # syllabus words have an adjudicated traditional form already; CC-CEDICT covers the
@@ -342,34 +353,78 @@ def main() -> int:
         if m and m.group(2) not in to_trad:
             to_trad[m.group(2)] = m.group(1)
     to_trad.update({w["simplified"]: w["traditional"] for w in words})
+    char_by_reading = {}
     cedict_defs = {}
     for line in (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines():
-        m = re.match(r"^\S+ (\S+) \[[^]]*\] /(.*)/$", line)
-        if m and m.group(1) not in cedict_defs:
-            senses = [d for d in m.group(2).split("/") if not d.startswith("CL:")][:3]
-            if senses:
-                cedict_defs[m.group(1)] = clean_xrefs(" / ".join(senses))
+        m = re.match(r"^(\S+) (\S+) \[([^]]*)\] /(.*)/$", line)
+        if not m:
+            continue
+        trad, simp, reading, body = m.groups()
+        senses = [d for d in body.split("/") if not d.startswith("CL:")][:3]
+        if senses and simp not in cedict_defs:
+            cedict_defs[simp] = clean_xrefs(" / ".join(senses))
+        if senses and len(simp) == 1:
+            # several entries can share a reading, and the surname is often first:
+            # 还 huán is "surname Huan" before it is "to give back". Take the fullest.
+            key = (simp, reading.replace(" ", "").lower())
+            defining = [d for d in senses if not POINTER.match(d)]
+            char_by_reading.setdefault(key, []).append(
+                (trad, clean_xrefs(" / ".join(defining or senses)),
+                 len(defining), len(senses)))
     etym_char, etym_word = load_etymology()
 
     char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
     literal = json.loads((BUILD / "literal-meanings.json").read_text(encoding="utf-8"))
 
-    def components(simplified: str) -> str:
+    def pick_char(ch: str, reading: str, want_trad: str):
+        """Among the entries sharing a reading, the one the deck already settled on.
+
+        只 zhī is 隻 the classifier, not 秖 "grain beginning to ripen"; and where the
+        traditional form does not decide it, an entry that defines the character beats
+        one that only points at another -- 着 zhe is not "variant of 着".
+        """
+        cands = char_by_reading.get((ch, reading.lower()))
+        if not cands:
+            return None
+        best = max(cands, key=lambda c: (c[2], c[3]))
+        exact = [c for c in cands if c[0] == want_trad]
+        if not exact:
+            return best
+        chosen = max(exact, key=lambda c: (c[2], c[3]))
+        # 佔's own entry says only "variant of 占": keep the form, borrow the meaning
+        return chosen if chosen[2] else (chosen[0], best[1], best[2], best[3])
+
+    def components(simplified: str, numbered: str = "", traditional: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
         A one-character word gets one too -- that is where the glyph origin is most
         of what there is to say.
 
-        Not which sense the compound uses -- Wiktionary records that for six words in
+        The reading decides the senses: 长 is "long" in 长处 and "chief" in 校长, and a
+        card showing one while saying the other is simply wrong. Where the syllables do
+        not line up with the characters, fall back to the character's usual senses.
+
+        Not which sense a compound draws on -- Wiktionary records that for six words in
         the whole dump -- so 机 is listed as machine, opportunity and aircraft alike.
         """
+        chars = [c for c in simplified if CJK.match(c)]
+        sylls = [x for x in numbered.split(" ") if x]
+        reading_of = dict(zip(chars, sylls)) if len(chars) == len(sylls) else {}
+        trad_of = (dict(zip(chars, traditional))
+                   if len(traditional) == len(chars) else {})
         out = []
-        for ch in dict.fromkeys(c for c in simplified if CJK.match(c)):
-            senses = (char_meta.get(ch) or {}).get("meaning", "")
-            senses = " / ".join(p.strip() for p in senses.split("/")[:3] if p.strip())
+        for ch in dict.fromkeys(chars):
+            by_reading = pick_char(ch, reading_of.get(ch, ""),
+                                   trad_of.get(ch, (char_meta.get(ch) or {})
+                                               .get("traditional") or ch))
+            if by_reading:
+                trad, senses = by_reading[0], by_reading[1]
+            else:
+                senses = (char_meta.get(ch) or {}).get("meaning", "")
+                senses = " / ".join(p.strip() for p in senses.split("/")[:3] if p.strip())
+                trad = (char_meta.get(ch) or {}).get("traditional") or ch
             origin = etym_char(ch, full=False)
             if not (senses or origin):
                 continue
-            trad = (char_meta.get(ch) or {}).get("traditional") or ch
             label = ch if trad == ch else f"{ch} ({trad})"
             body = f'<b>{label}</b> {html.escape(senses, quote=False)}'
             if origin:
@@ -441,9 +496,9 @@ def main() -> int:
                 render_senses(w["meaning"]),
                 "、".join(w["pos"]), pos_glossed(w["pos"]),
                 w.get("classifier", ""), w["audio"],
-                " ".join(w["homophone"][:12]), " ".join(w["homograph"]),
+                " ".join(w["homophone"][:12]), also_read(w),
                 w["stroke_order"], "",
-                components(w["simplified"]),
+                components(w["simplified"], w["pinyin_numbered"], w["traditional"]),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
             ],
             tags=tags,
@@ -470,23 +525,33 @@ def main() -> int:
         return ""
 
     rows = read_tsv(RAW / "chelsea_grammar.tsv")
-    # 她正在学习呢1。 -- the digit indexes which 呢 the point is about, and is not part
-    # of the sentence. Only strip where a point says so, or 2022年2月4日 loses its date.
-    indexed = {m for r in rows
-               for m in re.findall(r"[㐀-鿿][0-9]",
-                                   (r["content"] or "") + (r.get("grammarDetail") or ""))}
+    # 她正在学习呢1。 -- the digit indexes which 呢 the point is about and is not part of
+    # the sentence. Two things stop it eating real numbers: the token must be one this
+    # row's own point uses, since 于1 and 了2 index other points entirely, and a digit
+    # followed by another digit is a number -- 成立于1950年, 引用了20则.
+    indexed = {}
+    for r in rows:
+        key = (r["examLevelId"], r["content"], r.get("grammarDetail", ""))
+        indexed[key] = set(re.findall(
+            r"[㐀-鿿][0-9]", (r["content"] or "") + (r.get("grammarDetail") or "")))
 
-    def unindex(s: str) -> str:
-        for tok in indexed:
-            s = s.replace(tok, tok[0])
+    def unindex(s: str, row=None) -> str:
+        toks = indexed.get(
+            (row["examLevelId"], row["content"], row.get("grammarDetail", "")), ())if row \
+            else set().union(*indexed.values())
+        for tok in toks:
+            s = re.sub(re.escape(tok) + r"(?![0-9])", tok[0], s)
         return s
 
     generate, py_stats = make_pinyin(words)
     checked = {}
     path = ROOT / "data/grammar-pinyin.csv"
     if path.exists():
-        checked = {unindex(r["chinese"]): r["pinyin"]
-                   for r in csv.DictReader(path.open(encoding="utf-8"))}
+        # answers to the source text and to the cleaned one, so a caller holding
+        # either finds it
+        for r in csv.DictReader(path.open(encoding="utf-8")):
+            checked[r["chinese"]] = r["pinyin"]
+            checked.setdefault(unindex(r["chinese"]), r["pinyin"])
 
     def linked(sentence: str) -> str:
         """The sentence with each word linked to its Wiktionary entry.
@@ -502,13 +567,23 @@ def main() -> int:
             return html.escape(sentence, quote=False)
         out, word, i, n = [], "", 0, 0
         while i < len(sentence):
-            if CJK.match(sentence[i]) and n < len(pairs):
+            if ALIGNABLE.match(sentence[i]) and n < len(pairs):
                 text, _, starts = pairs[n]
                 if starts and word:
                     out.append(word)
                     word = ""
-                word += text
-                i += len(text)
+                # 一下（儿） is one syllable over two characters that are not adjacent,
+                # so follow the characters rather than counting them
+                for want in text:
+                    while i < len(sentence) and sentence[i] != want:
+                        if word:
+                            out.append(word)
+                            word = ""
+                        out.append(html.escape(sentence[i], quote=False))
+                        i += 1
+                    if i < len(sentence):
+                        word += sentence[i]
+                        i += 1
                 n += 1
             else:
                 if word:
@@ -568,29 +643,68 @@ def main() -> int:
     translated = {}
     path = ROOT / "data/grammar-translations.csv"
     if path.exists():
-        translated = {r["chinese"]: r["english"]
-                      for r in csv.DictReader(path.open(encoding="utf-8"))}
+        for r in csv.DictReader(path.open(encoding="utf-8")):
+            translated[r["chinese"]] = r["english"]
+            translated.setdefault(unindex(r["chinese"]), r["english"])
+    tts_dir = ROOT / ".cache/tts"
+    tts_index = json.loads((tts_dir / "index.json").read_text(encoding="utf-8")) \
+        if (tts_dir / "index.json").exists() else {}
+    for k in list(tts_index):
+        tts_index.setdefault(unindex(k), tts_index[k])
+
+    def sentence_audio(text: str) -> str:
+        """No corpus records these sentences, so they are synthesised or silent."""
+        got = tts_index.get(text)
+        if not got or not (tts_dir / got).exists():
+            return ""
+        if not (MEDIA / got).exists():
+            shutil.copy2(tts_dir / got, MEDIA / got)
+        media.add(got)
+        return f"[sound:{got}]"
+
     seen_sentence = set()
     n = 0
     for r in rows:
         lv = lvl_of(r["examLevelId"])
-        cases = [unindex(c.strip()) for c in (r.get("cases") or "").split("|") if c.strip()]
+        # the source text is the key for everything looked up by sentence; the
+        # cleaned one is what the card shows
+        cases = [(c.strip(), unindex(c.strip(), r))
+                 for c in (r.get("cases") or "").split("|") if c.strip()]
+        # A：你的手机呢？ and B：我的手机在房间里。 are one exchange, and the answer
+        # on its own is a stray B with nothing to answer. Keep the turns together.
+        grouped, i = [], 0
+        while i < len(cases):
+            turn = [cases[i]]
+            while (SPEAKER.match(cases[i][1]) and i + 1 < len(cases)
+                   and SPEAKER.match(cases[i + 1][1])):
+                turn.append(cases[i + 1])
+                i += 1
+            grouped.append(turn)
+            i += 1
         point = (r["content"].strip() or r.get("grammarDetail", "").strip()
                  or r.get("categoryType", "").strip())
-        for c in cases:
-            if c in seen_sentence:
+        for turn in grouped:
+            raws = [x[0] for x in turn]
+            lines = [x[1] for x in turn]
+            key = "\n".join(lines)
+            if key in seen_sentence:
                 continue
-            seen_sentence.add(c)
+            seen_sentence.add(key)
             n += 1
+            join = "<br>".join
             grammar_decks[lv].add_note(genanki.Note(
                 model=sentence_model,
                 due=n,
-                guid=genanki.guid_for("hsk3-sentence", c),
+                guid=genanki.guid_for("hsk3-sentence", key),
                 fields=[
-                    str(n), lv, html.escape(c, quote=False), linked(c),
-                    html.escape(gen_pinyin(c), quote=False),
-                    html.escape(translated.get(c, ""), quote=False),
-                    sentence_words(c), point, label_en(point),
+                    str(n), lv,
+                    join(html.escape(x, quote=False) for x in lines),
+                    join(linked(x) for x in lines),
+                    join(html.escape(gen_pinyin(x), quote=False) for x in lines),
+                    join(html.escape(translated.get(x, ""), quote=False)
+                         for x in lines),
+                    "".join(sentence_words(x) for x in lines),
+                    point, label_en(point),
                     " &middot; ".join(
                         v + (f' <span class=en>{en}</span>' if en else "")
                         for v, en in ((r.get("grammarType", "").strip(),
@@ -600,6 +714,7 @@ def main() -> int:
                                       (r.get("grammarDetail", "").strip(),
                                        label_en(r.get("grammarDetail", ""))))
                         if v),
+                    "".join(sentence_audio(x) for x in raws),
                 ],
                 tags=[f"HSK3.0::sentence::L{lv}"],
             ))

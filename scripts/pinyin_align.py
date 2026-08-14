@@ -47,9 +47,16 @@ def syllabify(word: str) -> list:
     return out
 
 
+ALIGNABLE = re.compile(r"[㐀-鿿0-9A-Za-z]")
+
+
 def align(hanzi: str, pinyin: str):
-    """[(character, syllable, starts_a_word)], or None if the two cannot be matched."""
-    chars = [c for c in hanzi if CJK.match(c)]
+    """[(character, syllable, starts_a_word)], or None if the two cannot be matched.
+
+    A digit is read one syllable at a time -- 2022年 is èr líng èr èr nián -- so it
+    counts as a character here, and so does a speaker's A： label.
+    """
+    chars = [c for c in hanzi if ALIGNABLE.match(c)]
     sylls = []
     for word in WORD.findall(pinyin):
         parts = syllabify(word.replace("(", "").replace(")", ""))

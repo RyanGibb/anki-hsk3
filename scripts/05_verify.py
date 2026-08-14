@@ -160,7 +160,7 @@ def main() -> int:
             con = sqlite3.connect(pathlib.Path(td) / db)
             n_notes = con.execute("select count(*) from notes").fetchone()[0]
             n_cards = con.execute("select count(*) from cards").fetchone()[0]
-            check(f"{n_notes} notes in db", n_notes == 14241)
+            check(f"{n_notes} notes in db", n_notes == 14239)
             # forgetting HSK_DECK_ROOT silently leaves an empty deck tree on import
             decks = json.loads(con.execute("select decks from col").fetchone()[0])
             roots = {d["name"].split("::")[0] for d in decks.values()
@@ -236,9 +236,14 @@ def main() -> int:
               and "Chen Wang" not in w["audio_source"])
     other_voice = sum(1 for w in words if "Chen Wang" in w["audio_source"])
     stacked = sum(1 for w in words if "per-character" in w["audio_source"])
-    check(f"audio {audio}/{len(words)} ({100*audio/len(words):.1f}%)", audio > 8600)
+    said = sum(1 for w in words if "azure" in w["audio_source"])
+    check(f"audio {audio}/{len(words)} ({100*audio/len(words):.1f}%)", audio == len(words))
     check(f"  of which per-character stacks: {stacked}", stacked > 1700)
-    check(f"Yue Tan {100*cmn/max(audio,1):.1f}% of audio", cmn / max(audio, 1) > 0.99)
+    check(f"  of which synthesised: {said} ({100*said/max(audio,1):.1f}%)",
+          1900 < said < 2400)
+    # a recorded voice still says four words in five; the rest had no recording
+    check(f"Yue Tan {100*cmn/max(audio - said, 1):.1f}% of what was recorded",
+          cmn / max(audio - said, 1) > 0.99)
     # zero means the syllabs checkout is missing
     check(f"second speaker on {other_voice} single characters", 0 < other_voice < 60)
     char_audio = json.loads((BUILD / "char-audio.json").read_text(encoding="utf-8"))
