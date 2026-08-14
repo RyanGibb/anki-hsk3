@@ -218,15 +218,19 @@ def main() -> int:
     def pos_tokens(s: str) -> frozenset:
         return frozenset(t for t in POS_SPLIT.split(s) if t.strip())
 
+    # Keyed on the entry, not the word: 本 is a classifier in one entry and a pronoun
+    # in the other, and merging them loses the only thing telling the two cards apart.
     raw_pos: dict[str, list[str]] = collections.defaultdict(list)
+    by_reading = {(r["word"], r["pinyin_numbered"]): entry_of(r) for r in punpuf}
     for r in chelsea:
         v = (r.get("cixing") or "").strip()
-        if v and v not in raw_pos[r["word"]]:
-            raw_pos[r["word"]].append(v)
+        key = by_reading.get((r["word"], r.get("pinyin_numbered") or ""), r["word"])
+        if v and v not in raw_pos[key]:
+            raw_pos[key].append(v)
     for r in punpuf:
         v = (r.get("part_of_speech") or "").strip()
-        if v and v not in raw_pos[r["word"]]:
-            raw_pos[r["word"]].append(v)
+        if v and v not in raw_pos[entry_of(r)]:
+            raw_pos[entry_of(r)].append(v)
 
     pos: dict[str, list[str]] = {}
     for word, variants in raw_pos.items():
@@ -315,7 +319,7 @@ def main() -> int:
                 "cedict_candidates": "/".join(e["trad"] for e in entries),
                 "meaning": meaning,
                 "classifier": classifier,
-                "pos": pos.get(simplified, []),
+                "pos": pos.get(entry) or pos.get(simplified, []),
             }
         )
 

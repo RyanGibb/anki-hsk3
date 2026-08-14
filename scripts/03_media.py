@@ -36,7 +36,7 @@ CJK = re.compile(r"[㐀-鿿豈-﫿]")
 TONE_VOWELS = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
 
 
-def numbered(p: str) -> str:
+def numbered(p: str) -> str:   # noqa: D401
     """nǔ -> nu3, which is how the syllable recordings are named."""
     out, tone = [], "5"
     for ch in p:
@@ -60,16 +60,29 @@ TONE_MARKS = str.maketrans("āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ", "
 TONED = re.compile(r"[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]")
 
 
+TONE_VALUE = {c: str(i % 4 + 1) for i, c in enumerate(TONE_VOWELS)}
+
+
 def toneless(p: str) -> str:
     return norm(p).translate(TONE_MARKS)
 
 
-def same_sound(card: str, recorded: str, word: str) -> bool:
+def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> bool:
+    """Whether a recording says what the card says.
+
+    Loosely by default, because 聪明 is recorded both as cōngmíng and cōngming and
+    they are the same word. Strictly where the deck teaches two words written alike:
+    过 guò and 过 guo are not one word said casually, and a recording of the first
+    teaches the wrong sound on the second's card.
+    """
     if norm(card) == norm(recorded):
         return True
-    if toneless(card) != toneless(recorded):
+    if strict or toneless(card) != toneless(recorded):
         return False
     a, b = TONED.findall(norm(card)), TONED.findall(norm(recorded))
+    # sheí and shéi are the same syllable with the mark typed on a different vowel
+    if [TONE_VALUE[x] for x in a] == [TONE_VALUE[x] for x in b]:
+        return True
     if len(a) != len(b):
         return True                        # neutral tone
     if word[:1] in "一不" and a[1:] == b[1:]:
@@ -100,8 +113,15 @@ def main() -> int:
         if "_" not in p.name
     }
 
-    syllabs = {p.name[len("cmn-"):-len(".mp3")].lstrip("_"): p
-               for p in SYLLABS.glob("cmn-*.mp3")} if SYLLABS.is_dir() else {}
+    # audio-cmn issues 2 and 13: the fifth-tone files in the syllable set are snippets
+    # cut from a discussion rather than recordings, and issue 10 reports cmn-zhu2 and
+    # cmn-zhu4 as the wrong audio. Issue 7 says 5% of the set is degraded, which is
+    # why a character read the same way is preferred to a syllable in the first place.
+    SUSPECT = re.compile(r"^[a-zü:]+5$|^zhu[24]$")
+    syllabs = {k: v for k, v in (
+        (p.name[len("cmn-"):-len(".mp3")].lstrip("_"), p)
+        for p in SYLLABS.glob("cmn-*.mp3")) if not SUSPECT.match(k)} \
+        if SYLLABS.is_dir() else {}
 
     swac = {r["word"]: r["pinyin"]
             for r in csv.DictReader(SWAC.open(encoding="utf-8"))
@@ -114,6 +134,13 @@ def main() -> int:
     strokes_needed: set[str] = set()
     substitutions = []
 
+    # Where the syllabus lists a word twice with two readings, a recording has to say
+    # this entry's reading exactly: 过 guò must not be played on 过 guo's card.
+    ambiguous = {x["simplified"] for x in words
+                 if any(o["simplified"] == x["simplified"]
+                        and o["pinyin_numbered"] != x["pinyin_numbered"]
+                        for o in words)}
+
     for w in words:
         simp = w["simplified"]
         want = norm(w["pinyin"])
@@ -121,7 +148,8 @@ def main() -> int:
         w["audio_source"] = ""
 
         source = kind = None
-        if simp in swac and simp in cmn and same_sound(w["pinyin"], swac[simp], simp):
+        if simp in swac and simp in cmn and same_sound(
+                w["pinyin"], swac[simp], simp, strict=simp in ambiguous):
             source = simp
             kind = "audio-cmn (Yue Tan)"
         else:
@@ -192,30 +220,86 @@ def main() -> int:
         for line in MMAH_DICT.read_text(encoding="utf-8").splitlines():
             d = json.loads(line)
             char_readings[d["character"]] = [norm(x) for x in (d.get("pinyin") or [])]
+    # makemeahanzi gives one reading per character -- 地 as de, never dì -- so a
+    # recording of the other reading looked like a mismatch. The syllabus knows both,
+    # because it teaches 地 twice. A recording is only right if it says something this
+    # deck teaches: 血 is taught as xuè alone, so a xiě recording stays refused.
+    # 熟 is entered as one reading, "shú/shóu", which is two. And ü is written both
+    # ways: the syllabus has nü3 where everything else here says nv3.
+    def readings_of(field: str) -> list:
+        return [x.replace(" ", "").replace("ü", "v").lower()
+                for x in field.split("/") if x.strip()]
+
+    taught, taught_marked = {}, {}
+    for w in words:
+        if len(w["simplified"]) == 1:
+            taught.setdefault(w["simplified"], set()).update(
+                readings_of(w["pinyin_numbered"]))
+            taught_marked.setdefault(w["simplified"], []).extend(
+                x for x in w["pinyin"].split("/") if x.strip())
+    known = {ch: set(reads) for ch, reads in taught.items()}
+    for ch, reads in char_readings.items():
+        known.setdefault(ch, set()).update(numbered(r) for r in reads)
+    (BUILD / "char-readings.json").write_text(
+        json.dumps(taught_marked, ensure_ascii=False), encoding="utf-8")
+
     char_audio = {}
     skipped_chars = []
+    homophone = {}
+    for word, pron in swac.items():
+        homophone.setdefault(numbered(pron), word)
+
+    # A word where this character is read this way, for readings no isolated
+    # recording can cover.
+    in_word = {}
+    for x in words:
+        simp, nums = x["simplified"], x["pinyin_numbered"].split()
+        # a one-character "word" is the character, and its recording is the one
+        # already refused for saying the wrong reading
+        if len(simp) < 2 or len(simp) != len(nums) or simp not in cmn:
+            continue
+        for ch, num in zip(simp, nums):
+            in_word.setdefault((ch, num.lower()), simp)
+
+    def clip_for(c: str, reading: str):
+        """A recording of this character said this way, and the word it was said in.
+
+        A neutral tone takes its pitch from the syllable before it, so 了 le and 子 zi
+        cannot be recorded alone and the syllable corpus does not try. They are heard
+        inside a word instead -- 算了, 包子 -- which is the only place they exist.
+        """
+        if c in cmn and (c not in swac or numbered(swac[c]) == reading):
+            return cmn[c], ""
+        # a character read the same way, before an isolated syllable: the syllable set
+        # is a second speaker reading in citation form, and 常 for 长's cháng is the
+        # voice the rest of the deck uses
+        twin = homophone.get(reading)
+        if twin and twin in cmn:
+            return cmn[twin], ""
+        syl = syllabs.get(reading)
+        if syl:
+            return syl, ""
+        word = in_word.get((c, reading))
+        return (cmn[word], word) if word else (None, "")
+
     for r in csv.DictReader((ROOT / "data/raw/chelsea_hanzi_writing.tsv")
                             .open(encoding="utf-8"), delimiter="\t"):
         c = r["word"]
-        want = char_readings.get(c) or []
-        if c not in cmn:
-            # No recording of the character, but the syllable is in the corpus. Only
-            # where the character has a single reading: with two, one of them is wrong.
-            if len(want) != 1:
+        readings = list(dict.fromkeys(taught.get(c, [])))
+        if not readings:
+            readings = [numbered(x) for x in (char_readings.get(c) or [])][:1]
+        got = {}
+        for reading in readings:
+            src, heard_in = clip_for(c, reading)
+            if not src:
                 continue
-            syl = syllabs.get(numbered(want[0]))
-            if not syl:
-                continue
-            stage(syl, syl.name)
-            char_audio[c] = f"[sound:{syl.name}]"
-            continue
-        if c in swac and want and not any(
-                same_sound(x, swac[c], c) for x in char_readings.get(c, [])):
-            skipped_chars.append((c, "/".join(want), swac[c]))
-            continue
-        name = cmn[c].name
-        stage(cmn[c], name)
-        char_audio[c] = f"[sound:{name}]"
+            stage(src, src.name)
+            got[reading] = {"sound": f"[sound:{src.name}]", "in": heard_in}
+        if got:
+            char_audio[c] = got
+        elif c in cmn and c in swac:
+            skipped_chars.append((c, "/".join(readings), swac[c]))
+
     # Anything the corpus never recorded: a clip made by hand where one exists, else
     # a synthesised one. Both are optional -- a checkout with neither still builds.
     hand = ROOT / "data/audio"
@@ -255,8 +339,9 @@ def main() -> int:
 
     (BUILD / "char-audio.json").write_text(
         json.dumps(char_audio, ensure_ascii=False), encoding="utf-8")
+    reads = sum(len(v) for v in char_audio.values())
     print(f"character audio      : {len(char_audio)} of 1200 "
-          f"({100*len(char_audio)/1200:.1f}%), "
+          f"({100*len(char_audio)/1200:.1f}%), {reads} readings voiced, "
           f"{len(skipped_chars)} skipped for a mismatched reading")
     (BUILD / "char-audio-skipped.csv").write_text(
         "character,card_reading,recorded_reading\n"

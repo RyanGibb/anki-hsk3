@@ -8,6 +8,10 @@ import re
 import sqlite3
 import tempfile
 import zipfile
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from pinyin_align import syllabify   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -135,11 +139,24 @@ def main() -> int:
             continue
         if c.translate(T) != r.translate(T):
             wrong.append((w["simplified"], w["pinyin"], swac[m[0]]))
-        elif (len(TONED.findall(c)) == len(TONED.findall(r))
-              and w["simplified"][:1] not in "一不"):
+            continue
+        # 谁 is indexed sheí against the card's shéi: one syllable, one tone, the mark
+        # typed on the other vowel
+        value = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
+        if [value.index(x) % 4 for x in TONED.findall(c)] == \
+                [value.index(x) % 4 for x in TONED.findall(r)]:
+            continue
+        if (len(TONED.findall(c)) == len(TONED.findall(r))
+                and w["simplified"][:1] not in "一不"):
             wrong.append((w["simplified"], w["pinyin"], swac[m[0]]))
     check(f"{len(wrong)} recordings with a mismatched reading", not wrong,
           str(wrong[:4]) if wrong else "")
+    shared = [(a["entry"], b["entry"], a["audio"]) for a in words for b in words
+              if a["simplified"] == b["simplified"] and a["entry"] < b["entry"]
+              and a["audio"] and a["audio"] == b["audio"]
+              and a["pinyin_numbered"] != b["pinyin_numbered"]]
+    check("no two readings share one recording", not shared,
+          str(shared[:3]) if shared else "")
 
     print("\npackage integrity")
     check("apkg exists", APKG.exists())
@@ -225,6 +242,41 @@ def main() -> int:
                 print("        e.g.", sorted(missing)[:5])
             con.close()
 
+    print("\ntone marks sit where the rules put them")
+    # a or e takes it; failing that the o of ou; failing that the last vowel
+    TONE = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
+    flat = str.maketrans(TONE, "aaaaeeeeiiiioooouuuuüüüü")
+
+    def misplaced(syllable: str):
+        marked = [i for i, ch in enumerate(syllable.lower()) if ch in TONE]
+        if len(marked) != 1:
+            return None
+        plain = syllable.lower().translate(flat)
+        vowels = [i for i, ch in enumerate(plain) if ch in "aeiouü"]
+        if not vowels:
+            return None
+        want = (plain.index("a") if "a" in plain else
+                plain.index("e") if "e" in plain else
+                plain.index("ou") if "ou" in plain else vowels[-1])
+        return None if marked[0] == want else syllable
+
+    def scan(pairs):
+        out = []
+        for label, text in pairs:
+            for word in re.split(r"[^a-zü" + TONE + TONE.upper() + r"]+", text or ""):
+                for syllable in (syllabify(word) if word else []):
+                    if misplaced(syllable):
+                        out.append((label, syllable))
+        return out
+
+    for name, pairs in [
+            ("syllabus", [(w["simplified"], w["pinyin"]) for w in words]),
+            ("sentences", [(r["chinese"][:8], r["pinyin"]) for r in csv.DictReader(
+                (ROOT / "data/grammar-pinyin.csv").open(encoding="utf-8"))]
+             if (ROOT / "data/grammar-pinyin.csv").exists() else [])]:
+        off = scan(pairs)
+        check(f"{name}: {len(off)} misplaced", not off, str(off[:4]) if off else "")
+
     print("\nfield sanity")
     check("every word has pinyin", all(w["pinyin"] for w in words))
     check("every word has a level", all(w["level"] in LEVELS for w in words))
@@ -237,7 +289,10 @@ def main() -> int:
     other_voice = sum(1 for w in words if "Chen Wang" in w["audio_source"])
     stacked = sum(1 for w in words if "per-character" in w["audio_source"])
     said = sum(1 for w in words if "azure" in w["audio_source"])
-    check(f"audio {audio}/{len(words)} ({100*audio/len(words):.1f}%)", audio == len(words))
+    # Not everything: a word listed twice with two readings can only use a recording
+    # of its own, and nothing says 过 guo where 过 guò is what was recorded.
+    check(f"audio {audio}/{len(words)} ({100*audio/len(words):.1f}%)",
+          len(words) - audio <= 8)
     check(f"  of which per-character stacks: {stacked}", stacked > 1700)
     check(f"  of which synthesised: {said} ({100*said/max(audio,1):.1f}%)",
           1900 < said < 2400)
