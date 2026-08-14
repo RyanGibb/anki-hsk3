@@ -216,6 +216,30 @@ def main() -> int:
         name = cmn[c].name
         stage(cmn[c], name)
         char_audio[c] = f"[sound:{name}]"
+    # Anything the corpus never recorded: a clip made by hand where one exists, else
+    # a synthesised one. Both are optional -- a checkout with neither still builds.
+    hand = ROOT / "data/audio"
+    tts_dir = ROOT / ".cache/tts"
+    tts_index = json.loads((tts_dir / "index.json").read_text(encoding="utf-8")) \
+        if (tts_dir / "index.json").exists() else {}
+    made = collections.Counter()
+    for w in words:
+        if w["audio"]:
+            continue
+        src = hand / f"{w['simplified']}.mp3"
+        if not src.exists():
+            got = tts_index.get(w["simplified"])
+            src = tts_dir / got if got else None
+        if not src or not src.exists():
+            continue
+        stage(src, src.name)
+        w["audio"] = f"[sound:{src.name}]"
+        w["audio_source"] = ("hand-recorded" if src.parent == hand
+                             else "azure zh-CN-Xiaoxiao -20%")
+        made[w["audio_source"]] += 1
+    for k, v in made.items():
+        print(f"{k:21s}: {v} words")
+
     extra = 0
     for src in sorted(MMAH.glob("*-still.svg")):
         char = chr(int(src.name.split("-")[0]))
