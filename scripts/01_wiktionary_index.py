@@ -40,13 +40,18 @@ def main() -> int:
                 continue
             text = d.get("etymology_text")
             if text and CJK.match(word) and not DIALECT.match(text.lstrip()):
-                # keep the fullest account when a character has several entries
-                if len(text) > len(etym.get(word, {}).get("text", "")):
+                # A character can have several etymologies: 許 has one for the glyph and
+                # one for the surname. The glyph is the entry carrying the ordinary
+                # senses, so count them -- the surname section has exactly one.
+                n = len(d.get("senses") or [])
+                have = etym.get(word)
+                if not have or (n, len(text)) > (have["senses"], len(have["text"])):
                     liushu = [t for t in (d.get("etymology_templates") or [])
                               if t.get("name") == "liushu"]
                     etym[word] = {
                         "text": text,
                         "type": liushu[0].get("args", {}).get("1") if liushu else "",
+                        "senses": n,
                     }
             lit = (d.get("literal_meaning") or "").strip()
             if lit and len(lit) > len(literal.get(word, "")):

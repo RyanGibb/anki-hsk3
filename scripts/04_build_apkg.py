@@ -66,7 +66,8 @@ char_model = genanki.Model(
     MID_CHAR, "HSK 3.0 Character",
     fields=[{"name": f} for f in
             ["Key", "Character", "Level", "WritingLevel", "Traditional", "Pinyin",
-             "Meaning", "Audio", "StrokeOrder", "Etymology", "Example"]],
+             "Meaning", "Audio", "StrokeOrder", "Etymology", "Example",
+             "ExampleWord"]],
     css=tpl("style.css"),
     # Writing only: all 3,088 recognition characters appear in a vocabulary word.
     templates=[{
@@ -94,6 +95,17 @@ def deck(section: str, level: str) -> genanki.Deck:
 def read_tsv(path):
     with path.open(encoding="utf-8") as fh:
         return list(csv.DictReader(fh, delimiter="\t"))
+
+
+TONE_MARK = {"1": "ˉ", "2": "ˊ", "3": "ˇ", "4": "ˋ", "5": "·"}
+
+
+def tone_hint(w) -> str:
+    """Which of 长 cháng and 长 zhǎng is being asked for, without giving away the
+    syllable. Empty for a word that has no homograph to be confused with."""
+    if not w["homograph_index"]:
+        return ""
+    return "".join(TONE_MARK.get(c, "") for c in w["pinyin_numbered"] if c.isdigit())
 
 
 PROPER = {"ns", "nt", "nz"}   # place, organisation, other proper noun -- 上海 is not 上 + 海
@@ -273,6 +285,8 @@ def main() -> int:
 
     def components(simplified: str) -> str:
         """One entry per character: what it means, then where the glyph came from.
+        A one-character word gets one too -- that is where the glyph origin is most
+        of what there is to say.
 
         Not which sense the compound uses -- Wiktionary records that for six words in
         the whole dump -- so 机 is listed as machine, opportunity and aircraft alike.
@@ -303,6 +317,12 @@ def main() -> int:
             return ""
         return (f'<span class=exPinyin>{html.escape(e["pinyin"], quote=False)}</span>'
                 f' &mdash; {html.escape(e["meaning"], quote=False)}')
+
+    def example_word(ch: str) -> str:
+        """The same example with its characters, for the side that has already shown
+        you the answer."""
+        e = (char_meta.get(ch) or {}).get("example") or {}
+        return html.escape(e.get("word", ""), quote=False) if e else ""
 
     vocab_decks = {lv: deck("vocab", lv) for lv in LEVELS}
     pos_en = {row["zh"]: row["en"] for row in
@@ -335,14 +355,14 @@ def main() -> int:
             due=int(w["key"]),
             guid=genanki.guid_for("hsk3-vocab", w["entry"]),
             fields=[
-                w["key"], w["level"], w["simplified"], w["homograph_index"],
+                w["key"], w["level"], w["simplified"], tone_hint(w),
                 w["traditional"], w["pinyin"], w["pinyin_numbered"],
                 render_senses(w["meaning"]),
                 "、".join(w["pos"]), pos_glossed(w["pos"]),
                 w.get("classifier", ""), w["audio"],
                 " ".join(w["homophone"][:12]), " ".join(w["homograph"]),
                 w["stroke_order"], "",
-                components(w["simplified"]) if len(w["simplified"]) > 1 else "",
+                components(w["simplified"]),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
             ],
             tags=tags,
@@ -368,15 +388,39 @@ def main() -> int:
             return f"{labels[m.group(1)]} {m.group(2)}"
         return ""
 
-    gen_pinyin, py_stats = make_pinyin(words)
+    rows = read_tsv(RAW / "chelsea_grammar.tsv")
+    # 她正在学习呢1。 -- the digit indexes which 呢 the point is about, and is not part
+    # of the sentence. Only strip where a point says so, or 2022年2月4日 loses its date.
+    indexed = {m for r in rows
+               for m in re.findall(r"[㐀-鿿][0-9]",
+                                   (r["content"] or "") + (r.get("grammarDetail") or ""))}
+
+    def unindex(s: str) -> str:
+        for tok in indexed:
+            s = s.replace(tok, tok[0])
+        return s
+
+    generate, py_stats = make_pinyin(words)
+    checked = {}
+    path = ROOT / "data/grammar-pinyin.csv"
+    if path.exists():
+        checked = {unindex(r["chinese"]): r["pinyin"]
+                   for r in csv.DictReader(path.open(encoding="utf-8"))}
+
+    def gen_pinyin(sentence: str) -> str:
+        if sentence in checked:
+            py_stats["checked"] += 1
+            return checked[sentence]
+        return generate(sentence)
+
     translated = {}
     path = ROOT / "data/grammar-translations.csv"
     if path.exists():
         translated = {r["chinese"]: r["english"]
                       for r in csv.DictReader(path.open(encoding="utf-8"))}
-    for n, r in enumerate(read_tsv(RAW / "chelsea_grammar.tsv"), 1):
+    for n, r in enumerate(rows, 1):
         lv = lvl_of(r["examLevelId"])
-        cases = [c.strip() for c in (r.get("cases") or "").split("|") if c.strip()]
+        cases = [unindex(c.strip()) for c in (r.get("cases") or "").split("|") if c.strip()]
         point = (r["content"].strip() or r.get("grammarDetail", "").strip()
                  or r.get("categoryType", "").strip())
         grammar_decks[lv].add_note(genanki.Note(
@@ -408,8 +452,9 @@ def main() -> int:
             tags=[f"HSK3.0::grammar::L{lv}"],
         ))
     decks += list(grammar_decks.values())
-    print(f"  grammar pinyin tokens: {py_stats['syllabus']} from the syllabus, "
-          f"{py_stats['pypinyin']} from pypinyin, {py_stats['override']} overridden")
+    print(f"  grammar pinyin: {py_stats['checked']} sentences hand-checked; "
+          f"the rest generated from {py_stats['syllabus']} syllabus tokens, "
+          f"{py_stats['pypinyin']} pypinyin, {py_stats['override']} overridden")
 
     mmah = {}
     if MMAH_DICT.exists():
@@ -447,7 +492,7 @@ def main() -> int:
                 render_senses(char_info.get(c, {}).get("meaning")
                               or info.get("definition") or ""),
                 char_audio.get(c, ""), stroke, etym_char(c, full=True),
-                example_of(c),
+                example_of(c), example_word(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
         ))

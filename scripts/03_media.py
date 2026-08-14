@@ -33,6 +33,22 @@ LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 
+TONE_VOWELS = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
+
+
+def numbered(p: str) -> str:
+    """nǔ -> nu3, which is how the syllable recordings are named."""
+    out, tone = [], "5"
+    for ch in p:
+        i = TONE_VOWELS.find(ch)
+        if i < 0:
+            out.append("v" if ch == "ü" else ch)
+        else:
+            tone = str(i % 4 + 1)
+            out.append("aeiouv"[i // 4])
+    return "".join(out) + tone
+
+
 def norm(p: str) -> str:
     return p.split("/")[0].replace(" ", "").replace("\u2019", "").replace("'", "").lower()
 
@@ -181,9 +197,18 @@ def main() -> int:
     for r in csv.DictReader((ROOT / "data/raw/chelsea_hanzi_writing.tsv")
                             .open(encoding="utf-8"), delimiter="\t"):
         c = r["word"]
-        if c not in cmn:
-            continue
         want = char_readings.get(c) or []
+        if c not in cmn:
+            # No recording of the character, but the syllable is in the corpus. Only
+            # where the character has a single reading: with two, one of them is wrong.
+            if len(want) != 1:
+                continue
+            syl = syllabs.get(numbered(want[0]))
+            if not syl:
+                continue
+            stage(syl, syl.name)
+            char_audio[c] = f"[sound:{syl.name}]"
+            continue
         if c in swac and want and not any(
                 same_sound(x, swac[c], c) for x in char_readings.get(c, [])):
             skipped_chars.append((c, "/".join(want), swac[c]))

@@ -190,9 +190,28 @@ def main() -> int:
         )
     print(f"cross-validated: {len(p_words)} unique words, zero set difference")
 
+    # 长 is in the syllabus twice, as cháng and as zhǎng, and so are 56 other words.
+    # Each reading is its own entry, numbered 长1 and 长2 the way split_homograph reads
+    # them, so each gets its own note and guid.
+    readings: dict[str, list] = collections.defaultdict(list)
+    for r in sorted(punpuf, key=lambda r: int(r["word_index"])):
+        if r["pinyin_numbered"] not in [x["pinyin_numbered"]
+                                        for x in readings[r["word"]]]:
+            readings[r["word"]].append(r)
+
+    def entry_of(row) -> str:
+        rs = readings[row["word"]]
+        if len(rs) == 1:
+            return row["word"]
+        n = [x["pinyin_numbered"] for x in rs].index(row["pinyin_numbered"]) + 1
+        return f"{row['word']}{n}"
+
+    first: dict[str, dict] = {}
     levels: dict[str, set[str]] = collections.defaultdict(set)
-    for r in punpuf:
-        levels[r["word"]].add(r["level"])
+    for r in sorted(punpuf, key=lambda r: int(r["word_index"])):
+        first.setdefault(entry_of(r), r)
+        levels[entry_of(r)].add(r["level"])
+    entries_all = set(first)
 
     POS_SPLIT = re.compile(r"[、,／/（）()]+")
 
@@ -221,10 +240,6 @@ def main() -> int:
             if not covered:
                 keep.append(v)
         pos[word] = keep
-
-    first: dict[str, dict] = {}
-    for r in punpuf:
-        first.setdefault(r["word"], r)
 
     # Not the gold set: that is the test, and feeding it back would make 05_verify
     # circular.
@@ -256,7 +271,7 @@ def main() -> int:
 
     words = []
     overridden = 0
-    for entry in sorted(p_words, key=lambda w: int(first[w]["word_index"])):
+    for entry in sorted(entries_all, key=lambda w: int(first[w]["word_index"])):
         r = first[entry]
         simplified, homograph_idx = split_homograph(entry)
         lv = sorted(levels[entry], key=lambda x: LEVEL_ORDER[x])
@@ -300,7 +315,7 @@ def main() -> int:
                 "cedict_candidates": "/".join(e["trad"] for e in entries),
                 "meaning": meaning,
                 "classifier": classifier,
-                "pos": pos.get(entry, []),
+                "pos": pos.get(simplified, []),
             }
         )
 
