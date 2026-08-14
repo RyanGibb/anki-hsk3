@@ -8,8 +8,12 @@ import json
 import os
 import pathlib
 import re
+import sys
 
 import genanki
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from pinyin_align import align   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -128,7 +132,8 @@ def make_pinyin(words):
     vocab = {w["simplified"] for w in words}
     for w in vocab:
         if len(w) > 1:
-            jieba.add_word(w, freq=500000)   # outranks 文书 in 中文书, 今天天气
+            # jieba's own dictionary has 文书 and 今天天气; the syllabus outranks it
+            jieba.add_word(w, freq=500000)
     override = {}
     path = ROOT / "data/pinyin-overrides.csv"
     if path.exists():
@@ -225,6 +230,23 @@ def lvl_of(exam_level_id: str) -> str:
 BULLET = re.compile(r"^[*#]+\s*")
 
 
+# Words that appear in any gloss and so distinguish nothing.
+STOP = set("""a an the to of and or in on at for with by from as is are be being been
+sth sb one ones s not no also used use using esp especially etc eg ie that this it its
+into out up down over under about between form forms variant surname classifier""".split())
+
+
+# How Wiktionary writes an account of a character's shape, as opposed to the history
+# of the word it spells.
+GLYPH = re.compile(r"phono-semantic|ideogrammic|pictogram|指事|象形|會意|形聲"
+                   r"|simplified from|originally written|oracle bone"
+                   r"|bronze (script|inscription)|seal script", re.I)
+
+
+def gloss_words(text: str) -> set:
+    return {w for w in re.split(r"[^a-z]+", text.lower()) if len(w) > 2 and w not in STOP}
+
+
 def load_etymology():
     """character -> its Wiktionary glyph origin, keyed on the TRADITIONAL form: the
     etymology of 條 says nothing about the shape of 条."""
@@ -232,8 +254,26 @@ def load_etymology():
     info = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
     trad = {c: (v.get("traditional") or c) for c, v in info.items()}
 
+    def choose(ch: str) -> dict:
+        """Which of a character's etymologies explains its shape.
+
+        The card asks where the glyph came from, so a section that accounts for the
+        graph beats one that accounts for the word: 吧 is borrowed from English "bar",
+        but the character is 口 + 巴. Among sections that do explain the graph, the one
+        whose glosses match the definition on the card wins -- 許 has a phono-semantic
+        account and a separate one for the surname, and both are about the graph.
+        """
+        sections = etym.get(trad.get(ch, ch)) or etym.get(ch) or []
+        if len(sections) < 2:
+            return sections[0] if sections else {}
+        want = gloss_words((info.get(ch) or {}).get("meaning") or "")
+        return max(sections, key=lambda e: (
+            bool(e.get("type")) or bool(GLYPH.search(e["text"])),
+            len(want & gloss_words(" ".join(e.get("glosses") or []))),
+            e.get("senses", 0), len(e["text"])))
+
     def paragraphs(ch: str) -> list[tuple[bool, str]]:
-        e = etym.get(trad.get(ch, ch)) or etym.get(ch)
+        e = choose(ch)
         if not e:
             return []
         out = []
@@ -268,7 +308,7 @@ def load_etymology():
             body = one(ch, full=False)
             if body:
                 t = trad.get(ch, ch)
-                label = ch if t == ch else f"{ch} {t}"
+                label = ch if t == ch else f"{ch} ({t})"
                 out.append(f'<div class="etymItem"><b>{label}</b> {body}</div>')
         return "".join(out)
 
@@ -278,6 +318,16 @@ def load_etymology():
 def main() -> int:
     decks, media = [], set()
     words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
+
+    # Links go to the traditional entry, as they do everywhere else on the cards. The
+    # syllabus words have an adjudicated traditional form already; CC-CEDICT covers the
+    # rest, and a word in neither is linked as written.
+    to_trad = {}
+    for line in (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^(\S+) (\S+) \[", line)
+        if m and m.group(2) not in to_trad:
+            to_trad[m.group(2)] = m.group(1)
+    to_trad.update({w["simplified"]: w["traditional"] for w in words})
     etym_char, etym_word = load_etymology()
 
     char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
@@ -299,7 +349,7 @@ def main() -> int:
             if not (senses or origin):
                 continue
             trad = (char_meta.get(ch) or {}).get("traditional") or ch
-            label = ch if trad == ch else f"{ch} {trad}"
+            label = ch if trad == ch else f"{ch} ({trad})"
             body = f'<b>{label}</b> {html.escape(senses, quote=False)}'
             if origin:
                 body += f'<div class=origin>{origin}</div>'
@@ -317,6 +367,16 @@ def main() -> int:
             return ""
         return (f'<span class=exPinyin>{html.escape(e["pinyin"], quote=False)}</span>'
                 f' &mdash; {html.escape(e["meaning"], quote=False)}')
+
+    def etym_block(ch: str) -> str:
+        """The character and its origin, in the same shape the vocabulary cards use:
+        the label, then the text running on from it."""
+        origin = etym_char(ch, full=True)
+        if not origin:
+            return ""
+        trad = (char_meta.get(ch) or {}).get("traditional") or ch
+        label = ch if trad == ch else f"{ch} ({trad})"
+        return f'<div class="etymItem"><b>{label}</b> {origin}</div>'
 
     def example_word(ch: str) -> str:
         """The same example with its characters, for the side that has already shown
@@ -407,6 +467,50 @@ def main() -> int:
         checked = {unindex(r["chinese"]): r["pinyin"]
                    for r in csv.DictReader(path.open(encoding="utf-8"))}
 
+    def linked(sentence: str) -> str:
+        """The sentence with each word linked to its Wiktionary entry.
+
+        Where the words are is only knowable from the checked pinyin: 里边 is one word
+        because it was written as one group of syllables, and nothing in the characters
+        says so. A sentence whose reading was generated rather than checked is left
+        alone.
+        """
+        pinyin = checked.get(sentence)
+        pairs = align(sentence, pinyin) if pinyin else None
+        if not pairs:
+            return html.escape(sentence, quote=False)
+        out, word, i, n = [], "", 0, 0
+        while i < len(sentence):
+            if CJK.match(sentence[i]) and n < len(pairs):
+                text, _, starts = pairs[n]
+                if starts and word:
+                    out.append(word)
+                    word = ""
+                word += text
+                i += len(text)
+                n += 1
+            else:
+                if word:
+                    out.append(word)
+                    word = ""
+                out.append(html.escape(sentence[i], quote=False))
+                i += 1
+        if word:
+            out.append(word)
+        def link(w: str) -> str:
+            """A pinyin word is not always a dictionary word: 吃了 is written chīle but
+            Wiktionary has no page for it, so link 吃 and leave 了 as text."""
+            if not CJK.match(w[0]):
+                return w
+            for n in range(len(w), 0, -1):
+                if w[:n] in to_trad:
+                    head = to_trad[w[:n]]
+                    return (f'<a href="https://en.wiktionary.org/wiki/{head}#Chinese">'
+                            f'{w[:n]}</a>' + w[n:])
+            return w
+
+        return "".join(link(w) for w in out)
+
     def gen_pinyin(sentence: str) -> str:
         if sentence in checked:
             py_stats["checked"] += 1
@@ -426,16 +530,16 @@ def main() -> int:
         grammar_decks[lv].add_note(genanki.Note(
             model=grammar_model,
             due=n,
-            # 7 rows have empty content: keying on level+content alone collapsed them
-            # to 2 guids, silently dropping 5 notes on import
+            # 7 rows have an empty content, so level and content do not identify a
+            # row on their own; grammarDetail is what separates them
             guid=genanki.guid_for("hsk3-grammar", r["examLevelId"], r["content"],
                                   r.get("grammarDetail", "")),
             fields=[
                 str(n), lv, point, r.get("grammarType", ""),
                 r.get("categoryType", ""), r.get("grammarDetail", ""),
-                "".join(f"<li>{html.escape(c, quote=False)}</li>" for c in cases),
+                "".join(f"<li>{linked(c)}</li>" for c in cases),
                 "".join(
-                    f"<li>{html.escape(c, quote=False)}"
+                    f"<li>{linked(c)}"
                     f'<div class=pinyinSen>{html.escape(gen_pinyin(c), quote=False)}'
                     "</div>"
                     + (f'<div class=meaningSen>'
@@ -491,7 +595,7 @@ def main() -> int:
                 " ".join(info.get("pinyin") or []),
                 render_senses(char_info.get(c, {}).get("meaning")
                               or info.get("definition") or ""),
-                char_audio.get(c, ""), stroke, etym_char(c, full=True),
+                char_audio.get(c, ""), stroke, etym_block(c),
                 example_of(c), example_word(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],

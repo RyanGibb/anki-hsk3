@@ -160,16 +160,6 @@ img.stroke {
 
 .etymItem { margin: 4px 0; }
 
-.etymTrad {
-  font-family: SimSun;
-  opacity: 0.6;
-}
-
-.etymHead {
-  font-family: SimSun;
-  font-size: 1.15em;
-}
-
 .example {
   font-family: Georgia;
   font-size: 15px;
@@ -202,4 +192,9 @@ img.stroke {
   font-size: 30px;
   opacity: 0.55;
   margin-top: -6px;
+}
+
+.examples a {
+  color: inherit;
+  text-decoration: none;
 }

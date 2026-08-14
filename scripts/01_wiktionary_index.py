@@ -21,6 +21,10 @@ DATED = {"archaic", "obsolete", "historical"}
 CJK = re.compile(r"^[㐀-鿿豈-﫿]$")
 # Some entries carry dialect readings in the etymology field instead of a glyph origin.
 DIALECT = re.compile(r"^\*\s*(Wu|Min|Yue|Hakka|Gan|Xiang|Jin)\b")
+# The dump ends an entry with the gloss of the sense the next etymology covers, on its
+# own line: 許 finishes "... phonetic 午 (OC *ŋaːʔ). ; “place”". It belongs to the
+# etymology that was not chosen.
+TRAILING_GLOSS = re.compile(r"(?:\s*;\s*[“‘\"'][^”’\"']{0,60}[”’\"'])+\s*$")
 
 
 def main() -> int:
@@ -28,7 +32,7 @@ def main() -> int:
         sys.exit(f"missing {DUMP} -- see README.md")
 
     entries: dict[str, dict] = {}
-    etym: dict[str, dict] = {}
+    etym: dict[str, list] = {}
     literal: dict[str, str] = {}
     with DUMP.open(encoding="utf-8") as fh:
         for line in fh:
@@ -39,20 +43,25 @@ def main() -> int:
             if not word or d.get("pos") == "soft-redirect":
                 continue
             text = d.get("etymology_text")
+            if text:
+                text = TRAILING_GLOSS.sub("", text).strip()
             if text and CJK.match(word) and not DIALECT.match(text.lstrip()):
-                # A character can have several etymologies: 許 has one for the glyph and
-                # one for the surname. The glyph is the entry carrying the ordinary
-                # senses, so count them -- the surname section has exactly one.
-                n = len(d.get("senses") or [])
-                have = etym.get(word)
-                if not have or (n, len(text)) > (have["senses"], len(have["text"])):
-                    liushu = [t for t in (d.get("etymology_templates") or [])
-                              if t.get("name") == "liushu"]
-                    etym[word] = {
+                # A character can have several etymologies -- 許 has one for the glyph
+                # and one for the surname -- and which of them a card wants depends on
+                # the sense the card teaches. Keep them all with their glosses; the
+                # deck knows its own definitions and picks there.
+                glosses = [g for sense in (d.get("senses") or [])
+                           for g in (sense.get("glosses") or [])][:12]
+                liushu = [t for t in (d.get("etymology_templates") or [])
+                          if t.get("name") == "liushu"]
+                sections = etym.setdefault(word, [])
+                if not any(x["text"] == text for x in sections):
+                    sections.append({
                         "text": text,
                         "type": liushu[0].get("args", {}).get("1") if liushu else "",
-                        "senses": n,
-                    }
+                        "glosses": [g[:90] for g in glosses],
+                        "senses": len(d.get("senses") or []),
+                    })
             lit = (d.get("literal_meaning") or "").strip()
             if lit and len(lit) > len(literal.get(word, "")):
                 literal[word] = lit
@@ -76,6 +85,7 @@ def main() -> int:
     print(f"zh words indexed : {len(entries)}")
     print(f"  with a current (non-archaic) sense: {live}")
     print(f"characters with a glyph origin: {len(etym)}")
+    print(f"  with more than one etymology  : {sum(1 for v in etym.values() if len(v) > 1)}")
     print(f"words with a literal meaning   : {len(literal)}")
     print(f"wrote {OUT} ({OUT.stat().st_size/1e6:.0f} MB) and {ETYM} "
           f"({ETYM.stat().st_size/1e6:.1f} MB)")
