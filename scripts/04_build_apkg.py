@@ -27,6 +27,7 @@ LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 MID_VOCAB, MID_GRAMMAR, MID_CHAR = 1758100001, 1758100002, 1758100003
+MID_SENTENCE = 1758100004
 DID_ROOT = 1758100100
 
 TPL = ROOT / "templates"
@@ -63,6 +64,19 @@ grammar_model = genanki.Model(
         "name": "Grammar",
         "qfmt": tpl("grammar-front.html"),
         "afmt": tpl("grammar-back.html"),
+    }],
+)
+
+sentence_model = genanki.Model(
+    MID_SENTENCE, "HSK 3.0 Sentence",
+    fields=[{"name": f} for f in
+            ["Key", "Level", "Hanzi", "HanziLinked", "Pinyin", "English",
+             "Words", "Point", "PointEn", "Labels"]],
+    css=tpl("style.css"),
+    templates=[{
+        "name": "Reading",
+        "qfmt": tpl("sentence-front.html"),
+        "afmt": tpl("sentence-back.html"),
     }],
 )
 
@@ -328,6 +342,13 @@ def main() -> int:
         if m and m.group(2) not in to_trad:
             to_trad[m.group(2)] = m.group(1)
     to_trad.update({w["simplified"]: w["traditional"] for w in words})
+    cedict_defs = {}
+    for line in (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^\S+ (\S+) \[[^]]*\] /(.*)/$", line)
+        if m and m.group(1) not in cedict_defs:
+            senses = [d for d in m.group(2).split("/") if not d.startswith("CL:")][:3]
+            if senses:
+                cedict_defs[m.group(1)] = clean_xrefs(" / ".join(senses))
     etym_char, etym_word = load_etymology()
 
     char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
@@ -511,6 +532,33 @@ def main() -> int:
 
         return "".join(link(w) for w in out)
 
+    def sentence_words(sentence: str) -> str:
+        """Each word of the sentence with what it means, as a compound's card does for
+        its characters. Words are as the checked pinyin divides them."""
+        pinyin = checked.get(sentence)
+        pairs = align(sentence, pinyin) if pinyin else None
+        if not pairs:
+            return ""
+        words, word = [], ""
+        for text, _, starts in pairs:
+            if starts and word:
+                words.append(word)
+                word = ""
+            word += text
+        if word:
+            words.append(word)
+        out = []
+        for w in dict.fromkeys(words):
+            for n in range(len(w), 0, -1):
+                gloss = cedict_defs.get(w[:n])
+                if gloss:
+                    trad = to_trad.get(w[:n], w[:n])
+                    label = w[:n] if trad == w[:n] else f"{w[:n]} ({trad})"
+                    out.append(f'<div class="etymItem"><b>{label}</b> '
+                               f'{html.escape(gloss, quote=False)}</div>')
+                    break
+        return "".join(out)
+
     def gen_pinyin(sentence: str) -> str:
         if sentence in checked:
             py_stats["checked"] += 1
@@ -522,39 +570,39 @@ def main() -> int:
     if path.exists():
         translated = {r["chinese"]: r["english"]
                       for r in csv.DictReader(path.open(encoding="utf-8"))}
-    for n, r in enumerate(rows, 1):
+    seen_sentence = set()
+    n = 0
+    for r in rows:
         lv = lvl_of(r["examLevelId"])
         cases = [unindex(c.strip()) for c in (r.get("cases") or "").split("|") if c.strip()]
         point = (r["content"].strip() or r.get("grammarDetail", "").strip()
                  or r.get("categoryType", "").strip())
-        grammar_decks[lv].add_note(genanki.Note(
-            model=grammar_model,
-            due=n,
-            # 7 rows have an empty content, so level and content do not identify a
-            # row on their own; grammarDetail is what separates them
-            guid=genanki.guid_for("hsk3-grammar", r["examLevelId"], r["content"],
-                                  r.get("grammarDetail", "")),
-            fields=[
-                str(n), lv, point, r.get("grammarType", ""),
-                r.get("categoryType", ""), r.get("grammarDetail", ""),
-                "".join(f"<li>{linked(c)}</li>" for c in cases),
-                "".join(
-                    f"<li>{linked(c)}"
-                    f'<div class=pinyinSen>{html.escape(gen_pinyin(c), quote=False)}'
-                    "</div>"
-                    + (f'<div class=meaningSen>'
-                       f'{html.escape(translated[c], quote=False)}</div>'
-                       if c in translated else "")
-                    + "</li>"
-                    for c in cases
-                ),
-                label_en(r.get("grammarType", "")),
-                label_en(r.get("categoryType", "")),
-                label_en(r.get("grammarDetail", "")),
-                label_en(point),
-            ],
-            tags=[f"HSK3.0::grammar::L{lv}"],
-        ))
+        for c in cases:
+            if c in seen_sentence:
+                continue
+            seen_sentence.add(c)
+            n += 1
+            grammar_decks[lv].add_note(genanki.Note(
+                model=sentence_model,
+                due=n,
+                guid=genanki.guid_for("hsk3-sentence", c),
+                fields=[
+                    str(n), lv, html.escape(c, quote=False), linked(c),
+                    html.escape(gen_pinyin(c), quote=False),
+                    html.escape(translated.get(c, ""), quote=False),
+                    sentence_words(c), point, label_en(point),
+                    " &middot; ".join(
+                        v + (f' <span class=en>{en}</span>' if en else "")
+                        for v, en in ((r.get("grammarType", "").strip(),
+                                       label_en(r.get("grammarType", ""))),
+                                      (r.get("categoryType", "").strip(),
+                                       label_en(r.get("categoryType", ""))),
+                                      (r.get("grammarDetail", "").strip(),
+                                       label_en(r.get("grammarDetail", ""))))
+                        if v),
+                ],
+                tags=[f"HSK3.0::sentence::L{lv}"],
+            ))
     decks += list(grammar_decks.values())
     print(f"  grammar pinyin: {py_stats['checked']} sentences hand-checked; "
           f"the rest generated from {py_stats['syllabus']} syllabus tokens, "

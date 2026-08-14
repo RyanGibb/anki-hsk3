@@ -160,7 +160,7 @@ def main() -> int:
             con = sqlite3.connect(pathlib.Path(td) / db)
             n_notes = con.execute("select count(*) from notes").fetchone()[0]
             n_cards = con.execute("select count(*) from cards").fetchone()[0]
-            check(f"{n_notes} notes in db", n_notes == 12792)
+            check(f"{n_notes} notes in db", n_notes == 14241)
             # forgetting HSK_DECK_ROOT silently leaves an empty deck tree on import
             decks = json.loads(con.execute("select decks from col").fetchone()[0])
             roots = {d["name"].split("::")[0] for d in decks.values()
