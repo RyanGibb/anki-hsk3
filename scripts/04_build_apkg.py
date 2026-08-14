@@ -126,12 +126,35 @@ def also_read(w, by_entry={}) -> str:
     return "also " + ", ".join(others) if others else ""
 
 
-def tone_hint(w) -> str:
-    """Which of 长 cháng and 长 zhǎng is being asked for, without giving away the
-    syllable. Empty for a word that has no homograph to be confused with."""
+def tone_hint(w, siblings={}, gloss={}) -> str:
+    """Which of the words written this way is being asked for.
+
+    The part of speech first, because it says nothing about the pronunciation: the
+    tone would hand over half the answer on a card that asks for the reading. Where
+    two entries share a part of speech the tone separates them instead, and where they
+    share both -- 乘 rides and multiplies, a verb read chéng either way -- only their
+    order in the syllabus is left.
+    """
     if not w["homograph_index"]:
         return ""
-    return "".join(TONE_MARK.get(c, "") for c in w["pinyin_numbered"] if c.isdigit())
+    others = [o for o in siblings.get(w["simplified"], []) if o["entry"] != w["entry"]]
+
+    def tones(x):
+        return "".join(TONE_MARK.get(c, "")
+                       for c in x["pinyin_numbered"] if c.isdigit())
+
+    def part(x):
+        return (x.get("pos") or [""])[0].split("、")[0].strip("（）()")
+
+    for cue in (part, tones):
+        mine = cue(w)
+        if mine and all(cue(o) != mine for o in others):
+            if cue is part and gloss.get(mine):
+                return f'{mine} <span class=en>{gloss[mine]}</span>'
+            return mine
+    # 乘 rides and multiplies, both as a verb read chéng: nothing but the order in
+    # the syllabus separates the two cards
+    return w["homograph_index"]
 
 
 PROPER = {"ns", "nt", "nz"}   # place, organisation, other proper noun -- 上海 is not 上 + 海
@@ -235,6 +258,27 @@ def clean_xrefs(text: str) -> str:
             return m.group(0)
 
     return PIPE.sub(r"\2", BARE.sub(bare, XREF.sub(one, text)))
+
+
+def spoken(pinyin: str) -> str:
+    """谁 is shéi, also shuí -- one word with a second pronunciation, not two words.
+    A slash reads as though they were alternatives of equal standing."""
+    parts = [x.strip() for x in pinyin.split("/") if x.strip()]
+    return parts[0] + (f" (also {', '.join(parts[1:])})" if len(parts) > 1 else "")
+
+
+def short_gloss(meaning: str) -> str:
+    """Enough of a word's meaning to identify it, for citing it on another card.
+
+    A first sense can be a paragraph: 除了 opens with two worked examples inside the
+    parentheses, and the whole of that on 了's card says nothing about 了.
+    """
+    first = clean_xrefs(meaning.split("/")[0]).strip()
+    first = re.sub(r"\s*\((used|as in|abbr|lit|fig)\b.*$", "", first,
+                   flags=re.I).strip(" ;,")
+    if len(first) > 64:
+        first = first[:64].rsplit(";", 1)[0].rstrip(" ,;") + "…"
+    return first
 
 
 def render_senses(meaning: str) -> str:
@@ -343,6 +387,10 @@ def main() -> int:
     decks, media = [], set()
     words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
     also_read.__defaults__ = ({w["entry"]: w for w in words},)
+    groups = collections.defaultdict(list)
+    for w in words:
+        if w["homograph_index"]:
+            groups[w["simplified"]].append(w)
 
     # Links go to the traditional entry, as they do everywhere else on the cards. The
     # syllabus words have an adjudicated traditional form already; CC-CEDICT covers the
@@ -354,6 +402,7 @@ def main() -> int:
             to_trad[m.group(2)] = m.group(1)
     to_trad.update({w["simplified"]: w["traditional"] for w in words})
     char_by_reading = {}
+    char_any = {}
     cedict_defs = {}
     for line in (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines():
         m = re.match(r"^(\S+) (\S+) \[([^]]*)\] /(.*)/$", line)
@@ -368,9 +417,10 @@ def main() -> int:
             # 还 huán is "surname Huan" before it is "to give back". Take the fullest.
             key = (simp, reading.replace(" ", "").lower())
             defining = [d for d in senses if not POINTER.match(d)]
-            char_by_reading.setdefault(key, []).append(
-                (trad, clean_xrefs(" / ".join(defining or senses)),
-                 len(defining), len(senses)))
+            entry = (trad, clean_xrefs(" / ".join(defining or senses)),
+                     len(defining), len(senses))
+            char_by_reading.setdefault(key, []).append(entry)
+            char_any.setdefault(simp, []).append(entry)
     etym_char, etym_word = load_etymology()
 
     char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
@@ -432,17 +482,38 @@ def main() -> int:
             out.append(f'<div class="etymItem">{body}</div>')
         return "".join(out)
 
-    def example_of(ch: str) -> str:
-        """The earliest HSK word using this character, as a cue for which one is meant.
+    # The earliest word in which a character is read a given way. 地 is 地铁 as dì and
+    # 慢慢地 as de, and a card teaching both readings needs an example of each.
+    example_by_reading = {}
+    for w in sorted(words, key=lambda w: int(w["key"])):
+        simp, nums = w["simplified"], w["pinyin_numbered"].split()
+        if len(simp) < 2 or len(simp) != len(nums):
+            continue
+        for ch, num in zip(simp, nums):
+            example_by_reading.setdefault(
+                (ch, num.replace("ü", "v").lower()),
+                (simp, w["pinyin"], short_gloss(w["meaning"])))
 
-        Pinyin and English only: the point is to pin down the sense without showing the
-        character on the side of the card where you are asked to produce it.
-        """
-        e = (char_meta.get(ch) or {}).get("example") or {}
-        if not e:
-            return ""
-        return (f'<span class=exPinyin>{html.escape(e["pinyin"], quote=False)}</span>'
-                f' &mdash; {html.escape(e["meaning"], quote=False)}')
+    def examples_of(ch: str) -> list:
+        """[(word, pinyin, meaning)], one per reading the card teaches."""
+        out = []
+        for _, num, _ in taught_readings.get(ch, []) or []:
+            got = example_by_reading.get((ch, num))
+            if got and got not in out:
+                out.append(got)
+        if not out:
+            e = (char_meta.get(ch) or {}).get("example") or {}
+            if e:
+                out.append((e["word"], e["pinyin"], short_gloss(e["meaning"])))
+        return out
+
+    def example_of(ch: str) -> str:
+        """The examples with no characters, for the side that asks you to write it."""
+        return "".join(
+            f'<div class=example>as in <span class=exPinyin>'
+            f'{html.escape(p, quote=False)}</span> &mdash; '
+            f'{html.escape(m, quote=False)}</div>'
+            for _, p, m in examples_of(ch))
 
     def etym_block(ch: str) -> str:
         """The character and its origin, in the same shape the vocabulary cards use:
@@ -455,14 +526,17 @@ def main() -> int:
         return f'<div class="etymItem"><b>{label}</b> {origin}</div>'
 
     def example_word(ch: str) -> str:
-        """The same example with its characters, for the side that has already shown
-        you the answer."""
-        e = (char_meta.get(ch) or {}).get("example") or {}
-        return html.escape(e.get("word", ""), quote=False) if e else ""
+        """The same examples with their characters, for the side that has answered."""
+        return "".join(
+            f'<div class=example>as in <b>{html.escape(w, quote=False)}</b> '
+            f'<span class=exPinyin>{html.escape(p, quote=False)}</span> &mdash; '
+            f'{html.escape(m, quote=False)}</div>'
+            for w, p, m in examples_of(ch))
 
     vocab_decks = {lv: deck("vocab", lv) for lv in LEVELS}
     pos_en = {row["zh"]: row["en"] for row in
               csv.DictReader((ROOT / "data/pos-labels.csv").open(encoding="utf-8"))}
+    tone_hint.__defaults__ = (groups, pos_en)
 
     def pos_glossed(parts: list[str]) -> str:
         out = []
@@ -492,7 +566,7 @@ def main() -> int:
             guid=genanki.guid_for("hsk3-vocab", w["entry"]),
             fields=[
                 w["key"], w["level"], w["simplified"], tone_hint(w),
-                w["traditional"], w["pinyin"], w["pinyin_numbered"],
+                w["traditional"], spoken(w["pinyin"]), w["pinyin_numbered"],
                 render_senses(w["meaning"]),
                 "、".join(w["pos"]), pos_glossed(w["pos"]),
                 w.get("classifier", ""), w["audio"],
@@ -731,6 +805,46 @@ def main() -> int:
     char_audio = json.loads((BUILD / "char-audio.json").read_text(encoding="utf-8"))
     char_info = json.loads(
         (BUILD / "char-meanings.json").read_text(encoding="utf-8"))
+    # The syllabus teaches 地 twice, as de and as dì, and they do not mean the same
+    # thing. A card that prints one reading and every reading's senses together says
+    # 地 is "earth ... and also a particle", which is two words in one answer.
+    taught_readings = {}
+    variant_readings = set()
+    for w in words:
+        if len(w["simplified"]) != 1:
+            continue
+        # 熟 is entered as "shú/shóu", which is two readings; and the syllabus writes
+        # nü3 where the recordings are filed under nv3
+        # one entry with two readings is one word said two ways -- 熟 shú, also shóu --
+        # where two entries are two words that happen to be written alike
+        marks = [x for x in w["pinyin"].split("/") if x.strip()]
+        if len(marks) > 1:
+            variant_readings.add(w["simplified"])
+        nums = [x.replace(" ", "").replace("ü", "v").lower()
+                for x in w["pinyin_numbered"].split("/") if x.strip()]
+        for mark, num in zip(marks, nums):
+            entry = (mark, num, w["traditional"])
+            if entry not in taught_readings.setdefault(w["simplified"], []):
+                taught_readings[w["simplified"]].append(entry)
+
+    def char_reading_senses(ch: str):
+        """[(reading, senses)] for a character, one entry per way it is read.
+
+        A reading heard inside a word says so: 子 zi cannot be recorded alone, so the
+        card plays 包子 and tells you that is what it is playing.
+        """
+        out = []
+        for marked, numbered, trad in taught_readings.get(ch, []):
+            entry = pick_char(ch, numbered, trad)
+            if entry and not entry[2]:
+                # 血 xiě is entered only as "see 血 xuè"; the other reading defines it
+                elsewhere = [c for c in char_any.get(ch, []) if c[2]]
+                if elsewhere:
+                    entry = max(elsewhere, key=lambda c: (c[2], c[3]))
+            if entry:
+                heard = (char_audio.get(ch) or {}).get(numbered, {}).get("in", "")
+                out.append((marked + (f" (in {heard})" if heard else ""), entry[1]))
+        return out
     writing = {r["word"]: lvl_of(r["examLevelId"])
                for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
     char_decks = {lv: deck("writing", lv) for lv in LEVELS}
@@ -746,7 +860,10 @@ def main() -> int:
         stroke = f'<img class=stroke src="{c}.svg">' if svg.exists() else ""
         if stroke:
             media.add(f"{c}.svg")
-        for m in re.findall(r"\[sound:([^]]+)\]", char_audio.get(c, "")):
+        voiced = char_audio.get(c) or {}
+        order = [n for _, n, _ in taught_readings.get(c, [])] or list(voiced)
+        clips = "".join(voiced.get(n, {}).get("sound", "") for n in order)
+        for m in re.findall(r"\[sound:([^]]+)\]", clips):
             media.add(m)
         char_decks[lv].add_note(genanki.Note(
             model=char_model,
@@ -755,10 +872,25 @@ def main() -> int:
             fields=[
                 str(n), c, lv, writing.get(c, ""),
                 char_info.get(c, {}).get("traditional") or c,
-                " ".join(info.get("pinyin") or []),
-                render_senses(char_info.get(c, {}).get("meaning")
-                              or info.get("definition") or ""),
-                char_audio.get(c, ""), stroke, etym_block(c),
+                (" (also ".join(r for r, _, _ in taught_readings.get(c, [])) + ")"
+                 if c in variant_readings else
+                 " / ".join(
+                     r + (f' (in {(char_audio.get(c) or {}).get(n, {}).get("in", "")})'
+                          if (char_audio.get(c) or {}).get(n, {}).get("in") else "")
+                     for r, n, _ in taught_readings.get(c, [])))
+                or (" ".join(info.get("pinyin") or [])
+                    + next((f' (in {v["in"]})'
+                            for v in (char_audio.get(c) or {}).values()
+                            if v.get("in")), "")),
+                ("".join(f'<div class=charSense><b>{r}</b> '
+                         f'{html.escape(m, quote=False)}</div>'
+                         for r, m in char_reading_senses(c))
+                 if len(char_reading_senses(c)) > 1
+                 else (render_senses(char_reading_senses(c)[0][1])
+                       if char_reading_senses(c)
+                       else render_senses(char_info.get(c, {}).get("meaning")
+                                          or info.get("definition") or ""))),
+                clips, stroke, etym_block(c),
                 example_of(c), example_word(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
