@@ -2,7 +2,15 @@
 <div class=pinyin>{{Pinyin}}</div>
 <div class=english>{{Meaning}}</div>
 {{Audio}}
-{{#Etymology}}<div class=etym><span class=etymTrad>{{Traditional}}</span>{{Etymology}}</div>{{/Etymology}}
+{{#Example}}<div class=example>as in {{ExampleWord}} {{Example}}</div>{{/Example}}
+{{#Etymology}}
+<div class=etym>
+  <div class=etymItem>
+    <b class=etymHead>{{Character}} <span class=etymTrad>{{Traditional}}</span></b>
+    <div class=origin>{{Etymology}}</div>
+  </div>
+</div>
+{{/Etymology}}
 <hr>
 <div class="horizontal-container">
   <div class="vertical-column">
@@ -16,6 +24,7 @@ setTimeout(function () {
   const drawings = JSON.parse(sessionStorage.getItem("anki-drawings") || "[]");
   const container = document.getElementById("drawing-review");
 
+  if (!drawings.length) { container.remove(); }
   drawings.forEach(dataURL => {
     const img = document.createElement("img");
     img.src = dataURL;

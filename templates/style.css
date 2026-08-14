@@ -162,10 +162,12 @@ img.stroke {
 
 .etymTrad {
   font-family: SimSun;
-  font-size: 22px;
-  float: right;
-  margin-left: 8px;
-  opacity: 0.5;
+  opacity: 0.6;
+}
+
+.etymHead {
+  font-family: SimSun;
+  font-size: 1.15em;
 }
 
 .example {
@@ -194,4 +196,10 @@ img.stroke {
   font-size: 0.92em;
   opacity: 0.75;
   margin: 1px 0 0 1.2em;
+}
+
+.tonehint {
+  font-size: 30px;
+  opacity: 0.55;
+  margin-top: -6px;
 }
