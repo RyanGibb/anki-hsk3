@@ -194,7 +194,7 @@ img.stroke {
   margin-top: -6px;
 }
 
-.examples a {
+.examples a, .sentence a {
   color: inherit;
   text-decoration: none;
 }
