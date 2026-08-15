@@ -14,6 +14,7 @@ import sys
 import genanki
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from glyph_origin import any_about_the_glyph   # noqa: E402
 from pinyin_align import ALIGNABLE, align   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -321,6 +322,17 @@ def load_etymology():
     etym = json.loads((BUILD / "etymology.json").read_text(encoding="utf-8"))
     info = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
     trad = {c: (v.get("traditional") or c) for c, v in info.items()}
+
+    # wiktextract keeps an etymology only where it sits under a sense, so a "Glyph
+    # origin" section beside the Etymology sections is missing from the dump, and where
+    # the dump kept a borrowing instead the slot is full but says nothing about the
+    # shape. fetch-glyph-origins.py reads those sections off the page itself.
+    origins = ROOT / "data/glyph-origins.csv"
+    if origins.exists():
+        for row in csv.DictReader(origins.open(encoding="utf-8")):
+            if row["text"] and not any_about_the_glyph(etym.get(row["character"])):
+                etym[row["character"]] = [{"text": row["text"], "type": row["type"],
+                                           "glosses": [], "senses": 0}]
 
     def choose(ch: str) -> dict:
         """Which of a character's etymologies explains its shape.
