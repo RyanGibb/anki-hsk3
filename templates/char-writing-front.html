@@ -1,10 +1,8 @@
 <div class=question>
   <div class=pinyin>{{Pinyin}}</div>
   <div class=english>{{Meaning}}</div>
-  {{Example}}
+  {{Audio}}
 </div>
-{{Audio}}
-<hr>
 <div>
   <canvas id="canvas" class="drawbox"></canvas>
   <br />
@@ -17,6 +15,10 @@
   </div>
   <div id="submitted-images" style="margin-top:10px;"></div>
 </div>
+<!-- The words the character is met in, below the box you write it in, as they sit
+     below the strokes on the answer. Inside a question block because that is what
+     hides the character where one of them spells it out. -->
+<div class=question>{{Example}}</div>
 
 <script>
 setTimeout(function () {
@@ -28,7 +30,9 @@ setTimeout(function () {
   const INK = getComputedStyle(document.querySelector(".card") || document.body).color;
   const GRID = INK.replace(/^rgb\((.*)\)$/, "rgba($1, 0.35)");
 
-  const size = Math.min(window.innerWidth - 25, window.innerHeight - 50, 640);
+  // the same size as the diagram that answers it, so the card does not shift
+  // when it turns over
+  const size = Math.min(376, window.innerWidth * 0.91, window.innerHeight - 50);
   canvas.width  = size;
   canvas.height = size;
 
@@ -67,9 +71,21 @@ setTimeout(function () {
 
   let drawing = false, currentStroke = [];
 
+  // Where the finger is, in the canvas's own coordinates. getBoundingClientRect
+  // measures the border box, so the 1px border shifts every point, and the box is
+  // only the size of the drawing buffer while the canvas is drawn at its natural
+  // size -- on a narrow screen it is scaled down and the error grows across it.
   function getPos(e) {
     const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const css = getComputedStyle(canvas);
+    const left = parseFloat(css.borderLeftWidth) || 0;
+    const top = parseFloat(css.borderTopWidth) || 0;
+    const wide = r.width - left - (parseFloat(css.borderRightWidth) || 0);
+    const high = r.height - top - (parseFloat(css.borderBottomWidth) || 0);
+    return {
+      x: (e.clientX - r.left - left) * (canvas.width / (wide || canvas.width)),
+      y: (e.clientY - r.top - top) * (canvas.height / (high || canvas.height)),
+    };
   }
 
   canvas.style.touchAction = 'none';

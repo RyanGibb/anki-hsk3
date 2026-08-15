@@ -12,7 +12,7 @@
 
 .card {
     font-family: "Rare CJK", "Rare CJK 2", arial;
-    font-size: 10px;
+    font-size: 16px;
     text-align: center;
 }
 
@@ -23,17 +23,25 @@
 
 .pinyin {
     font-family: "Rare CJK", "Rare CJK 2", Gentium Plus;
-    font-size: 22px;
+    font-size: 30px;
 }
 
 .english {
     font-family: "Rare CJK", "Rare CJK 2", Georgia;
-    font-size: 16px;
+    font-size: 24px;
 }
+
+/* A card is built around the Chinese it teaches, and its reading and meaning take
+   three quarters and a half of that. A headword is 60, so 45 and 30; a sentence is a
+   line of text rather than one character and is set at 36, so 27 and 18. Without
+   this the reading of a sentence was larger than the sentence. */
+.pinyin.ofSentence { font-size: 27px; }
+
+.english.ofSentence { font-size: 18px; }
 
 .sentence{
     font-family: "Rare CJK", "Rare CJK 2", SimSun;
-    font-size: 24px;
+    font-size: 36px;
 }
 
 .description{
@@ -42,13 +50,19 @@
     opacity: 0.65;
 }
 
+/* One diagram or two, the row is the width of the box you write in. Left to itself a
+   pair asks for that width each, and flex shrinks them to fill the card edge to edge
+   while a single one keeps its margins. */
 .horizontal-container {
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
   justify-content: center;
+  width: min(376px, 91vw);
+  margin: 0 auto;
 }
 
 .vertical-column {
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -57,7 +71,9 @@
 }
 
 .big-button {
-  font-size: 1.5em;
+  /* Fixed, not em: min-width and min-height below are in em, so a relative size
+     scales all three at once and five buttons stop fitting on a line. */
+  font-size: 16px;
   cursor: pointer;
   min-width: 4em;
   min-height: 3em;
@@ -68,9 +84,19 @@
   margin: 0pt;
 }
 
+/* A link inherited the colour of whatever it sat in, and most of what it sits in is
+   dimmed -- a classifier, a homophone, the characters a word is built from. Opacity on a block
+   composites everything inside it, so a link cannot brighten itself back out of one;
+   it takes the theme's strongest text colour instead, which reads through the dimming
+   as white on a dark card and black on a light one. */
 a {
-  color: inherit;
+  color: #000;
   text-decoration: none;
+}
+
+.nightMode a,
+.night_mode a {
+  color: #fff;
 }
 
 a:hover {
@@ -78,33 +104,38 @@ a:hover {
 }
 .homograph {
     font-family: "Rare CJK", "Rare CJK 2", Georgia;
-    font-size: 14px;
+    font-size: 16px;
     opacity: 0.55;
 }
 
-.examples {
-    font-family: "Rare CJK", "Rare CJK 2", SimSun;
-    font-size: 22px;
-    text-align: left;
-    display: inline-block;
-}
 
-.examples li { margin: 6px 0; }
-
+/* Diagrams stand a gap apart wherever they stand together: the characters of a word
+   here, the strokes beside your own attempt on a writing answer. Two of them and the
+   gap come to the width of the box you write in. */
 .strokes {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
+  gap: 1rem;
 }
 
 .vertical-column img {
   max-width: 100%;
   height: auto;
-  margin: 2px;
+}
+
+/* On the answer the diagram was drawn the full width of the card, which put the words
+   the character is met in below the fold. It only has to be big enough to read the
+   stroke order off. */
+.vertical-column img.stroke {
+  width: 100%;
 }
 
 img.stroke {
+  /* the border counts inside the width: a pair of diagrams would otherwise be four
+     pixels wider than one of the same nominal size, and sit four pixels differently */
+  box-sizing: border-box;
   width: 640px;
   height: auto;
   border: 1px solid currentColor;
@@ -114,9 +145,9 @@ img.stroke {
 
 /* a word has several characters; the writing card has one, beside your attempt */
 .strokes img.stroke {
-  width: 180px;
-  max-width: 45vw;
-  margin: 2px;
+  /* two of these and the gap between them come to the width of the box you write in,
+     stated rather than arrived at, so the two cards inset their diagrams alike */
+  width: calc((min(376px, 91vw) - 1rem) / 2);
   cursor: pointer;
 }
 
@@ -130,6 +161,11 @@ img.stroke {
   border: 1px solid currentColor;
   border-radius: 4px;
   opacity: 0.9;
+  /* Never wider than the card. The script sizes the drawing buffer from the window,
+     which is not the width the card is given, and a canvas that overflows is drawn
+     scaled -- the pointer then lands somewhere other than where it is touched. */
+  max-width: 100%;
+  height: auto;
 }
 
 .en {
@@ -138,52 +174,47 @@ img.stroke {
 }
 
 .more {
-  font-size: 0.82em;
+  /* 20px inside a meaning, which is 24 */
+  font-size: calc(20 / 24 * 1em);
   opacity: 0.7;
   margin-top: 4px;
 }
 
-.pinyinSen {
-  font-family: "Rare CJK", "Rare CJK 2", Gentium Plus;
-  font-size: 0.72em;
-  opacity: 0.7;
-}
-
-.etym {
+.glosses {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
-  font-size: 13px;
+  font-size: 24px;
   text-align: left;
   max-width: min(34em, 94vw);
   margin: 10px auto 0;
   opacity: 0.75;
 }
 
-.etymItem { margin: 4px 0; }
+/* A row names a character and then says what it means. The character is read at the
+   size of the block; what it means is read at the size of a glyph origin, which is the
+   other thing said about it. Only the row's own label, not a character named inside
+   the origin below it. */
+.gloss { margin: 4px 0; font-size: 16px; }
+
+.gloss > b { font-size: 24px; }
 
 .example {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
-  font-size: 15px;
+  font-size: 16px;
   opacity: 0.7;
   margin-top: 6px;
 }
 
 .exPinyin { font-family: "Rare CJK", "Rare CJK 2", Gentium Plus; }
 
-.meaningSen {
-  font-family: "Rare CJK", "Rare CJK 2", Georgia;
-  font-size: 0.72em;
-  opacity: 0.65;
-}
-
 .literal {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
-  font-size: 15px;
+  font-size: 24px;
   opacity: 0.7;
   margin-top: 6px;
 }
 
 .origin {
-  font-size: 0.92em;
+  font-size: 16px;
   opacity: 0.75;
   margin: 1px 0 0 1.2em;
 }
@@ -208,11 +239,14 @@ img.stroke {
 
 /* The parts a character is built from sit under the strokes, so a long account of
    them never pushes the character's own off the screen. */
-.parts { margin-top: 1.2em; }
+.parts { margin-top: 0; }
 /* How the character on the card came from the shape just described: its own answer,
    so its own line. */
 .later { margin-top: 0.7em; }
-/* One rule for each step away from the word: what it is made of, then what those are. */
+/* The other words the character is met in, after the one the card leads with. */
+.alsoIn { margin-top: 0.3em; opacity: 0.75; }
+/* One rule for each step away from the character itself: its strokes, then what it is
+   made of, then what those are. */
 .partStep {
   border: 0; border-top: 3px solid currentColor; opacity: 0.35;
   border-radius: 3px; margin: 1.1em auto; width: 28%;

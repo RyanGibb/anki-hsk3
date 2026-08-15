@@ -376,6 +376,25 @@ def main() -> int:
         else:
             w["meaning_source"] = "cc-cedict"
 
+    # A card leads with the first sense and hides the rest, so the first has to be the
+    # sense the syllabus is teaching. 种 at level 3 is marked 量, a classifier, and the
+    # dictionary opens it on "seed" with "classifier for types, kinds, sorts" fifth --
+    # the card taught seed. Where the syllabus gives an entry no part of speech but 量,
+    # the classifier sense leads. Where it gives others too, 口 is a mouth before it
+    # counts people and the dictionary's order stands.
+    CLASSIFIER_SENSE = re.compile(r"^(?:\(.*?\)\s*)?(?:classifier for|measure word)",
+                                  re.I)
+    promoted = 0
+    for w in words:
+        if {p for group in (w["pos"] or []) for p in group} != {"量"}:
+            continue
+        senses = [x for x in w["meaning"].split("/") if x.strip()]
+        first = next((i for i, x in enumerate(senses) if CLASSIFIER_SENSE.match(x)), 0)
+        if first:
+            w["meaning"] = "/".join([senses[first]] + senses[:first] + senses[first + 1:])
+            promoted += 1
+    print(f"  classifier sense first  : {promoted} entries")
+
     by_pinyin: dict[str, list[str]] = collections.defaultdict(list)
     by_simplified: dict[str, list[str]] = collections.defaultdict(list)
     for w in words:
