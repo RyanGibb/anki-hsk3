@@ -129,6 +129,22 @@ def main() -> int:
             if claimed.count(s) != 1:
                 lost.append(f"{simp}: {'unclaimed' if not claimed.count(s) else 'twice'}"
                             f" {s[:32]}")
+    # A word with no dictionary entry keeps its simplified form as its traditional
+    # one, which is right for 新能源 and wrong for 压轴 (壓軸). Any word left that way
+    # whose characters do have traditional forms is a word the patch should cover.
+    s2t = {}
+    for line in (ROOT / "data/raw/cedict_ts.u8").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^(\S+) (\S+) \[", line)
+        if m and len(m.group(1)) == len(m.group(2)):
+            for a, b in zip(m.group(1), m.group(2)):
+                if a != b:
+                    s2t.setdefault(b, a)
+    guessed = [f'{w["simplified"]} ({"".join(s2t.get(c, c) for c in w["simplified"])}?)'
+               for w in words if w["traditional_source"].startswith("fallback")
+               and any(c in s2t for c in w["simplified"])]
+    check("no word shows its simplified form as its traditional one", not guessed,
+          f"{len(guessed)}: {guessed[:4]}" if guessed else "")
+
     # 一 and 不 change tone before certain tones, and the convention writes that
     # change. It is mechanical, so every hand-checked reading can be tested: 不 is bú
     # before a fourth tone and bù otherwise, 一 is yí before a fourth and yì before the
@@ -341,7 +357,8 @@ def main() -> int:
             con = sqlite3.connect(pathlib.Path(td) / db)
             n_notes = con.execute("select count(*) from notes").fetchone()[0]
             n_cards = con.execute("select count(*) from cards").fetchone()[0]
-            check(f"{n_notes} notes in db", n_notes == 14239)
+            # 10999 vocabulary + 1200 writing + one per sentence
+            check(f"{n_notes} notes in db", n_notes == 10999 + 1200 + 2043)
             # forgetting HSK_DECK_ROOT silently leaves an empty deck tree on import
             decks = json.loads(con.execute("select decks from col").fetchone()[0])
             roots = {d["name"].split("::")[0] for d in decks.values()

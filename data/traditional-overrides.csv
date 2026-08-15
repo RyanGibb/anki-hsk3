@@ -1,14 +1,15 @@
 entry,traditional,why
 台风,颱風,"sense-dependent: 颱風 is the typhoon, 臺風 is stage presence. CC-CEDICT lists both at tai2feng1 with one gloss each, so nothing automatic can choose."
-合伙,合夥,"CC-CEDICT gives 合伙 as its own traditional; adjudicated against Wiktionary as 合夥."
-事迹,事蹟,"CC-CEDICT gives 事跡; adjudicated against Wiktionary as 事蹟."
+合伙,合夥,CC-CEDICT gives 合伙 as its own traditional; adjudicated against Wiktionary as 合夥.
+事迹,事蹟,CC-CEDICT gives 事跡; adjudicated against Wiktionary as 事蹟.
 丑,醜,"syllabus marks it 形 (adjective), so it is 醜 (ugly, shameful), not 丑 (clown, 2nd earthly branch). Wiktionary types both merely as 'character', so POS cannot break it automatically."
 签1,簽,"syllabus POS 动: 簽 /to sign one's name/visa/. Confirmed, matches the automatic pick."
 签2,籤,"syllabus POS 名: the noun is 籤 /inscribed bamboo stick/label/tag/, not the verb 簽. The automatic pick was wrong -- 签1 and 签2 were both getting 簽."
-你,你,"妳 is Taiwan-only for addressing females; 你 is standard for both. Confirmed."
-它,它,"牠 is the pronoun for animals; 它 is the general 'it'. Confirmed."
-呆,呆,"獃 is explicitly 'variant of 呆' in CC-CEDICT. Confirmed."
-机制,機制,"機制 is 'mechanism'; 機製 means 'machine-made'. Syllabus POS 名. Confirmed."
+你,你,妳 is Taiwan-only for addressing females; 你 is standard for both. Confirmed.
+它,它,牠 is the pronoun for animals; 它 is the general 'it'. Confirmed.
+呆,呆,獃 is explicitly 'variant of 呆' in CC-CEDICT. Confirmed.
+机制,機制,機制 is 'mechanism'; 機製 means 'machine-made'. Syllabus POS 名. Confirmed.
 编制,編制,"編制 /to establish (a unit)/authorized staffing allocation/ over 編製 /to weave/to compile/. Debatable, but 編制 is the commoner form for this word. Confirmed."
 喂2,餵,"syllabus POS 动 (to feed) -- the verb is 餵; 喂 is the interjection 'hey' (喂1, POS 叹)."
 面2,麵,"syllabus POS 名, and 面1 already covers the 名 'face/side' sense. The remaining noun is 麵 'flour, noodles' -- consistent with 面包 -> 麵包 at L1."
+后台,後臺,"CC-CEDICT gives 後台; Taiwan's MOE dictionary has no entry for 後台 and lists 後臺, which is also the form the deck's other 台 words take (舞臺, 陽臺, 前臺)."

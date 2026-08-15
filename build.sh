@@ -9,6 +9,10 @@ fetch data/raw/kaikki-zh.jsonl \
   https://kaikki.org/dictionary/Chinese/kaikki.org-dictionary-Chinese.jsonl
 fetch data/raw/cedict_ts.u8 \
   https://raw.githubusercontent.com/Punpuf/hsk-syllabus-vocabulary-parser/main/cedict_ts.u8
+# Words CC-CEDICT does not carry, written in its format by the syllabus parser. Without
+# them 压轴 and 致力于 have no entry at all, so nothing gives their traditional form.
+fetch data/raw/cedict_patch.u8 \
+  https://raw.githubusercontent.com/Punpuf/hsk-syllabus-vocabulary-parser/main/data/cedict_patch.u8
 
 if [ ! -d .cache/audio-cmn/64k/syllabs ]; then
   [ -d .cache/audio-cmn ] || git clone --depth 1 --filter=blob:none --sparse \

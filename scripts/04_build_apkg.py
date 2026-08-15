@@ -162,15 +162,20 @@ def tone_hint(w, siblings={}, gloss={}) -> str:
     def part(x):
         return (x.get("pos") or [""])[0].split("、")[0].strip("（）()")
 
-    for cue in (part, tones):
+    def level(x):
+        return f'HSK {x["level"]}'
+
+    for cue in (part, tones, level):
         mine = cue(w)
         if mine and all(cue(o) != mine for o in others):
             if cue is part and gloss.get(mine):
                 return f'{mine} <span class=en>{gloss[mine]}</span>'
             return mine
-    # 乘 rides and multiplies, both as a verb read chéng: nothing but the order in
-    # the syllabus separates the two cards
-    return w["homograph_index"]
+    # 称 weighs and names, both as a verb read chēng at the same level: nothing but
+    # the order in the syllabus separates the two cards, so say that much plainly
+    # rather than printing a bare digit.
+    return (f'{w["homograph_index"]} <span class=en>of '
+            f'{len(others) + 1}</span>')
 
 
 PROPER = {"ns", "nt", "nz"}   # place, organisation, other proper noun -- 上海 is not 上 + 海
@@ -361,6 +366,14 @@ def mask_answer(text: str, ch: str) -> str:
     return "".join(out)
 
 
+def cedict_lines():
+    """The dictionary, then the patch of words it does not carry."""
+    for name in ("cedict_ts.u8", "cedict_patch.u8"):
+        path = RAW / name
+        if path.exists():
+            yield from path.read_text(encoding="utf-8").splitlines()
+
+
 def char_rank(entry):
     """How much an entry says about a character standing inside a word.
 
@@ -484,7 +497,7 @@ def main() -> int:
     # syllabus words have an adjudicated traditional form already; CC-CEDICT covers the
     # rest, and a word in neither is linked as written.
     to_trad = {}
-    for line in (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines():
+    for line in cedict_lines():
         m = re.match(r"^(\S+) (\S+) \[", line)
         if m and m.group(2) not in to_trad:
             to_trad[m.group(2)] = m.group(1)
@@ -492,7 +505,7 @@ def main() -> int:
     char_by_reading = {}
     char_any = {}
     cedict_defs = {}
-    for line in (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines():
+    for line in cedict_lines():
         m = re.match(r"^(\S+) (\S+) \[([^]]*)\] /(.*)/$", line)
         if not m:
             continue
@@ -699,6 +712,15 @@ def main() -> int:
     labels = {row["zh"]: row["en"] for row in
               csv.DictReader((ROOT / "data/grammar-labels.csv").open(encoding="utf-8"))}
 
+    # The point itself, in English, from data/grammar-point-translations.csv. A point
+    # that only names the items it teaches -- 小—、第—, 按理、按说、百般 -- has no entry
+    # and needs none: the sentence shows the item.
+    point_en_of = {}
+    pt = ROOT / "data/grammar-point-translations.csv"
+    if pt.exists():
+        point_en_of = {r["chinese"]: r["english"]
+                       for r in csv.DictReader(pt.open(encoding="utf-8"))}
+
     def label_en(s: str) -> str:
         s = s.strip()
         if not s:
@@ -710,7 +732,7 @@ def main() -> int:
             return f"{labels[m.group(1)]} {m.group(2)}"
         return ""
 
-    rows = read_tsv(RAW / "chelsea_grammar.tsv")
+    rows = read_tsv(RAW / "official_grammar.tsv")
     # 她正在学习呢1。 -- the digit indexes which 呢 the point is about and is not part of
     # the sentence. Two things stop it eating real numbers: the token must be one this
     # row's own point uses, since 于1 and 了2 index other points entirely, and a digit
@@ -747,10 +769,45 @@ def main() -> int:
         says so. A sentence whose reading was generated rather than checked is left
         alone.
         """
+        def link(w: str) -> str:
+            """A pinyin word is not always a dictionary word: 吃了 is written chīle but
+            Wiktionary has no page for it, so 吃 and 了 are linked in turn. Leaving the
+            remainder as plain text would leave the aspect particles unlinked, and they
+            are usually what the sentence is teaching."""
+            if not w or not CJK.match(w[0]):
+                return w
+            for n in range(len(w), 0, -1):
+                if w[:n] in to_trad:
+                    head = to_trad[w[:n]]
+                    return (f'<a href="https://en.wiktionary.org/wiki/{head}#Chinese">'
+                            f'{w[:n]}</a>' + link(w[n:]))
+            return w[0] + link(w[1:])
+
+        def link_run(run: str) -> str:
+            """Words found in the dictionary rather than in the reading, for a
+            sentence whose reading cannot be aligned: 24小时 and 1GB spell their
+            numbers out, so nothing lines up character to syllable. Every character
+            is kept, linked or not."""
+            out, i = [], 0
+            while i < len(run):
+                if not CJK.match(run[i]):
+                    out.append(html.escape(run[i], quote=False))
+                    i += 1
+                    continue
+                for n in range(min(6, len(run) - i), 0, -1):
+                    if run[i:i + n] in to_trad:
+                        out.append(link(run[i:i + n]))
+                        i += n
+                        break
+                else:
+                    out.append(html.escape(run[i], quote=False))
+                    i += 1
+            return "".join(out)
+
         pinyin = checked.get(sentence)
         pairs = align(sentence, pinyin) if pinyin else None
         if not pairs:
-            return html.escape(sentence, quote=False)
+            return link_run(sentence)
         out, word, i, n = [], "", 0, 0
         while i < len(sentence):
             if ALIGNABLE.match(sentence[i]) and n < len(pairs):
@@ -779,18 +836,6 @@ def main() -> int:
                 i += 1
         if word:
             out.append(word)
-        def link(w: str) -> str:
-            """A pinyin word is not always a dictionary word: 吃了 is written chīle but
-            Wiktionary has no page for it, so link 吃 and leave 了 as text."""
-            if not CJK.match(w[0]):
-                return w
-            for n in range(len(w), 0, -1):
-                if w[:n] in to_trad:
-                    head = to_trad[w[:n]]
-                    return (f'<a href="https://en.wiktionary.org/wiki/{head}#Chinese">'
-                            f'{w[:n]}</a>' + w[n:])
-            return w
-
         return "".join(link(w) for w in out)
 
     # Words whose entry no rule picks correctly: 京 is Beijing and not the surname
@@ -846,6 +891,27 @@ def main() -> int:
             else:
                 i += 1
         return "".join(out)
+
+    def teaches(point: str, sentence: str) -> str:
+        """Which item of the point this sentence is an example of.
+
+        The items are listed in the point itself. 打开 turns up as 打不开 and 看见 as
+        看得见, so a two-character item is looked for with an infix as well. A sentence
+        matching none of them is treated as its own item, so nothing is set aside on a
+        guess.
+        """
+        items = []
+        for part in re.split(r"[、，/／]", point):
+            w = re.sub(r"[0-9]+$", "", part.strip("—-（）()… ")).strip()
+            if w and CJK.search(w):
+                items.append(w)
+        if len(items) < 2:
+            return ""
+        hit = [i for i in items if i in sentence
+               or (len(i) == 2
+                   and re.search(re.escape(i[0]) + r"[得不了一两个]{1,2}"
+                                 + re.escape(i[1]), sentence))]
+        return max(hit, key=len) if hit else sentence
 
     def sentence_words(sentence: str) -> str:
         """Each word of the sentence with what it means, as a compound's card does for
@@ -932,6 +998,11 @@ def main() -> int:
 
     seen_sentence = set()
     wanted_audio = []
+    # A point that lists several items -- 按理、按说、百般 -- is taught one item at a
+    # time, so two sentences under it are only saying the same thing when they use the
+    # same item. The first sentence for an item carries it; the rest are extra
+    # practice, tagged so they can be set aside without being thrown away.
+    taught = set()
     n = 0
     for r in rows:
         lv = lvl_of(r["examLevelId"])
@@ -960,6 +1031,9 @@ def main() -> int:
             seen_sentence.add(key)
             wanted_audio.extend(lines)
             n += 1
+            unit = (point, teaches(point, "".join(lines)))
+            extra = unit in taught
+            taught.add(unit)
             join = "<br>".join
             grammar_decks[lv].add_note(genanki.Note(
                 model=sentence_model,
@@ -973,7 +1047,7 @@ def main() -> int:
                     join(html.escape(translated.get(x, ""), quote=False)
                          for x in lines),
                     "".join(sentence_words(x) for x in lines),
-                    point, label_en(point),
+                    point, point_en_of.get(point) or label_en(point),
                     " &middot; ".join(
                         v + (f' <span class=en>{en}</span>' if en else "")
                         for v, en in ((r.get("grammarType", "").strip(),
@@ -988,7 +1062,8 @@ def main() -> int:
                     # clip made from 呢1 reads the digit out loud.
                     "".join(sentence_audio(x) for x in lines),
                 ],
-                tags=[f"HSK3.0::sentence::L{lv}"],
+                tags=[f"HSK3.0::sentence::L{lv}"]
+                + (["HSK3.0::sentence::extra"] if extra else []),
             ))
     decks += list(grammar_decks.values())
     print(f"  grammar pinyin: {py_stats['checked']} sentences hand-checked; "

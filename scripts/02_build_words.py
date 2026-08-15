@@ -108,12 +108,14 @@ def pointer_targets(entry) -> set[str]:
     return out
 
 
-def load_cedict(path) -> dict[str, list[dict]]:
+def load_cedict(*paths) -> dict[str, list[dict]]:
     """simplified -> [{trad, pinyin, defs}], each gloss kept with its own traditional
-    form."""
+    form. Reads the dictionary and then the patch of words it lacks."""
     out: dict[str, list[dict]] = collections.defaultdict(list)
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
+    for path in paths:
+        if not pathlib.Path(path).exists():
+            continue
+        for line in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
             if line.startswith("#"):
                 continue
             m = CEDICT_LINE.match(line.rstrip("\n"))
@@ -195,7 +197,7 @@ def main() -> int:
     if not wikt_path.exists():
         sys.exit("run scripts/01_wiktionary_index.py first")
     wikt = json.loads(wikt_path.read_text(encoding="utf-8"))
-    cedict = load_cedict(RAW / "cedict_ts.u8")
+    cedict = load_cedict(RAW / "cedict_ts.u8", RAW / "cedict_patch.u8")
     print(f"cc-cedict simplified headwords: {len(cedict)}")
 
     punpuf = read_tsv(RAW / "punpuf_hsk_word_list.tsv")

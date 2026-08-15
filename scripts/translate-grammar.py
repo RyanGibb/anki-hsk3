@@ -18,7 +18,7 @@ import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-RAW = ROOT / "data/raw/chelsea_grammar.tsv"
+RAW = ROOT / "data/raw/official_grammar.tsv"
 OUT = ROOT / "data/grammar-translations.csv"
 KEY_FILE = pathlib.Path.home() / "deepl-key"
 BATCH = 40
