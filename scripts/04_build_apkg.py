@@ -84,7 +84,7 @@ sentence_model = genanki.Model(
 char_model = genanki.Model(
     MID_CHAR, "HSK 3.0 Character",
     fields=[{"name": f} for f in
-            ["Key", "Character", "Level", "WritingLevel", "Traditional", "Pinyin",
+            ["Key", "Simplified", "Level", "WritingLevel", "Traditional", "Pinyin",
              "Meaning", "Audio", "StrokeOrder", "Etymology", "Example",
              "ExampleWord"]],
     css=tpl("style.css"),

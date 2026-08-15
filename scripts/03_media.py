@@ -113,11 +113,12 @@ def main() -> int:
         if "_" not in p.name
     }
 
-    # audio-cmn issues 2 and 13: the fifth-tone files in the syllable set are snippets
-    # cut from a discussion rather than recordings, and issue 10 reports cmn-zhu2 and
-    # cmn-zhu4 as the wrong audio. Issue 7 says 5% of the set is degraded, which is
-    # why a character read the same way is preferred to a syllable in the first place.
-    SUSPECT = re.compile(r"^[a-zü:]+5$|^zhu[24]$")
+    # Syllable recordings upstream reports as wrong: fifth-tone files are snippets cut
+    # from a discussion rather than recordings (audio-cmn#2, #13), zhu2 and zhu4 are
+    # the wrong audio (#10), and san1, bang2, bang4 and jv4 stop before the syllable
+    # ends (#12). Membership is by report and not by measurement, because these faults
+    # are audible but sit inside the corpus's normal duration and level range.
+    SUSPECT = re.compile(r"^[a-zü:]+5$|^zhu[24]$|^(?:san1|bang[24]|jv4)$")
     syllabs = {k: v for k, v in (
         (p.name[len("cmn-"):-len(".mp3")].lstrip("_"), p)
         for p in SYLLABS.glob("cmn-*.mp3")) if not SUSPECT.match(k)} \

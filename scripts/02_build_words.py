@@ -318,6 +318,10 @@ def main() -> int:
                 "traditional_source": trad_src,
                 "cedict_candidates": "/".join(e["trad"] for e in entries),
                 "meaning": meaning,
+                # The dictionary's own glosses, kept before any hand editing below. A
+                # word split across two cards divides these between them, and 05_verify
+                # needs the undivided list to check that every sense reaches a card.
+                "meaning_full": meaning,
                 "classifier": classifier,
                 "pos": pos.get(entry) or pos.get(simplified, []),
             }
