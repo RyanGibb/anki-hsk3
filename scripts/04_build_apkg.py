@@ -1021,9 +1021,21 @@ def main() -> int:
     # writes 呢1 to tell two entries apart, and a clip synthesised from that reads the
     # digit out loud. A sentence is voiced from what the card shows or not at all.
 
+    # A syllabus sentence sometimes displays language rather than using it: 在/正在
+    # offers two words for one slot, （钱） marks a word that may be left out, and
+    # （转折） names the point rather than belonging to the sentence. A voice reads all
+    # of it -- 同学们在/正在上课 was spoken 同学们在正在上课 -- so speech is asked for what
+    # a speaker would say. Dropping the brackets is enough for most; where a word has
+    # to be chosen or a label dropped, data/sentence-speech.csv says what to say.
+    said = {r["chinese"]: r["spoken"] for r in csv.DictReader(
+        (ROOT / "data/sentence-speech.csv").open(encoding="utf-8"))}
+
+    def as_said(text: str) -> str:
+        return said.get(text) or text.replace("（", "").replace("）", "")
+
     def sentence_audio(text: str) -> str:
         """No corpus records these sentences, so they are synthesised or silent."""
-        got = tts_index.get(text)
+        got = tts_index.get(as_said(text))
         if not got or not (tts_dir / got).exists():
             return ""
         if not (MEDIA / got).exists():
@@ -1064,7 +1076,7 @@ def main() -> int:
             if key in seen_sentence:
                 continue
             seen_sentence.add(key)
-            wanted_audio.extend(lines)
+            wanted_audio.extend(as_said(x) for x in lines)
             n += 1
             unit = (point, teaches(point, "".join(lines)))
             extra = unit in taught
