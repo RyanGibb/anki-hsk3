@@ -209,3 +209,11 @@ img.stroke {
 /* The parts a character is built from sit under the strokes, so a long account of
    them never pushes the character's own off the screen. */
 .parts { margin-top: 1.2em; }
+/* How the character on the card came from the shape just described: its own answer,
+   so its own line. */
+.later { margin-top: 0.7em; }
+/* One rule for each step away from the word: what it is made of, then what those are. */
+.partStep {
+  border: 0; border-top: 3px solid currentColor; opacity: 0.35;
+  border-radius: 3px; margin: 1.1em auto; width: 28%;
+}
