@@ -80,3 +80,20 @@ def align(hanzi: str, pinyin: str):
     return out
 
 
+
+
+TONE_VOWELS = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
+
+
+def numbered(p: str) -> str:   # noqa: D401
+    """nǔ -> nu3, the form CC-CEDICT keys its entries by and the syllable recordings
+    are named after."""
+    out, tone = [], "5"
+    for ch in p:
+        i = TONE_VOWELS.find(ch)
+        if i < 0:
+            out.append("v" if ch == "ü" else ch)
+        else:
+            tone = str(i % 4 + 1)
+            out.append("aeiouv"[i // 4])
+    return "".join(out) + tone

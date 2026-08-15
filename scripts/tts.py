@@ -87,11 +87,15 @@ def main() -> int:
                         for o in words)}
     want = {w["simplified"] for w in words
             if not w["audio"] and w["simplified"] not in ambiguous}
-    checked = {}
-    path = ROOT / "data/grammar-pinyin.csv"
-    if path.exists():
-        for r in csv.DictReader(path.open(encoding="utf-8")):
-            checked[r["chinese"]] = r["pinyin"]
+    # The sentences as the cards show them, listed by the build. Reading them from
+    # data/grammar-pinyin.csv instead would voice the syllabus's source text, and a
+    # clip made from 她正在学习呢1。 says the disambiguation digit out loud.
+    wanted = ROOT / "build/tts-wanted.json"
+    if wanted.exists():
+        checked = json.loads(wanted.read_text(encoding="utf-8"))["sentences"]
+    else:
+        checked = [r["chinese"] for r in csv.DictReader(
+            (ROOT / "data/grammar-pinyin.csv").open(encoding="utf-8"))]
 
     CACHE.mkdir(parents=True, exist_ok=True)
     index = json.loads(INDEX.read_text(encoding="utf-8")) if INDEX.exists() else {}
@@ -103,7 +107,11 @@ def main() -> int:
     jobs = [(text, esc(text), True) for text in want]
     jobs += [(text, esc(text), False) for text in checked]
 
-    todo = [j for j in jobs if not (CACHE / name(j[0], j[2])).exists()]
+    def made(job) -> bool:
+        p = CACHE / name(job[0], job[2])
+        return p.exists() and p.stat().st_size >= 1000
+
+    todo = [j for j in jobs if not made(j)]
     print(f"{len(jobs)} to voice, {len(jobs) - len(todo)} already done, {len(todo)} to go")
 
     done = 0
@@ -112,10 +120,16 @@ def main() -> int:
                 f'xml:lang="zh-CN"><voice name="{VOICE}">'
                 f'<prosody rate="{RATE}">{body}</prosody></voice></speak>')
         try:
-            (CACHE / name(text, word)).write_bytes(speak(ssml, key, region))
+            audio = speak(ssml, key, region)
         except Exception as e:
             print(f"  {text[:24]}: {e}")
             continue
+        # An empty body is a failure the service reported as success. Writing it
+        # anyway leaves a clip that plays nothing on a card that looks voiced.
+        if len(audio) < 1000:
+            print(f"  {text[:24]}: {len(audio)} bytes, not keeping it")
+            continue
+        (CACHE / name(text, word)).write_bytes(audio)
         index[text] = name(text, word)
         done += 1
         if done % 200 == 0:
@@ -123,7 +137,7 @@ def main() -> int:
             print(f"  {done}/{len(todo)}")
 
     for text, _, word in jobs:
-        if (CACHE / name(text, word)).exists():
+        if made((text, "", word)):
             index[text] = name(text, word)
     INDEX.write_text(json.dumps(index, ensure_ascii=False), encoding="utf-8")
     print(f"{len(index)} clips in {CACHE}")
