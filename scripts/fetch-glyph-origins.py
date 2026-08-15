@@ -42,7 +42,7 @@ TYPE = [
     ("Ideogram", "ideo"),
 ]
 TAG = re.compile(r"<[^>]+>")
-PARA = re.compile(r"<p\b[^>]*>(.*?)</p>", re.S)
+PARA = re.compile(r"<(p|li)\b[^>]*>(.*?)</\1>", re.S)
 # Wiktionary marks a doubtful reading with a superscript reference; it reads as a stray
 # digit once the tags are gone.
 CITE = re.compile(r"\[\d+\]|\[edit\]|\[note \d+\]")
@@ -52,7 +52,14 @@ BOILERPLATE = re.compile(
     r"Richard Sears|Chinese Etymology site|^Historical forms of the character"
     r"|^References\b|^Note:"
     # A cleanup banner ships its own stylesheet, which survives tag stripping as CSS.
-    r"|mw-parser-output|^This (?:article|entry) ")
+    r"|mw-parser-output|^This (?:article|entry) "
+    # A footnote marker, a reference list entry, and a template Wiktionary failed to
+    # render -- none of them says anything about the glyph.
+    r"|^\^|^(?:Kangxi|Dai Kanwa|Dae Jaweon|Hanyu|Unihan|Digital Shinjigen)"
+    r"|The template Template:"
+    # The table of ancient forms lists where its images came from, as a bulleted
+    # legend of source works. That is a bibliography, not an account of the glyph.
+    r"|^(?:Shuowen Jiezi|Jinwen Bian|Liushutong|Yinxu Jiaguwen Bian)\b")
 
 
 def get(params: dict) -> dict:
@@ -66,13 +73,15 @@ def prose(fragment: str) -> str:
     """The section renders a table of oracle-bone and bronze forms as well as the
     explanation. Only the paragraphs say anything a card can use."""
     out = []
-    for para in PARA.findall(fragment):
+    for kind, para in PARA.findall(fragment):
         text = html.unescape(TAG.sub("", para))
         text = CITE.sub("", text)
         text = re.sub(r"\s+", " ", text).strip()
         if text and not BOILERPLATE.search(text):
-            out.append(text)
-    return " ".join(out).strip()
+            # 再's account is a line followed by the competing readings as a list, and
+            # the card renders a list under its lead. Mark them as the dump does.
+            out.append(("* " + text) if kind == "li" else text)
+    return "\n".join(out).strip()
 
 
 def glyph_origin(char: str) -> tuple:

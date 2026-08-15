@@ -14,7 +14,7 @@ import sys
 import genanki
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from glyph_origin import any_about_the_glyph   # noqa: E402
+from glyph_origin import about_the_glyph, any_about_the_glyph   # noqa: E402
 from pinyin_align import ALIGNABLE, align, numbered   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -443,6 +443,12 @@ def load_etymology():
         account and a separate one for the surname, and both are about the graph.
         """
         sections = etym.get(trad.get(ch, ch)) or etym.get(ch) or []
+        # A card asking where a glyph came from has no use for the history of the
+        # word: 答 is "cognate with 對 … compare Tibetan", true and about the word,
+        # while the graph's own account sits under 荅. Drop those outright rather
+        # than ranking them last, so the fetched Glyph origin can take their place.
+        sections = [x for x in sections
+                    if about_the_glyph(x.get("text", ""), x.get("type", ""))]
         if len(sections) < 2:
             return sections[0] if sections else {}
         want = gloss_words((info.get(ch) or {}).get("meaning") or "")
@@ -618,14 +624,43 @@ def main() -> int:
                 (ch, num.replace("ü", "v").lower()),
                 (simp, w["pinyin"], short_gloss(w["meaning"])))
 
+    # A character met on its own before it is met in a compound needs no compound to
+    # show it in use: 八 is eight from HSK 1, and "as in bāchéng -- eighty percent"
+    # only points a beginner at a word six levels above. Where the compound comes
+    # first the example still earns its place: 上班 is HSK 1 and 班 alone is HSK 2.
+    # Kept per reading, since 地 is a word read dì and another read de.
+    alone_level = {}
+    for w in words:
+        if len(w["simplified"]) != 1:
+            continue
+        key = (w["simplified"], w["pinyin_numbered"].replace("ü", "v").lower())
+        if key not in alone_level or LEVELS.index(w["level"]) < alone_level[key]:
+            alone_level[key] = LEVELS.index(w["level"])
+
+    example_level = {}
+    for w in words:
+        if len(w["simplified"]) > 1:
+            example_level.setdefault(w["simplified"], w["level"])
+
     def examples_of(ch: str) -> list:
-        """[(word, pinyin, meaning)], one per reading the card teaches."""
+        """[(word, pinyin, meaning)], one per reading the card teaches that needs one."""
+        readings = taught_readings.get(ch, []) or []
         out = []
-        for _, num, _ in taught_readings.get(ch, []) or []:
+        needed = False
+        for _, num, _ in readings:
             got = example_by_reading.get((ch, num))
-            if got and got not in out:
+            if not got:
+                continue
+            alone = alone_level.get((ch, num))
+            if alone is not None and alone <= LEVELS.index(example_level.get(got[0], "7-9")):
+                continue                       # met on its own first
+            needed = True
+            if got not in out:
                 out.append(got)
-        if not out:
+        # The fallback is for a character the syllabus never lists on its own, so it
+        # must not undo the rule above by supplying an example for one that it does.
+        if not out and not needed and not any((ch, num) in alone_level
+                                              for _, num, _ in readings):
             e = (char_meta.get(ch) or {}).get("example") or {}
             if e:
                 out.append((e["word"], e["pinyin"], short_gloss(e["meaning"])))
