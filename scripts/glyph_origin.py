@@ -19,12 +19,22 @@ GRAPH = re.compile(
     r"|seal script|simplif|cursive|変|变体|variant form|radical|stroke", re.I)
 
 
-def about_the_glyph(text: str) -> bool:
-    """True when this etymology says something about the shape of the character."""
-    if not text:
+def about_the_glyph(text: str, liushu: str = "") -> bool:
+    """True when this etymology says something about the shape of the character.
+
+    Evidence has to be positive. Absence of a loanword marker is not enough: 答 is
+    given as "Cognate with 對 … Compare Tibetan འདེབས", which is the history of the
+    word and says nothing about the graph, while the graph's own account sits under
+    荅. What does say something names how the character was made -- the 六書 class the
+    dump records, or the vocabulary of one.
+    """
+    if liushu:
+        return True
+    if not text or LOAN.search(text):
         return False
-    return bool(GRAPH.search(text)) or not LOAN.search(text)
+    return bool(GRAPH.search(text))
 
 
 def any_about_the_glyph(sections) -> bool:
-    return any(about_the_glyph(s.get("text", "")) for s in sections or [])
+    return any(about_the_glyph(s.get("text", ""), s.get("type", ""))
+               for s in sections or [])
