@@ -200,3 +200,13 @@ img.stroke {
 }
 
 .charSense { margin: 2px 0; }
+
+/* A gloss that quotes the character being written would give the answer away, so the
+   question side blanks it. The answer side leaves it alone. */
+.question .mask {
+  color: transparent;
+  background: currentColor;
+  opacity: 0.25;
+  border-radius: 3px;
+  padding: 0 0.15em;
+}

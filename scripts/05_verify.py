@@ -129,6 +129,144 @@ def main() -> int:
             if claimed.count(s) != 1:
                 lost.append(f"{simp}: {'unclaimed' if not claimed.count(s) else 'twice'}"
                             f" {s[:32]}")
+    # 一 and 不 change tone before certain tones, and the convention writes that
+    # change. It is mechanical, so every hand-checked reading can be tested: 不 is bú
+    # before a fourth tone and bù otherwise, 一 is yí before a fourth and yì before the
+    # first three. A pause interrupts it -- 这不，院子 keeps bù -- so a sandhi across
+    # punctuation is not one.
+    checked_pinyin = ROOT / "data/grammar-pinyin.csv"
+    if checked_pinyin.exists():
+        from pinyin_align import ALIGNABLE, align, numbered
+        wrong = []
+        for row in csv.DictReader(checked_pinyin.open(encoding="utf-8")):
+            zh, py = row["chinese"], row["pinyin"]
+            if re.search(r"[0-9A-Za-z]", zh):
+                continue
+            pairs = align(zh, py)
+            if pairs is None:
+                continue
+            # align merges erhua into one pair -- 哪儿 is a single nǎr -- so a pair can
+            # cover more than one character and there is no counting from characters
+            # to pairs. Walk the sentence alongside the pairs instead.
+            spots, at = [], 0
+            for text, _syl, _start in pairs:
+                while at < len(zh) and zh[at] != text[0]:
+                    at += 1
+                spots.append(at)
+                at += len(text)
+            for n, (ch, syl, _start) in enumerate(pairs):
+                if ch not in "一不" or not syl or n + 1 >= len(pairs):
+                    continue
+                if spots[n] + len(ch) != spots[n + 1]:   # a pause stands between them
+                    continue
+                tone = numbered(pairs[n + 1][1])[-1:]
+                got = numbered(syl).lower()
+                if ch == "不":
+                    want = "bu2" if tone == "4" else "bu4"
+                    ok = got in (want, "bu5")
+                else:
+                    want = "yi2" if tone == "4" else "yi4"
+                    ok = got in (want, "yi1", "yi5") or tone not in "1234"
+                if not ok:
+                    wrong.append(f"{zh[:20]}: {ch} as {syl} before {pairs[n+1][1]}")
+        check(f"一 and 不 sandhi written as the convention says", not wrong,
+              f"{len(wrong)}: {wrong[:3]}" if wrong else "")
+
+    # A clip the speech service returned empty, or a diagram that failed to render,
+    # ships as a file of no bytes: the card looks voiced and plays nothing.
+    if APKG.exists():
+        with zipfile.ZipFile(APKG) as z:
+            media = json.loads(z.read("media").decode("utf-8"))
+            sizes = {media[i.filename]: i.file_size for i in z.infolist()
+                     if i.filename.isdigit()}
+        thin = [f"{k} ({n} bytes)" for k, n in sizes.items()
+                if n < (1000 if k.endswith(".mp3") else 200)]
+        check(f"all {len(sizes)} media files carry data", not thin,
+              f"{len(thin)}: {thin[:4]}" if thin else "")
+
+    # The writing card asks for a character, so nothing it shows before the answer
+    # may contain that character: 大's gloss illustrates itself with 大姐.
+    if APKG.exists():
+        showing = []
+        with zipfile.ZipFile(APKG) as z:
+            name = next(x for x in z.namelist() if x.startswith("collection.anki"))
+            with tempfile.TemporaryDirectory() as td:
+                z.extract(name, td)
+                con = sqlite3.connect(pathlib.Path(td) / name)
+                mods = json.loads(con.execute("select models from col").fetchone()[0])
+                mid = [k for k, m in mods.items() if m["name"] == "HSK 3.0 Character"]
+                if mid:
+                    flds = [f["name"] for f in mods[mid[0]]["flds"]]
+                    for (f,) in con.execute("select flds from notes where mid=?",
+                                            (int(mid[0]),)):
+                        note = dict(zip(flds, f.split("\x1f")))
+                        ch = note["Simplified"]
+                        shown = re.sub(r"<span class=mask>.*?</span>", "",
+                                       note["Meaning"] + note["Example"])
+                        if ch and ch in shown:
+                            showing.append(ch)
+                con.close()
+        check("no writing card shows the character it asks for", not showing,
+              f"{len(showing)}: {showing[:6]}" if showing else "")
+
+    # A sentence is voiced from what the card shows. The syllabus writes 呢1 to tell
+    # two entries apart, and a clip synthesised from that says the digit out loud, so
+    # a card holding a clip filed under any other text is holding the wrong sound.
+    tts_index = ROOT / ".cache/tts/index.json"
+    if tts_index.exists() and APKG.exists():
+        index = json.loads(tts_index.read_text(encoding="utf-8"))
+        wrong = []
+        with zipfile.ZipFile(APKG) as z:
+            name = next(x for x in z.namelist() if x.startswith("collection.anki"))
+            with tempfile.TemporaryDirectory() as td:
+                z.extract(name, td)
+                con = sqlite3.connect(pathlib.Path(td) / name)
+                mods = json.loads(con.execute("select models from col").fetchone()[0])
+                mid = [k for k, m in mods.items() if m["name"] == "HSK 3.0 Sentence"]
+                if mid:
+                    flds = [f["name"] for f in mods[mid[0]]["flds"]]
+                    for (f,) in con.execute("select flds from notes where mid=?",
+                                            (int(mid[0]),)):
+                        v = dict(zip(flds, f.split("\x1f")))
+                        want = [index.get(x) for x in v["Hanzi"].split("<br>")]
+                        got = re.findall(r"\[sound:([^\]]+)\]", v["Audio"])
+                        if got != [x for x in want if x]:
+                            wrong.append(re.sub("<[^>]+>", "", v["Hanzi"])[:22])
+                con.close()
+        check("every sentence plays its own recording", not wrong,
+              f"{len(wrong)}: {wrong[:3]}" if wrong else "")
+
+    # Each corrected reading has to be the reading the deck ends up teaching, and has
+    # to still be a correction: if the syllabus is fixed upstream the row is dead
+    # weight, and if a word is dropped the row points at nothing.
+    reading_fixes = ROOT / "data/reading-fixes.csv"
+    if reading_fixes.exists():
+        rows = list(csv.DictReader(reading_fixes.open(encoding="utf-8")))
+        source = {r["word"]: r["pinyin_numbered"] for r in csv.DictReader(
+            (ROOT / "data/raw/punpuf_hsk_word_list.tsv").open(encoding="utf-8"),
+            delimiter="\t")}
+        built = {w["simplified"]: w["pinyin_numbered"] for w in words}
+        wrong = [f'{r["word"]}: {built.get(r["word"])}' for r in rows
+                 if built.get(r["word"]) != r["pinyin_numbered"]]
+        spent = [r["word"] for r in rows if source.get(r["word"]) != r["was"]]
+        check(f"{len(rows)} corrected readings all applied", not wrong,
+              ", ".join(wrong) if wrong else "")
+        check("no corrected reading is redundant", not spent,
+              f"the syllabus now agrees for {', '.join(spent)}" if spent else "")
+
+    # A gloss chosen by hand for one word of one sentence is only right for that
+    # sentence, so a row that no longer matches one is a row nobody is reading.
+    fixes = ROOT / "data/sentence-word-glosses.csv"
+    if fixes.exists():
+        rows = list(csv.DictReader(fixes.open(encoding="utf-8")))
+        sentences = {r["chinese"] for r in
+                     csv.DictReader((ROOT / "data/grammar-pinyin.csv")
+                                    .open(encoding="utf-8"))}
+        stale = [f'{r["word"]} in {r["chinese"][:18]}' for r in rows
+                 if r["chinese"] not in sentences or r["word"] not in r["chinese"]]
+        check(f"{len(rows)} hand-picked sentence glosses all still match", not stale,
+              ", ".join(stale) if stale else "")
+
     check("no curated gloss invents a sense", not invented,
           f"{len(invented)}: {invented[:3]}" if invented else "")
     check("every sense of a split word is taught by exactly one of its cards", not lost,

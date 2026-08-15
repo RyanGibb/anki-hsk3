@@ -15,7 +15,7 @@ import genanki
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from glyph_origin import any_about_the_glyph   # noqa: E402
-from pinyin_align import ALIGNABLE, align   # noqa: E402
+from pinyin_align import ALIGNABLE, align, numbered   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -120,11 +120,26 @@ def read_tsv(path):
 TONE_MARK = {"1": "ˉ", "2": "ˊ", "3": "ˇ", "4": "ˋ", "5": "·"}
 
 
-def also_read(w, by_entry={}) -> str:
-    """The other way this word is read, for the card to name. The entry keys it is
-    cross-referenced by -- 长1, 长2 -- mean nothing to a reader."""
-    others = [by_entry[e]["pinyin"] for e in w.get("homograph", []) if e in by_entry]
-    return "also " + ", ".join(others) if others else ""
+def also_read(w, by_entry={}, gloss={}) -> str:
+    """The other word written this way, named by whatever tells it apart.
+
+    Usually that is the reading: 还 is also huán. Where the syllabus splits a word
+    that is read one way, as it does 本 and 打, saying "also běn" says nothing, and
+    what separates them is the part of speech the front of the card already shows.
+    The entry keys they are cross-referenced by -- 长1, 长2 -- mean nothing to a reader.
+    """
+    out = []
+    for e in w.get("homograph", []):
+        other = by_entry.get(e)
+        if not other:
+            continue
+        if other["pinyin"] != w["pinyin"]:
+            out.append(other["pinyin"])
+            continue
+        part = (other.get("pos") or [""])[0].split("、")[0].strip("（）()")
+        out.append(f'{part} <span class=en>{gloss[part]}</span>' if gloss.get(part)
+                   else part or other["pinyin"])
+    return "also " + ", ".join(x for x in out if x) if out else ""
 
 
 def tone_hint(w, siblings={}, gloss={}) -> str:
@@ -233,7 +248,7 @@ POINTER = re.compile(r"^(variant of|old variant of|see|abbr\. for)\b", re.I)
 # "abbr. for 超級市場|超级市场[chao1 ji2 shi4 chang3]"
 XREF = re.compile(r"(?:([㐀-鿿]+)\|)?([㐀-鿿]+)\[([A-Za-z0-9:, ]+)\]")
 # "also pr. [di4]", "Taiwan pr. [zhi1dao5]" -- not reliably spaced, so split on digits
-BARE = re.compile(r"\[((?:[A-Za-z:]+[0-9][ ,]?)+)\]")
+BARE = re.compile(r"\[((?:[A-Za-z:]+[0-9][ ,-]?)+)\]")
 SYLL = re.compile(r"[A-Za-z:]+[0-9]")
 # "as in 除了他，誰也沒來|除了他，谁也没来"
 PIPE = re.compile(r"([㐀-鿿，、。！？：；…]+)\|([㐀-鿿，、。！？：；…]+)")
@@ -258,7 +273,13 @@ def clean_xrefs(text: str) -> str:
         except Exception:
             return m.group(0)
 
-    return PIPE.sub(r"\2", BARE.sub(bare, XREF.sub(one, text)))
+    out = PIPE.sub(r"\2", BARE.sub(bare, XREF.sub(one, text)))
+    # A classifier is dictionary notation rather than part of the meaning. The word
+    # path lifts it into its own field; a character standing inside a word has no
+    # such field, and "greens (CL:棵 kē)" is not what 菜 means.
+    out = re.sub(r"\s*\(CL:[^)]*\)", "", out)
+    out = re.sub(r"\s*/?\s*CL:[^/]*", "", out)
+    return out.strip(" /")
 
 
 def spoken(pinyin: str) -> str:
@@ -314,6 +335,71 @@ GLYPH = re.compile(r"phono-semantic|ideogrammic|pictogram|指事|象形|會意|�
 
 def gloss_words(text: str) -> set:
     return {w for w in re.split(r"[^a-z]+", text.lower()) if len(w) > 2 and w not in STOP}
+
+
+# 老李 and 小高 are how a familiar name is formed, and a surname before a title is the
+# other place one appears. Nothing else in a sentence is a name.
+TITLE = re.compile(r"^(老师|先生|女士|小姐|医生|经理|教授|同学|阿姨|叔叔|大夫|师傅)")
+
+
+def mask_answer(text: str, ch: str) -> str:
+    """Hide the character inside prose that the writing card asks you to produce.
+
+    A gloss illustrates itself: 大 is "eldest (as in 大姐 dàjiě)" and 报 is "to register
+    for (abbr. for 报名 bàomíng)". Read on the question side, that is the answer. The
+    card still needs the phrase, so the character is wrapped rather than removed, and
+    only the question side hides what is wrapped.
+    """
+    if not ch or ch not in text:
+        return text
+    out, i = [], 0
+    for m in re.finditer(r"<[^>]+>", text):
+        out.append(text[i:m.start()].replace(ch, f'<span class=mask>{ch}</span>'))
+        out.append(m.group(0))
+        i = m.end()
+    out.append(text[i:].replace(ch, f'<span class=mask>{ch}</span>'))
+    return "".join(out)
+
+
+def char_rank(entry):
+    """How much an entry says about a character standing inside a word.
+
+    CC-CEDICT files 年 under the surname Nian before the year, as it files 都 under
+    Du before dōu, and marks the difference by capitalising the reading. A character
+    inside 今年 is not a name, so the capital settles it before anything else does.
+    """
+    _trad, _gloss, defining, senses, reading = entry
+    return (not reading[:1].isupper(), defining > 0, defining, senses)
+
+
+def best_entry(cands, want_trad, key, proper=False):
+    """Which CC-CEDICT entry a word in a sentence means.
+
+    Every test here is something the dictionary states about the entry rather than
+    something read out of its wording: the reading it is filed under, the capital that
+    marks a proper noun, the traditional form, and how much it has to say. So 那 is
+    "that" and not "surname Na", 家 is 家 "home" and not 傢 "used in 家伙", and 个 read
+    lightly still finds 個 the classifier rather than 個 [ge3].
+
+    The capital cannot be read on its own, because the first word of a sentence is
+    capitalised whether or not it is a name: 別 opens 别忘了 "don't forget" and 張 opens
+    张老师. Whether a name is meant comes from what surrounds the word, so the caller
+    decides it and this only has to agree.
+    """
+    def rank(e):
+        trad, gloss, reading, n_senses = e
+        bare = re.sub(r"[0-9]", "", reading).lower()
+        want = re.sub(r"[0-9]", "", key).lower()
+        return (reading.lower() == key.lower(),
+                bool(key) and bare == want,
+                reading[:1].isupper() == proper,
+                # 只 [zhi1] is "variant of 隻" while 隻 [zhi1] is the classifier
+                # itself, the same test the character glosses use.
+                not POINTER.match(gloss),
+                n_senses,
+                # The form decides what is left, as it does for 裡 against 里.
+                trad == want_trad)
+    return max(cands, key=rank)[1]
 
 
 def load_etymology():
@@ -382,23 +468,13 @@ def load_etymology():
         rest = " ".join(html.escape(p, quote=False) for _, p in ps[i:])
         return f'{head}<div class="more">{rest}</div>'
 
-    def word(simplified: str) -> str:
-        out = []
-        for ch in dict.fromkeys(c for c in simplified if CJK.match(c)):
-            body = one(ch, full=False)
-            if body:
-                t = trad.get(ch, ch)
-                label = ch if t == ch else f"{ch} ({t})"
-                out.append(f'<div class="etymItem"><b>{label}</b> {body}</div>')
-        return "".join(out)
-
-    return one, word
+    return one
 
 
 def main() -> int:
     decks, media = [], set()
     words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
-    also_read.__defaults__ = ({w["entry"]: w for w in words},)
+    by_entry_all = {w["entry"]: w for w in words}
     groups = collections.defaultdict(list)
     for w in words:
         if w["homograph_index"]:
@@ -422,18 +498,40 @@ def main() -> int:
             continue
         trad, simp, reading, body = m.groups()
         senses = [d for d in body.split("/") if not d.startswith("CL:")][:3]
-        if senses and simp not in cedict_defs:
-            cedict_defs[simp] = clean_xrefs(" / ".join(senses))
+        if senses:
+            # Candidates keyed by reading, the way the vocabulary path chooses, with
+            # the case left alone: CC-CEDICT capitalises a proper noun's reading, so
+            # 那 [Na4] "surname Na" cannot match a sentence reading nà written [na4].
+            entry = (trad, clean_xrefs(" / ".join(senses)),
+                     reading.replace(" ", "").replace("u:", "v"), len(senses))
+            cedict_defs.setdefault((simp, entry[2].lower()), []).append(entry)
+            cedict_defs.setdefault(simp, []).append(entry)
         if senses and len(simp) == 1:
             # several entries can share a reading, and the surname is often first:
             # 还 huán is "surname Huan" before it is "to give back". Take the fullest.
             key = (simp, reading.replace(" ", "").lower())
             defining = [d for d in senses if not POINTER.match(d)]
             entry = (trad, clean_xrefs(" / ".join(defining or senses)),
-                     len(defining), len(senses))
+                     len(defining), len(senses), reading)
             char_by_reading.setdefault(key, []).append(entry)
             char_any.setdefault(simp, []).append(entry)
-    etym_char, etym_word = load_etymology()
+    # "see 苏州市" is a direction to look elsewhere, not a meaning, and on a sentence
+    # card there is nowhere to look. Where every sense of an entry points at another
+    # word, say what that word says instead.
+    target_of = re.compile(r"^(?:see(?: also)?|variant of|old variant of|abbr\. for"
+                           r"|used in)\s+([㐀-鿿豈-﫿]+)")
+    for k, entries in cedict_defs.items():
+        for i, (trad, gloss, reading, n) in enumerate(entries):
+            if not POINTER.match(gloss):
+                continue
+            m = target_of.match(gloss)
+            if not m:
+                continue
+            for other in cedict_defs.get(m.group(1), []):
+                if not POINTER.match(other[1]):
+                    entries[i] = (trad, other[1], reading, other[3])
+                    break
+    etym_char = load_etymology()
 
     char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
     literal = json.loads((BUILD / "literal-meanings.json").read_text(encoding="utf-8"))
@@ -448,13 +546,13 @@ def main() -> int:
         cands = char_by_reading.get((ch, reading.lower()))
         if not cands:
             return None
-        best = max(cands, key=lambda c: (c[2], c[3]))
+        best = max(cands, key=char_rank)
         exact = [c for c in cands if c[0] == want_trad]
         if not exact:
             return best
-        chosen = max(exact, key=lambda c: (c[2], c[3]))
+        chosen = max(exact, key=char_rank)
         # 佔's own entry says only "variant of 占": keep the form, borrow the meaning
-        return chosen if chosen[2] else (chosen[0], best[1], best[2], best[3])
+        return chosen if chosen[2] else (chosen[0], best[1], best[2], best[3], chosen[4])
 
     def components(simplified: str, numbered: str = "", traditional: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
@@ -482,7 +580,8 @@ def main() -> int:
                 trad, senses = by_reading[0], by_reading[1]
             else:
                 senses = (char_meta.get(ch) or {}).get("meaning", "")
-                senses = " / ".join(p.strip() for p in senses.split("/")[:3] if p.strip())
+                senses = clean_xrefs(" / ".join(
+                    p.strip() for p in senses.split("/")[:3] if p.strip()))
                 trad = (char_meta.get(ch) or {}).get("traditional") or ch
             origin = etym_char(ch, full=False)
             if not (senses or origin):
@@ -549,6 +648,7 @@ def main() -> int:
     pos_en = {row["zh"]: row["en"] for row in
               csv.DictReader((ROOT / "data/pos-labels.csv").open(encoding="utf-8"))}
     tone_hint.__defaults__ = (groups, pos_en)
+    also_read.__defaults__ = (by_entry_all, pos_en)
 
     def pos_glossed(parts: list[str]) -> str:
         out = []
@@ -693,31 +793,112 @@ def main() -> int:
 
         return "".join(link(w) for w in out)
 
+    # Words whose entry no rule picks correctly: 京 is Beijing and not the surname
+    # Jing, 春节 is a festival and not 春 the surname, 经医生 is "after the doctor" and
+    # not a name before a title. 05_verify fails if one stops matching a sentence.
+    word_gloss = {}
+    fixes = ROOT / "data/sentence-word-glosses.csv"
+    if fixes.exists():
+        for row in csv.DictReader(fixes.open(encoding="utf-8")):
+            word_gloss[(row["chinese"], row["word"])] = row["meaning"]
+
+    def longest_match(run: str) -> list:
+        """Split a run of characters on the longest words the dictionary knows."""
+        out, i = [], 0
+        while i < len(run):
+            for n in range(min(6, len(run) - i), 0, -1):
+                if cedict_defs.get(run[i:i + n]):
+                    out.append(run[i:i + n])
+                    i += n
+                    break
+            else:
+                i += 1
+        return out
+
+    def gloss_word(sentence: str, w: str, read=(), proper=False) -> str:
+        """One entry per word, and per leftover piece of it: 读了 and 人们 are one word
+        to the reading and no word to the dictionary, and 了 and 们 are usually the
+        point of the sentence."""
+        out, i = [], 0
+        while i < len(w):
+            for n in range(len(w) - i, 0, -1):
+                piece = w[i:i + n]
+                # A syllable per character means each piece has a reading of its own;
+                # otherwise only the whole word does.
+                if len(read) == len(w):
+                    key = "".join(numbered(x) for x in read[i:i + n])
+                elif read and piece == w:
+                    key = "".join(numbered(x) for x in read)
+                else:
+                    key = ""
+                cands = (cedict_defs.get((piece, key.lower())) if key else None) \
+                    or cedict_defs.get(piece)
+                if not cands:
+                    continue
+                gloss = word_gloss.get((sentence, piece)) \
+                    or best_entry(cands, to_trad.get(piece), key, proper and i == 0)
+                trad = to_trad.get(piece, piece)
+                label = piece if trad == piece else f"{piece} ({trad})"
+                out.append(f'<div class="etymItem"><b>{label}</b> '
+                           f'{html.escape(gloss, quote=False)}</div>')
+                i += n
+                break
+            else:
+                i += 1
+        return "".join(out)
+
     def sentence_words(sentence: str) -> str:
         """Each word of the sentence with what it means, as a compound's card does for
         its characters. Words are as the checked pinyin divides them."""
         pinyin = checked.get(sentence)
         pairs = align(sentence, pinyin) if pinyin else None
         if not pairs:
-            return ""
-        words, word = [], ""
-        for text, _, starts in pairs:
+            # 24小时, 1GB, 10% -- the reading spells the number out, so nothing lines
+            # up character to syllable. The words are still worth glossing, so they
+            # are found in the dictionary instead of in the reading, and chosen
+            # without one.
+            words = [(w, ()) for run in re.findall(r"[㐀-鿿]+", sentence)
+                     for w in longest_match(run)]
+            return "".join(gloss_word(sentence, w, read) for w, read in
+                           dict.fromkeys(words))
+        words, word, reading = [], "", []
+        for text, syllable, starts in pairs:
             if starts and word:
-                words.append(word)
-                word = ""
+                words.append((word, tuple(reading)))
+                word, reading = "", []
             word += text
+            if syllable:
+                reading.append(syllable)
         if word:
-            words.append(word)
+            words.append((word, tuple(reading)))
         out = []
-        for w in dict.fromkeys(words):
-            for n in range(len(w), 0, -1):
-                gloss = cedict_defs.get(w[:n])
-                if gloss:
-                    trad = to_trad.get(w[:n], w[:n])
-                    label = w[:n] if trad == w[:n] else f"{w[:n]} ({trad})"
-                    out.append(f'<div class="etymItem"><b>{label}</b> '
-                               f'{html.escape(gloss, quote=False)}</div>')
-                    break
+        # Found in the sentence rather than counted from the words, which leaves out
+        # the punctuation: one comma is enough to make 老师和同学 look like 老 + 和.
+        at, cursor = {}, 0
+        for w, _reading in words:
+            i = sentence.find(w, cursor)
+            if i < 0:
+                i = cursor
+            at.setdefault(w, i)
+            cursor = i + len(w)
+        for w, read in dict.fromkeys(words):
+            here = at.get(w, 0)
+            key0 = "".join(numbered(x) for x in read)
+            # A card can hold more than one sentence, and the word after a full stop
+            # or an opening quote is capitalised for the same reason the first one is.
+            prev = sentence[:here].rstrip()
+            here = 0 if not prev or prev[-1] in "。！？!?：:；;“”\"'‘’（）()《》【】" else here
+            # The checked reading capitalises a name wherever it stands -- Zhāng lǎoshī,
+            # Lǎo Zhāng -- so the capital settles it, except at the start of a sentence
+            # where every word is capitalised anyway. There, a following title is what
+            # distinguishes 王老师 from 别忘了.
+            proper = (key0[:1].isupper() if here else
+                      bool(TITLE.match(sentence[here + len(w):])))
+            # 读了 and 人们 are one word to the reading and no word to the dictionary.
+            # Glossing the longest piece it knows and stopping would leave 了 and 们
+            # unexplained, and those are usually the point of the sentence, so what is
+            # left over is glossed in turn.
+            out.append(gloss_word(sentence, w, read, proper))
         return "".join(out)
 
     def gen_pinyin(sentence: str) -> str:
@@ -735,8 +916,9 @@ def main() -> int:
     tts_dir = ROOT / ".cache/tts"
     tts_index = json.loads((tts_dir / "index.json").read_text(encoding="utf-8")) \
         if (tts_dir / "index.json").exists() else {}
-    for k in list(tts_index):
-        tts_index.setdefault(unindex(k), tts_index[k])
+    # No mapping from the source text's clip to the cleaned sentence: the syllabus
+    # writes 呢1 to tell two entries apart, and a clip synthesised from that reads the
+    # digit out loud. A sentence is voiced from what the card shows or not at all.
 
     def sentence_audio(text: str) -> str:
         """No corpus records these sentences, so they are synthesised or silent."""
@@ -749,6 +931,7 @@ def main() -> int:
         return f"[sound:{got}]"
 
     seen_sentence = set()
+    wanted_audio = []
     n = 0
     for r in rows:
         lv = lvl_of(r["examLevelId"])
@@ -770,12 +953,12 @@ def main() -> int:
         point = (r["content"].strip() or r.get("grammarDetail", "").strip()
                  or r.get("categoryType", "").strip())
         for turn in grouped:
-            raws = [x[0] for x in turn]
             lines = [x[1] for x in turn]
             key = "\n".join(lines)
             if key in seen_sentence:
                 continue
             seen_sentence.add(key)
+            wanted_audio.extend(lines)
             n += 1
             join = "<br>".join
             grammar_decks[lv].add_note(genanki.Note(
@@ -800,7 +983,10 @@ def main() -> int:
                                       (r.get("grammarDetail", "").strip(),
                                        label_en(r.get("grammarDetail", ""))))
                         if v),
-                    "".join(sentence_audio(x) for x in raws),
+                    # Keyed on what the card shows, like every other field here. The
+                    # source text carries the syllabus's disambiguation digit, and a
+                    # clip made from 呢1 reads the digit out loud.
+                    "".join(sentence_audio(x) for x in lines),
                 ],
                 tags=[f"HSK3.0::sentence::L{lv}"],
             ))
@@ -852,7 +1038,7 @@ def main() -> int:
                 # 血 xiě is entered only as "see 血 xuè"; the other reading defines it
                 elsewhere = [c for c in char_any.get(ch, []) if c[2]]
                 if elsewhere:
-                    entry = max(elsewhere, key=lambda c: (c[2], c[3]))
+                    entry = max(elsewhere, key=char_rank)
             if entry:
                 heard = (char_audio.get(ch) or {}).get(numbered, {}).get("in", "")
                 out.append((marked + (f" (in {heard})" if heard else ""), entry[1]))
@@ -894,16 +1080,17 @@ def main() -> int:
                     + next((f' (in {v["in"]})'
                             for v in (char_audio.get(c) or {}).values()
                             if v.get("in")), "")),
-                ("".join(f'<div class=charSense><b>{r}</b> '
-                         f'{html.escape(m, quote=False)}</div>'
-                         for r, m in char_reading_senses(c))
-                 if len(char_reading_senses(c)) > 1
-                 else (render_senses(char_reading_senses(c)[0][1])
-                       if char_reading_senses(c)
-                       else render_senses(char_info.get(c, {}).get("meaning")
-                                          or info.get("definition") or ""))),
+                mask_answer(
+                    "".join(f'<div class=charSense><b>{r}</b> '
+                            f'{html.escape(m, quote=False)}</div>'
+                            for r, m in char_reading_senses(c))
+                    if len(char_reading_senses(c)) > 1
+                    else (render_senses(char_reading_senses(c)[0][1])
+                          if char_reading_senses(c)
+                          else render_senses(char_info.get(c, {}).get("meaning")
+                                             or info.get("definition") or "")), c),
                 clips, stroke, etym_block(c),
-                example_of(c), example_word(c),
+                mask_answer(example_of(c), c), example_word(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
         ))
@@ -925,6 +1112,16 @@ def main() -> int:
     print(f"total notes : {sum(counts.values())}")
     print(f"media files : {len(pkg.media_files)}")
     print(f"wrote {out} ({out.stat().st_size/1e6:.0f} MB)")
+
+    # What tts.py should voice, in the words the cards use. Taking the list from the
+    # build is what keeps the two in step: a sentence voiced from the syllabus's
+    # source text says the disambiguation digit in 呢1 out loud.
+    silent = [x for x in dict.fromkeys(wanted_audio) if not sentence_audio(x)]
+    (BUILD / "tts-wanted.json").write_text(
+        json.dumps({"sentences": list(dict.fromkeys(wanted_audio)),
+                    "silent": silent}, ensure_ascii=False, indent=1),
+        encoding="utf-8")
+    print(f"speech wanted: {len(set(wanted_audio))} sentences, {len(silent)} unvoiced")
     return 0
 
 

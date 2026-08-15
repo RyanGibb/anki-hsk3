@@ -16,6 +16,9 @@ import re
 import shutil
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from pinyin_align import TONE_VOWELS, numbered   # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
 MEDIA = BUILD / "media"
@@ -33,20 +36,6 @@ LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 
-TONE_VOWELS = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
-
-
-def numbered(p: str) -> str:   # noqa: D401
-    """nǔ -> nu3, which is how the syllable recordings are named."""
-    out, tone = [], "5"
-    for ch in p:
-        i = TONE_VOWELS.find(ch)
-        if i < 0:
-            out.append("v" if ch == "ü" else ch)
-        else:
-            tone = str(i % 4 + 1)
-            out.append("aeiouv"[i // 4])
-    return "".join(out) + tone
 
 
 def norm(p: str) -> str:
@@ -315,7 +304,9 @@ def main() -> int:
         if not src.exists():
             got = tts_index.get(w["simplified"])
             src = tts_dir / got if got else None
-        if not src or not src.exists():
+        # A clip the service returned empty is worse than none: the card looks
+        # voiced and plays nothing.
+        if not src or not src.exists() or src.stat().st_size < 1000:
             continue
         stage(src, src.name)
         w["audio"] = f"[sound:{src.name}]"

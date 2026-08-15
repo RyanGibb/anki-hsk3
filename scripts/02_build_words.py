@@ -38,6 +38,9 @@ CEDICT_LINE = re.compile(r"^(\S+) (\S+) \[([^]]*)\] /(.*)/$")
 CL_GLOSS = re.compile(r"^CL:(.+)$")
 CL_INLINE = re.compile(r"\(CL:([^)]*)\)")
 CL_ITEM = re.compile(r"^(?:[^|\[]+\|)?([^\[]+)(?:\[[^]]*\])?$")
+# A classifier is written as characters. "(CL: used before a noun that has no
+# specific classifier)" is prose about 个, not a list of classifiers.
+CJK_ONLY = re.compile(r"[㐀-鿿豈-﫿]+(?:、[㐀-鿿豈-﫿]+)*")
 
 
 def split_classifiers(defs: list[str]) -> tuple[list[str], str]:
@@ -49,15 +52,31 @@ def split_classifiers(defs: list[str]) -> tuple[list[str], str]:
             if n and n.group(1).strip() not in cls:
                 cls.append(n.group(1).strip())
 
+    def spec_of(d: str) -> str:
+        m = CL_INLINE.search(d)
+        return "、".join(n.group(1).strip()
+                        for item in m.group(1).split(",")
+                        if (n := CL_ITEM.match(item.strip()))) if m else ""
+
+    # CC-CEDICT states a classifier either as a sense of its own or inside one. Inside
+    # one it can belong to that sense alone -- 菜 takes 棵 as a vegetable and 盘 as a
+    # dish -- and then it has to stay where it is, next to the sense it governs. Where
+    # every sense agrees, as 歌 does on 首, it belongs in the classifier field with the
+    # ones stated separately, which is where the card looks for it.
+    inline = {s for s in (spec_of(d) for d in defs) if s}
+    lift = len(inline) == 1 and CJK_ONLY.fullmatch(next(iter(inline)))
+
     for d in defs:
         m = CL_GLOSS.match(d)
         if m:
             collect(m.group(1))
             continue
-        d = CL_INLINE.sub(lambda m: "(classifier " + "、".join(
-            n.group(1).strip()
-            for item in m.group(1).split(",")
-            if (n := CL_ITEM.match(item.strip()))) + ")", d).strip()
+        if lift:
+            d = CL_INLINE.sub("", d).replace("  ", " ").strip()
+            collect(next(iter(inline)).replace("、", ","))
+        else:
+            d = CL_INLINE.sub(lambda m: "(classifier " + spec_of(m.group(0)) + ")",
+                              d).strip()
         if d:
             keep.append(d)
     return keep, "、".join(cls)
@@ -75,7 +94,8 @@ META = re.compile(
 
 POINTER = re.compile(r"(?:variant of|also written|see) ([㐀-鿿豈-﫿]+)(?:\||\[|$)")
 POINTER_SIMP = re.compile(
-    r"(?:variant of|also written|see(?: also)?) (?:[㐀-鿿豈-﫿]+\|)?([㐀-鿿豈-﫿]+)")
+    r"(?:variant of|also written|see(?: also)?|abbr\. for) "
+    r"(?:[㐀-鿿豈-﫿]+\|)?([㐀-鿿豈-﫿]+)")
 
 
 def pointer_targets(entry) -> set[str]:
@@ -179,6 +199,18 @@ def main() -> int:
     print(f"cc-cedict simplified headwords: {len(cedict)}")
 
     punpuf = read_tsv(RAW / "punpuf_hsk_word_list.tsv")
+    # Readings the syllabus gives wrongly, where CC-CEDICT and pypinyin agree against
+    # it and the deck's own other words settle the sense: 温差 is the 差 of 时差 and
+    # 差距. Correcting the reading here fixes the card, the audio chosen for it and
+    # the sense picked for each of its characters, which all follow from it.
+    fixes = ROOT / "data/reading-fixes.csv"
+    if fixes.exists():
+        by_word = {r["word"]: r for r in csv.DictReader(fixes.open(encoding="utf-8"))}
+        for r in punpuf:
+            fix = by_word.get(r["word"])
+            if fix and r["pinyin_numbered"] == fix["was"]:
+                r["pinyin_numbered"] = fix["pinyin_numbered"]
+                r["pinyin"] = fix["pinyin"]
     chelsea = read_tsv(RAW / "chelsea_vocabulary.tsv")
 
     p_words = {r["word"] for r in punpuf}
