@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Translate the grammar points into data/grammar-point-translations.csv.
+"""Draft translations of the grammar points for data/grammar-point-translations.csv.
 
 The card names the point it is teaching. Where that name is a list of the items
 themselves -- 小—、第—, or the thirty-five adverbs of 按理、按说、百般 -- there is
@@ -7,7 +7,14 @@ nothing to translate and the sentence shows the item in use. Where it is prose
 (表示动作持续的时间) or a pattern built from grammatical terms (数词+多+量词), an
 English reader is told the category and not the point, so those go to DeepL.
 
-Run once and commit the result: the build reads the CSV, never the network. Resumable.
+The committed CSV is a draft that has been gone over by hand, and the two differ:
+a point is a pattern quoting the words it teaches, and a translator reads those
+words as text to translate, turning 借用名量词：杯 into "borrowed measure word: cup"
+and 第+数词 into "the + numeral". The characters of the pattern stay as characters,
+since the card shows the English under the Chinese it renders.
+
+A row already in the file is left alone, so this adds only what is missing, and
+what it adds is raw. The build reads the CSV, never the network.
 """
 import argparse
 import csv

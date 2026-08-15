@@ -11,7 +11,7 @@ import zipfile
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from pinyin_align import syllabify   # noqa: E402
+from pinyin_align import align, syllabify   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -152,7 +152,7 @@ def main() -> int:
     # punctuation is not one.
     checked_pinyin = ROOT / "data/grammar-pinyin.csv"
     if checked_pinyin.exists():
-        from pinyin_align import ALIGNABLE, align, numbered
+        from pinyin_align import numbered
         wrong = []
         for row in csv.DictReader(checked_pinyin.open(encoding="utf-8")):
             zh, py = row["chinese"], row["pinyin"]
@@ -225,12 +225,19 @@ def main() -> int:
         check("no writing card shows the character it asks for", not showing,
               f"{len(showing)}: {showing[:6]}" if showing else "")
 
-    # A sentence is voiced from what the card shows. The syllabus writes 呢1 to tell
-    # two entries apart, and a clip synthesised from that says the digit out loud, so
-    # a card holding a clip filed under any other text is holding the wrong sound.
+    # A sentence is voiced from what the card shows, once the notation is resolved to
+    # what a speaker would say. The syllabus writes 呢1 to tell two entries apart, and
+    # a clip synthesised from that says the digit out loud, so a card holding a clip
+    # filed under any other text is holding the wrong sound.
     tts_index = ROOT / ".cache/tts/index.json"
     if tts_index.exists() and APKG.exists():
         index = json.loads(tts_index.read_text(encoding="utf-8"))
+        said = {r["chinese"]: r["spoken"] for r in csv.DictReader(
+            (ROOT / "data/sentence-speech.csv").open(encoding="utf-8"))}
+
+        def as_said(text):
+            return said.get(text) or text.replace("（", "").replace("）", "")
+
         wrong = []
         with zipfile.ZipFile(APKG) as z:
             name = next(x for x in z.namelist() if x.startswith("collection.anki"))
@@ -244,7 +251,8 @@ def main() -> int:
                     for (f,) in con.execute("select flds from notes where mid=?",
                                             (int(mid[0]),)):
                         v = dict(zip(flds, f.split("\x1f")))
-                        want = [index.get(x) for x in v["Hanzi"].split("<br>")]
+                        want = [index.get(as_said(x))
+                                for x in v["Hanzi"].split("<br>")]
                         got = re.findall(r"\[sound:([^\]]+)\]", v["Audio"])
                         if got != [x for x in want if x]:
                             wrong.append(re.sub("<[^>]+>", "", v["Hanzi"])[:22])
@@ -304,11 +312,16 @@ def main() -> int:
     print("\nrecordings match the reading on the card")
     swac = {r["word"]: r["pinyin"] for r in csv.DictReader(
         (ROOT / "data/swac-index.csv").open(encoding="utf-8"))}
-    TONED = re.compile(r"[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]")
-    T = str.maketrans("āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ", "aaaaeeeeiiiioooouuuuüüüü")
+    V = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
+    TONED = re.compile(f"[{V}]")
+    T = str.maketrans(V, "aaaaeeeeiiiioooouuuuüüüü")
     def nm(x):
-        return (x.split("/")[0].replace(" ", "")
-                .replace("\u2019", "").replace("'", "").lower())
+        """A reading with the deck's own notation taken back out: it hyphenates the
+        halves of a four-character idiom and writes ü, the index does neither."""
+        x = x.split("/")[0].lower()
+        for mark in (" ", "\u2019", "'", "-"):
+            x = x.replace(mark, "")
+        return x.replace("u:", "ü").replace("v", "ü")
     wrong = []
     for w in words:
         m = re.findall(r"cmn-(.+?)\.mp3", w["audio"] or "")
@@ -322,13 +335,23 @@ def main() -> int:
             continue
         # 谁 is indexed sheí against the card's shéi: one syllable, one tone, the mark
         # typed on the other vowel
-        value = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
-        if [value.index(x) % 4 for x in TONED.findall(c)] == \
-                [value.index(x) % 4 for x in TONED.findall(r)]:
+        if [V.index(x) % 4 for x in TONED.findall(c)] == \
+                [V.index(x) % 4 for x in TONED.findall(r)]:
             continue
-        if (len(TONED.findall(c)) == len(TONED.findall(r))
-                and w["simplified"][:1] not in "一不"):
-            wrong.append((w["simplified"], w["pinyin"], swac[m[0]]))
+        # What is left is a tone written two ways. That is the same sound where one
+        # source writes a syllable unstressed and the other does not, and where 一 or
+        # 不 takes its sandhi, which the word may put anywhere -- 进一步, 从容不迫 --
+        # so the tones are read against the characters that carry them.
+        def toneof(syl):
+            mark = TONED.search(syl)
+            return str(V.index(mark.group()) % 4 + 1) if mark else "5"
+        ours, theirs = align(w["simplified"], c), align(w["simplified"], r)
+        if ours and theirs and len(ours) == len(theirs) and all(
+                toneof(x) == toneof(y) or "5" in (toneof(x), toneof(y))
+                or ch[:1] in "一不"
+                for (ch, x, _s), (_c, y, _t) in zip(ours, theirs)):
+            continue
+        wrong.append((w["simplified"], w["pinyin"], swac[m[0]]))
     check(f"{len(wrong)} recordings with a mismatched reading", not wrong,
           str(wrong[:4]) if wrong else "")
     shared = [(a["entry"], b["entry"], a["audio"]) for a in words for b in words
@@ -337,6 +360,77 @@ def main() -> int:
               and a["pinyin_numbered"] != b["pinyin_numbered"]]
     check("no two readings share one recording", not shared,
           str(shared[:3]) if shared else "")
+    # A borrowed recording is only as good as the index label that offered it. Where the
+    # deck also teaches the word lent from, it has its own reading of it, and the two
+    # naming different syllables means one of them is wrong -- 高大 is indexed gāodù.
+    readings = collections.defaultdict(set)
+    for w in words:
+        readings[w["simplified"]].add(nm(w["pinyin"]).translate(T))
+    borrowed = []
+    for w in words:
+        m = re.findall(r"cmn-(.+?)\.mp3", w["audio"] or "")
+        if len(m) != 1 or m[0] == w["simplified"] or m[0] not in readings:
+            continue
+        if nm(swac[m[0]]).translate(T) not in readings[m[0]]:
+            borrowed.append((w["simplified"], w["pinyin"], m[0], swac[m[0]]))
+    check(f"{len(borrowed)} recordings borrowed on a label the deck contradicts",
+          not borrowed, str(borrowed[:4]) if borrowed else "")
+    # The index is hand-written and a slip in it is silent: 高大 was indexed gāodù, which
+    # cost it its own recording and lent it to 高度. A label has to be sayable as the word
+    # it names -- every syllable a reading CC-CEDICT gives that character, allowing erhua,
+    # neutral tones and 一/不 sandhi -- unless it is one of the few where Yue Tan said
+    # something other than the word.
+    SPEAKER = {"嗯": "ǹg",            # the interjection, which CC-CEDICT gives as ēn
+               "成绩": "chéngjī"}      # 绩 as jī, the reading Taiwan standardised
+    sound = collections.defaultdict(set)
+    for line in (ROOT / "data/raw/cedict_ts.u8").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^\S+ (\S+) \[([^]]+)\]", line)
+        if m and len(m.group(1)) == len(m.group(2).split()):
+            for c, s in zip(m.group(1), m.group(2).lower().split()):
+                sound[c].add(s.replace("u:", "v"))
+
+    def one(syl: str) -> str:
+        """A syllable as CC-CEDICT writes it: letters, then its tone, 5 for none."""
+        syl = nm(syl)
+        tone = [str(V.index(c) % 4 + 1) for c in syl if c in V]
+        return (re.sub(r"[^a-zü]", "", syl.translate(T)).replace("ü", "v")
+                + (tone[0] if tone else "5"))
+
+    def sayable(char: str, syl: str) -> bool:
+        said = {one(syl)}
+        if char.endswith("儿") and len(char) > 1:      # 个儿 gèr, 女儿 nǚér
+            said |= {re.sub(end, "", s) for s in said for end in (r"r(?=\d$)",
+                                                                 r"er(?=\d$)")}
+        return any(s == x                                        # as written
+                   or (s[-1] == "5" and s[:-1] == x[:-1])        # said unstressed
+                   or (char[0] in "一不" and s[:-1] == x[:-1])    # sandhi
+                   for s in said for x in sound[char[0]])
+
+    unsayable = []
+    for word, pron in swac.items():
+        if "_" in word or SPEAKER.get(word) == pron:
+            continue
+        pairs = align(word, pron)
+        if pairs is None:
+            unsayable.append((word, pron, "does not divide into syllables"))
+            continue
+        for char, syl, _start in pairs:
+            if sound[char[0]] and not sayable(char, syl):
+                unsayable.append((word, pron, f"{char[0]} does not say {syl}"))
+                break
+    check(f"{len(unsayable)} recordings indexed as saying something the word cannot",
+          not unsayable, str(unsayable[:4]) if unsayable else "")
+
+    # A voice says a slash and a bracket as though they were words: 同学们在/正在上课
+    # came back spoken 同学们在正在上课. Nothing queued for speech may carry the
+    # syllabus's notation, and data/sentence-speech.csv resolves what dropping the
+    # brackets cannot -- a word to choose between, or a label naming the point.
+    wanted = json.loads((BUILD / "tts-wanted.json").read_text(encoding="utf-8"))
+    notated = [x for x in wanted["sentences"] if set("/（）") & set(x)]
+    check(f"{len(notated)} sentences go to the voice carrying notation", not notated,
+          str(notated[:3]) if notated else "")
+    check(f"{len(wanted['silent'])} sentences the voice has not said",
+          not wanted["silent"], str(wanted["silent"][:3]) if wanted["silent"] else "")
 
     print("\npackage integrity")
     check("apkg exists", APKG.exists())

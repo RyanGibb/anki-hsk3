@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Attach audio and stroke diagrams; stage the files in build/media.
 
-Audio is matched by READING, not spelling: Yue Tan recorded 还 as huàn, the card reads
-hái. Readings come from data/swac-index.csv; the mp3s carry no tags.
+Audio is matched by READING, not spelling: Yue Tan read 还 as huán, so the card that
+teaches it as hái cannot use that recording. Readings come from data/swac-index.csv;
+the mp3s carry no tags.
 
 Stages the whole corpus into build/media; the package takes only what is referenced,
 so the rest is there to copy in by hand.
@@ -17,7 +18,7 @@ import shutil
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from pinyin_align import TONE_VOWELS, numbered   # noqa: E402
+from pinyin_align import TONE_VOWELS, align, numbered   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -39,12 +40,21 @@ CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 
 def norm(p: str) -> str:
-    return p.split("/")[0].replace(" ", "").replace("\u2019", "").replace("'", "").lower()
+    """A reading reduced to what was said.
+
+    The deck's notation is not the corpus's: it divides the halves of a four-character
+    idiom with a hyphen (ch\u00e9ngqi\u0101n-sh\u00e0ngw\u00e0n) and writes \u00fc, where the index runs the
+    syllables together and types \u00fc as v. None of that is audible.
+    """
+    p = p.split("/")[0].lower()
+    for mark in (" ", "\u2019", "'", "-"):
+        p = p.replace(mark, "")
+    return p.replace("u:", "\u00fc").replace("v", "\u00fc")
 
 
 # Two notation differences, worth ~130 recordings: sandhi (一半 yíbàn vs yībàn) and
-# neutral tones (cōngmíng/cōngming). Those two only: ignoring tones wholesale matches
-# 背包 to a bèibāo recording, a different word.
+# neutral tones (cōngmíng/cōngming). Those two only: ignoring tones wholesale would put
+# 被子 bèizi on 杯子 bēizi's card, and a quilt is not a cup.
 TONE_MARKS = str.maketrans("āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ", "aaaaeeeeiiiioooouuuuüüüü")
 TONED = re.compile(r"[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]")
 
@@ -54,6 +64,21 @@ TONE_VALUE = {c: str(i % 4 + 1) for i, c in enumerate(TONE_VOWELS)}
 
 def toneless(p: str) -> str:
     return norm(p).translate(TONE_MARKS)
+
+
+def tones(word: str, reading: str):
+    """[(character, tone)] for a reading, or None if it will not divide into syllables.
+
+    5 for a syllable written without a mark, as the dictionaries number a neutral tone.
+    """
+    pairs = align(word, norm(reading))
+    if not pairs:
+        return None
+    out = []
+    for char, syl, _starts in pairs:
+        mark = TONED.search(syl)
+        out.append((char, TONE_VALUE[mark.group()] if mark else "5"))
+    return out
 
 
 def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> bool:
@@ -68,15 +93,19 @@ def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> boo
         return True
     if strict or toneless(card) != toneless(recorded):
         return False
+    # The syllables now differ only in their tone marks. Two differences are the
+    # notation and not the speaker: a syllable written unstressed by one source and
+    # not the other, and the sandhi of 一 and 不, which sit wherever the word puts
+    # them -- 进一步, 从容不迫 -- so the tones are read against the characters.
+    ours, theirs = tones(word, card), tones(word, recorded)
+    if ours and theirs and len(ours) == len(theirs):
+        return all(x == y or "5" in (x, y) or char[:1] in "一不"
+                   for (char, x), (_, y) in zip(ours, theirs))
     a, b = TONED.findall(norm(card)), TONED.findall(norm(recorded))
     # sheí and shéi are the same syllable with the mark typed on a different vowel
     if [TONE_VALUE[x] for x in a] == [TONE_VALUE[x] for x in b]:
         return True
-    if len(a) != len(b):
-        return True                        # neutral tone
-    if word[:1] in "一不" and a[1:] == b[1:]:
-        return True                        # sandhi
-    return False
+    return len(a) != len(b)                # neutral tone
 
 
 def stage(src: pathlib.Path, name: str) -> None:
@@ -131,6 +160,10 @@ def main() -> int:
                         and o["pinyin_numbered"] != x["pinyin_numbered"]
                         for o in words)}
 
+    deck_readings: dict[str, list[str]] = collections.defaultdict(list)
+    for w in words:
+        deck_readings[w["simplified"]].append(w["pinyin"])
+
     for w in words:
         simp = w["simplified"]
         want = norm(w["pinyin"])
@@ -144,6 +177,14 @@ def main() -> int:
             kind = "audio-cmn (Yue Tan)"
         else:
             for alt in by_reading.get(want, []):
+                # A substitution rests entirely on the index label, so where the deck
+                # also teaches the word lent from, the deck's reading of it has to
+                # agree with that label. The index calls cmn-高大.mp3 gāodù; the deck
+                # reads 高大 gāodà, and one of the two is wrong, so the file is not
+                # evidence of how gāodù sounds.
+                theirs = deck_readings.get(alt)
+                if theirs and not any(same_sound(t, swac[alt], alt) for t in theirs):
+                    continue
                 if alt in cmn:
                     source = alt
                     kind = "audio-cmn (homophone)"
