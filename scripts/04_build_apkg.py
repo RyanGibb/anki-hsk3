@@ -42,7 +42,7 @@ def tpl(name: str) -> str:
 VOCAB_FIELDS = ["Key", "Level", "Simplified", "Sense", "Traditional", "Pinyin",
                 "PinyinNumbered", "Meaning", "PartOfSpeech", "PartOfSpeechGlossed",
                 "Classifier", "Audio",
-                "Homophones", "Homographs", "StrokeOrder", "Etymology",
+                "Homophones", "Homographs", "StrokeOrder",
                 "Components", "Literal", "PartOrigins"]
 
 vocab_model = genanki.Model(
@@ -86,7 +86,7 @@ char_model = genanki.Model(
     MID_CHAR, "HSK 3.0 Character",
     fields=[{"name": f} for f in
             ["Key", "Simplified", "Level", "WritingLevel", "Traditional", "Pinyin",
-             "Meaning", "Audio", "StrokeOrder", "Etymology", "Example",
+             "Meaning", "Audio", "StrokeOrder", "GlyphOrigin", "Example",
              "ExampleWord", "PartOrigins"]],
     css=tpl("style.css"),
     # Writing only: all 3,088 recognition characters appear in a vocabulary word.
@@ -579,9 +579,16 @@ def load_etymology():
         block = (f'<div class="later"><b><a href="https://en.wiktionary.org/wiki/'
                  f'{ch}#Chinese">{ch}</a></b> {tidy(later)}</div>'
                  if later and later not in head else "")
-        if not full or i >= len(ps):
+        # The paragraphs after the lead wander off the shape and into the word: 礼
+        # continues "Uncertain. Schuessler (2007) proposes that this is an old areal
+        # etymon. Compare Tibetan ཞེ་ས", and elsewhere into Peng'im romanisations and
+        # notes on where traditional characters are used. A card asking where a glyph
+        # came from wants none of it, so each paragraph faces the same test the section
+        # did. Of 3,376, some 800 are about the shape.
+        tail = [p for _, p in ps[i:] if about_the_glyph(p, "")]
+        if not full or not tail:
             return head + block
-        rest = " ".join(html.escape(p, quote=False) for _, p in ps[i:])
+        rest = " ".join(html.escape(p, quote=False) for p in tail)
         return f'{head}<div class="more">{rest}</div>{block}'
 
     return one
@@ -767,7 +774,7 @@ def main() -> int:
                     f'{link_words(html.escape(senses, quote=False))}')
             if origin:
                 body += f'<div class=origin>{origin}</div>'
-            out.append(f'<div class="etymItem">{body}</div>')
+            out.append(f'<div class="gloss">{body}</div>')
         return "".join(out)
 
     # A compound's origin names what it is built from -- 纸 is semantic 糸 plus phonetic
@@ -863,7 +870,7 @@ def main() -> int:
             body = f'<b>{label_link(label, trad)}</b> '
             if senses:
                 body += link_words(html.escape(senses, quote=False))
-            out.append(f'<div class="etymItem">{body}'
+            out.append(f'<div class="gloss">{body}'
                        f'<div class=origin>{origin}</div></div>')
         return "".join(out)
 
@@ -921,13 +928,41 @@ def main() -> int:
                 out.append((e["word"], e["pinyin"], short_gloss(e["meaning"])))
         return out
 
-    def example_of(ch: str) -> str:
-        """The examples with no characters, for the side that asks you to write it."""
+    # Every word the deck teaches that uses the character. The card named one of them,
+    # and one is not what a character is met in: 物 is 动物 and 动物园 and 礼物, and which
+    # of those a reader knows it from is not the syllabus's to decide. Kept to the level
+    # being written and below, because a character written at HSK 3 is not helped by a
+    # word from 7-9 and the tail is long unbounded -- 不 is in 172 words and 子 in 127,
+    # against 5 and 11 at or below where they are written.
+    words_using: dict[str, list] = collections.defaultdict(list)
+    for w in words:
+        if len(w["simplified"]) > 1:
+            for c in dict.fromkeys(w["simplified"]):
+                words_using[c].append((LEVELS.index(w["level"]), int(w["key"]),
+                                       w["simplified"], w["pinyin"],
+                                       short_gloss(w["meaning"])))
+    for seen_in in words_using.values():
+        seen_in.sort()
+
+    def also_seen(ch: str, level: str) -> list:
+        """The rest of the words at or below this level that use the character."""
+        cap = LEVELS.index(level) if level in LEVELS else len(LEVELS) - 1
+        already = {w for w, _p, _m in examples_of(ch)}
+        return [(w, p, m) for lvl, _key, w, p, m in words_using.get(ch, [])
+                if lvl <= cap and w not in already]
+
+    def example_of(ch: str, level: str = "") -> str:
+        """The examples with no characters, for the side that asks you to write it.
+
+        The same words the answer gives, so the two sides say the same thing about
+        where the character is met; only the characters are held back, since writing
+        one of them is what is being asked.
+        """
         return "".join(
             f'<div class=example>as in <span class=exPinyin>'
             f'{html.escape(p, quote=False)}</span> &mdash; '
             f'{html.escape(m, quote=False)}</div>'
-            for _, p, m in examples_of(ch))
+            for _, p, m in examples_of(ch) + (also_seen(ch, level) if level else []))
 
     def etym_block(ch: str) -> str:
         """The character and its origin, in the same shape the vocabulary cards use:
@@ -937,15 +972,20 @@ def main() -> int:
             return ""
         trad = (char_meta.get(ch) or {}).get("traditional") or ch
         label = ch if trad == ch else f"{ch} ({trad})"
-        return f'<div class="etymItem"><b>{label_link(label, trad)}</b> {origin}</div>'
+        return f'<div class="gloss"><b>{label_link(label, trad)}</b> {origin}</div>'
 
-    def example_word(ch: str) -> str:
-        """The same examples with their characters, for the side that has answered."""
+    def example_word(ch: str, level: str = "") -> str:
+        """The same examples with their characters, for the side that has answered.
+
+        Every word is written out the same way, one to a line. A list of bare words
+        after them -- also in 动物园 · 礼物 -- reads as an afterthought and asks the
+        reader to hold three things at once; the same three lines read as three.
+        """
         return "".join(
             f'<div class=example>as in <b>{link_words(html.escape(w, quote=False))}</b> '
             f'<span class=exPinyin>{html.escape(p, quote=False)}</span> &mdash; '
             f'{html.escape(m, quote=False)}</div>'
-            for w, p, m in examples_of(ch))
+            for w, p, m in examples_of(ch) + (also_seen(ch, level) if level else []))
 
     vocab_decks = {lv: deck("vocab", lv) for lv in LEVELS}
     pos_en = {row["zh"]: row["en"] for row in
@@ -986,7 +1026,7 @@ def main() -> int:
                 "、".join(w["pos"]), pos_glossed(w["pos"]),
                 link_words(w.get("classifier", "")), w["audio"],
                 link_words(" ".join(w["homophone"][:12])), also_read(w),
-                w["stroke_order"], "",
+                w["stroke_order"],
                 components(w["simplified"], w["pinyin_numbered"], w["traditional"]),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
                 part_origins(w["simplified"]),
@@ -1140,7 +1180,7 @@ def main() -> int:
                     or best_entry(cands, to_trad.get(piece), key, proper and i == 0)
                 trad = to_trad.get(piece, piece)
                 label = piece if trad == piece else f"{piece} ({trad})"
-                out.append(f'<div class="etymItem"><b>{label_link(label, trad)}</b> '
+                out.append(f'<div class="gloss"><b>{label_link(label, trad)}</b> '
                            f'{link_words(html.escape(gloss, quote=False))}</div>')
                 i += n
                 break
@@ -1433,7 +1473,8 @@ def main() -> int:
                           else render_senses(char_info.get(c, {}).get("meaning")
                                              or info.get("definition") or "")), c),
                 clips, stroke, etym_block(c),
-                mask_answer(example_of(c), c), example_word(c),
+                mask_answer(example_of(c, lv), c),
+                example_word(c, lv),
                 part_origins(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
