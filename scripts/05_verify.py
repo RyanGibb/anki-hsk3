@@ -108,6 +108,32 @@ def main() -> int:
               if len(g) > 1 and len({x["meaning"] for x in g}) == 1]
     check(f"{len(groups) - len(shared)}/{len(groups)} groups distinct", not shared,
           ", ".join(shared) if shared else "")
+    # A hand-split gloss divides its dictionary entry between the cards rather than
+    # choosing from it: every sense the dictionary gives 本 is taught by 本1 or by 本2,
+    # and by only one of them. Senses are matched verbatim, so data/homograph-glosses.csv
+    # has to hold CC-CEDICT's exact wording and not a tidied version of it.
+    invented, lost = [], []
+    for simp, g in groups.items():
+        curated = [w for w in g if w["meaning_source"] == "curated"]
+        for w in curated:
+            full = [s for s in w["meaning_full"].split("/") if s]
+            invented += [f"{w['entry']}: {s[:32]}"
+                         for s in w["meaning"].split("/") if s and s not in full]
+        # Entries the adjudicator gave separate dictionary entries (面 against 麵) have
+        # no single sense list to divide, so only words sharing one can be checked.
+        shared_entry = len({w["meaning_full"] for w in g}) == 1
+        if not curated or not shared_entry:
+            continue
+        claimed = [s for w in curated for s in w["meaning"].split("/") if s]
+        for s in (x for x in curated[0]["meaning_full"].split("/") if x):
+            if claimed.count(s) != 1:
+                lost.append(f"{simp}: {'unclaimed' if not claimed.count(s) else 'twice'}"
+                            f" {s[:32]}")
+    check("no curated gloss invents a sense", not invented,
+          f"{len(invented)}: {invented[:3]}" if invented else "")
+    check("every sense of a split word is taught by exactly one of its cards", not lost,
+          f"{len(lost)}: {lost[:3]}" if lost else "")
+
     leaked = [w["entry"] for w in words if "CL:" in w["meaning"]]
     check("no CL: notation left in definitions", not leaked,
           f"{len(leaked)} leaked" if leaked else "")
