@@ -511,11 +511,33 @@ def main() -> int:
 
             check("all media references resolve", not missing,
                   f"{len(missing)} dangling" if missing else "")
-            check("no unreferenced media bundled", bundled == refs,
-                  f"{len(bundled - refs)} extra" if bundled - refs else "")
+            # A name beginning with an underscore is Anki's way of saying a template
+            # refers to the file rather than a note: the card CSS names the fonts, and
+            # no note ever will.
+            extra = {x for x in bundled - refs if not x.startswith("_")}
+            styled = sorted(bundled - refs - extra)
+            check("no unreferenced media bundled", not extra,
+                  f"{len(extra)} extra" if extra else "")
+            check(f"{len(styled)} files the templates name", True,
+                  ", ".join(styled) if styled else "")
             if missing:
                 print("        e.g.", sorted(missing)[:5])
             con.close()
+
+    # Fields are linked in the rendering and again where a word is named, and a link
+    # inside a link renders as broken markup rather than as a link.
+    with zipfile.ZipFile(APKG) as z:
+        name = next(x for x in z.namelist() if x.startswith("collection.anki"))
+        with tempfile.TemporaryDirectory() as td:
+            z.extract(name, td)
+            con = sqlite3.connect(pathlib.Path(td) / name)
+            nested = unbalanced = 0
+            for (f,) in con.execute("select flds from notes"):
+                nested += bool(re.search(r"<a\b[^>]*>(?:(?!</a>).)*<a\b", f))
+                unbalanced += f.count("<a ") != f.count("</a>")
+            con.close()
+    check(f"{nested} notes with a link inside a link", not nested)
+    check(f"{unbalanced} notes with an unclosed link", not unbalanced)
 
     print("\ntone marks sit where the rules put them")
     # a or e takes it; failing that the o of ou; failing that the last vowel

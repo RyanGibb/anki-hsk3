@@ -1,39 +1,43 @@
-:root {
-  --link: #1666c0;
+/* Glyphs for the parts a character is built from, which ordinary fonts lack. Cut from
+   Plangothic to just what the cards use, so a phone renders 亼 as readily as a desktop
+   with the whole font installed. */
+@font-face {
+  font-family: "Rare CJK";
+  src: url("_rare-cjk-0.woff2") format("woff2");
 }
-
-.nightMode, .night_mode {
-  --link: #6cf;
+@font-face {
+  font-family: "Rare CJK 2";
+  src: url("_rare-cjk-1.woff2") format("woff2");
 }
 
 .card {
-    font-family: arial;
+    font-family: "Rare CJK", "Rare CJK 2", arial;
     font-size: 10px;
     text-align: center;
 }
 
 .hanzi {
-    font-family: SimSun;
+    font-family: "Rare CJK", "Rare CJK 2", SimSun;
     font-size: 60px;
 }
 
 .pinyin {
-    font-family: Gentium Plus;
+    font-family: "Rare CJK", "Rare CJK 2", Gentium Plus;
     font-size: 22px;
 }
 
 .english {
-    font-family: Georgia;
+    font-family: "Rare CJK", "Rare CJK 2", Georgia;
     font-size: 16px;
 }
 
 .sentence{
-    font-family: SimSun;
+    font-family: "Rare CJK", "Rare CJK 2", SimSun;
     font-size: 24px;
 }
 
 .description{
-    font-family: Georgia;
+    font-family: "Rare CJK", "Rare CJK 2", Georgia;
     font-size: 16px;
     opacity: 0.65;
 }
@@ -65,25 +69,21 @@
 }
 
 a {
-  color: var(--link);
-  text-decoration: none;
-}
-
-.hanzi a {
   color: inherit;
+  text-decoration: none;
 }
 
 a:hover {
   text-decoration: underline;
 }
 .homograph {
-    font-family: Georgia;
+    font-family: "Rare CJK", "Rare CJK 2", Georgia;
     font-size: 14px;
     opacity: 0.55;
 }
 
 .examples {
-    font-family: SimSun;
+    font-family: "Rare CJK", "Rare CJK 2", SimSun;
     font-size: 22px;
     text-align: left;
     display: inline-block;
@@ -133,7 +133,7 @@ img.stroke {
 }
 
 .en {
-  font-family: Georgia;
+  font-family: "Rare CJK", "Rare CJK 2", Georgia;
   opacity: 0.6;
 }
 
@@ -144,13 +144,13 @@ img.stroke {
 }
 
 .pinyinSen {
-  font-family: Gentium Plus;
+  font-family: "Rare CJK", "Rare CJK 2", Gentium Plus;
   font-size: 0.72em;
   opacity: 0.7;
 }
 
 .etym {
-  font-family: Georgia;
+  font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 13px;
   text-align: left;
   max-width: min(34em, 94vw);
@@ -161,22 +161,22 @@ img.stroke {
 .etymItem { margin: 4px 0; }
 
 .example {
-  font-family: Georgia;
+  font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 15px;
   opacity: 0.7;
   margin-top: 6px;
 }
 
-.exPinyin { font-family: Gentium Plus; }
+.exPinyin { font-family: "Rare CJK", "Rare CJK 2", Gentium Plus; }
 
 .meaningSen {
-  font-family: Georgia;
+  font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 0.72em;
   opacity: 0.65;
 }
 
 .literal {
-  font-family: Georgia;
+  font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 15px;
   opacity: 0.7;
   margin-top: 6px;
@@ -194,11 +194,6 @@ img.stroke {
   margin-top: -6px;
 }
 
-.examples a, .sentence a {
-  color: inherit;
-  text-decoration: none;
-}
-
 .charSense { margin: 2px 0; }
 
 /* A gloss that quotes the character being written would give the answer away, so the
@@ -210,3 +205,7 @@ img.stroke {
   border-radius: 3px;
   padding: 0 0.15em;
 }
+
+/* The parts a character is built from sit under the strokes, so a long account of
+   them never pushes the character's own off the screen. */
+.parts { margin-top: 1.2em; }

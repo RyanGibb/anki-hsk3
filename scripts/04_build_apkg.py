@@ -43,7 +43,7 @@ VOCAB_FIELDS = ["Key", "Level", "Simplified", "Sense", "Traditional", "Pinyin",
                 "PinyinNumbered", "Meaning", "PartOfSpeech", "PartOfSpeechGlossed",
                 "Classifier", "Audio",
                 "Homophones", "Homographs", "StrokeOrder", "Etymology",
-                "Components", "Literal"]
+                "Components", "Literal", "PartOrigins"]
 
 vocab_model = genanki.Model(
     MID_VOCAB, "HSK 3.0 Vocabulary",
@@ -87,7 +87,7 @@ char_model = genanki.Model(
     fields=[{"name": f} for f in
             ["Key", "Simplified", "Level", "WritingLevel", "Traditional", "Pinyin",
              "Meaning", "Audio", "StrokeOrder", "Etymology", "Example",
-             "ExampleWord"]],
+             "ExampleWord", "PartOrigins"]],
     css=tpl("style.css"),
     # Writing only: all 3,088 recognition characters appear in a vocabulary word.
     templates=[{
@@ -508,6 +508,59 @@ def main() -> int:
         if m and m.group(2) not in to_trad:
             to_trad[m.group(2)] = m.group(1)
     to_trad.update({w["simplified"]: w["traditional"] for w in words})
+
+    def link(w: str) -> str:
+        """A pinyin word is not always a dictionary word: 吃了 is written chīle but
+        Wiktionary has no page for it, so 吃 and 了 are linked in turn. Leaving the
+        remainder as plain text would leave the aspect particles unlinked, and they
+        are usually what the sentence is teaching."""
+        if not w or not CJK.match(w[0]):
+            return w
+        for n in range(len(w), 0, -1):
+            if w[:n] in to_trad:
+                head = to_trad[w[:n]]
+                return (f'<a href="https://en.wiktionary.org/wiki/{head}#Chinese">'
+                        f'{w[:n]}</a>' + link(w[n:]))
+        return w[0] + link(w[1:])
+
+    def link_run(run: str) -> str:
+        """Words found in the dictionary rather than in the reading, for a
+        sentence whose reading cannot be aligned: 24小时 and 1GB spell their
+        numbers out, so nothing lines up character to syllable. Every character
+        is kept, linked or not."""
+        out, i = [], 0
+        while i < len(run):
+            if not CJK.match(run[i]):
+                out.append(html.escape(run[i], quote=False))
+                i += 1
+                continue
+            for n in range(min(6, len(run) - i), 0, -1):
+                if run[i:i + n] in to_trad:
+                    out.append(link(run[i:i + n]))
+                    i += n
+                    break
+            else:
+                out.append(html.escape(run[i], quote=False))
+                i += 1
+        return "".join(out)
+
+    CJK_RUN = re.compile(r"[㐀-鿿豈-﫿]+")
+
+    def link_words(fragment: str) -> str:
+        """The Chinese in a rendered field, linked, leaving the field's own markup be.
+
+        A classifier, a homophone, the 大姐 a gloss illustrates itself with -- each is a
+        word the deck elsewhere teaches, and each was flat text. The fields hold HTML by
+        this point, and a link's href is Chinese as well, so only what lies between the
+        tags is linked.
+        """
+        out, at = [], 0
+        for m in re.finditer(r"<[^>]+>", fragment):
+            out.append(CJK_RUN.sub(lambda x: link(x.group()), fragment[at:m.start()]))
+            out.append(m.group(0))
+            at = m.end()
+        out.append(CJK_RUN.sub(lambda x: link(x.group()), fragment[at:]))
+        return "".join(out)
     char_by_reading = {}
     char_any = {}
     cedict_defs = {}
@@ -606,10 +659,52 @@ def main() -> int:
             if not (senses or origin):
                 continue
             label = ch if trad == ch else f"{ch} ({trad})"
-            body = f'<b>{label}</b> {html.escape(senses, quote=False)}'
+            body = (f'<b>{link_words(label)}</b> '
+                    f'{link_words(html.escape(senses, quote=False))}')
             if origin:
                 body += f'<div class=origin>{origin}</div>'
             out.append(f'<div class="etymItem">{body}</div>')
+        return "".join(out)
+
+    # A compound's origin names what it is built from -- 纸 is semantic 糸 plus phonetic
+    # 氏 -- and those parts have origins of their own, which is where the account of the
+    # character actually bottoms out. Only the first clause is read: the prose after it
+    # compares the character to others, so 氏 mentions 氐, 低, 昏, 柢 and 匕, none of
+    # which it is made of. The walk stops of its own accord, at a pictogram or at a part
+    # Wiktionary has nothing to say about.
+    ROLE = re.compile(r"\b(?:semantic|phonetic)\s+([㐀-鿿豈-﫿])")
+    PLUS = re.compile(r"([㐀-鿿豈-﫿])\s*\+\s*([㐀-鿿豈-﫿])")
+
+    def made_of(ch: str) -> list:
+        text = etym_char(ch, full=True) or ""
+        head = re.split(r'<div class="more">', text)[0].split(". ")[0]
+        found = ROLE.findall(head) or [c for pair in PLUS.findall(head) for c in pair]
+        return [c for c in dict.fromkeys(found) if c != ch]
+
+    def part_origins(simplified: str) -> str:
+        """The origins of the parts, and of their parts, under the word's own."""
+        seen = {c for c in simplified if CJK.match(c)}
+        queue = [c for ch in simplified if CJK.match(ch) for c in made_of(ch)]
+        out = []
+        while queue:
+            ch = queue.pop(0)
+            if ch in seen:
+                continue
+            seen.add(ch)
+            queue += made_of(ch)
+            origin = etym_char(ch, full=False)
+            if not origin:
+                continue
+            senses = clean_xrefs(" / ".join(
+                p.strip() for p in
+                (char_meta.get(ch) or {}).get("meaning", "").split("/")[:2] if p.strip()))
+            trad = (char_meta.get(ch) or {}).get("traditional") or ch
+            label = ch if trad == ch else f"{ch} ({trad})"
+            body = f'<b>{link_words(label)}</b> '
+            if senses:
+                body += link_words(html.escape(senses, quote=False))
+            out.append(f'<div class="etymItem">{body}'
+                       f'<div class=origin>{origin}</div></div>')
         return "".join(out)
 
     # The earliest word in which a character is read a given way. 地 is 地铁 as dì and
@@ -682,12 +777,12 @@ def main() -> int:
             return ""
         trad = (char_meta.get(ch) or {}).get("traditional") or ch
         label = ch if trad == ch else f"{ch} ({trad})"
-        return f'<div class="etymItem"><b>{label}</b> {origin}</div>'
+        return f'<div class="etymItem"><b>{link_words(label)}</b> {origin}</div>'
 
     def example_word(ch: str) -> str:
         """The same examples with their characters, for the side that has answered."""
         return "".join(
-            f'<div class=example>as in <b>{html.escape(w, quote=False)}</b> '
+            f'<div class=example>as in <b>{link_words(html.escape(w, quote=False))}</b> '
             f'<span class=exPinyin>{html.escape(p, quote=False)}</span> &mdash; '
             f'{html.escape(m, quote=False)}</div>'
             for w, p, m in examples_of(ch))
@@ -727,13 +822,14 @@ def main() -> int:
             fields=[
                 w["key"], w["level"], w["simplified"], tone_hint(w),
                 w["traditional"], spoken(w["pinyin"]), w["pinyin_numbered"],
-                render_senses(w["meaning"]),
+                link_words(render_senses(w["meaning"])),
                 "、".join(w["pos"]), pos_glossed(w["pos"]),
-                w.get("classifier", ""), w["audio"],
-                " ".join(w["homophone"][:12]), also_read(w),
+                link_words(w.get("classifier", "")), w["audio"],
+                link_words(" ".join(w["homophone"][:12])), also_read(w),
                 w["stroke_order"], "",
                 components(w["simplified"], w["pinyin_numbered"], w["traditional"]),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
+                part_origins(w["simplified"]),
             ],
             tags=tags,
         )
@@ -804,41 +900,6 @@ def main() -> int:
         says so. A sentence whose reading was generated rather than checked is left
         alone.
         """
-        def link(w: str) -> str:
-            """A pinyin word is not always a dictionary word: 吃了 is written chīle but
-            Wiktionary has no page for it, so 吃 and 了 are linked in turn. Leaving the
-            remainder as plain text would leave the aspect particles unlinked, and they
-            are usually what the sentence is teaching."""
-            if not w or not CJK.match(w[0]):
-                return w
-            for n in range(len(w), 0, -1):
-                if w[:n] in to_trad:
-                    head = to_trad[w[:n]]
-                    return (f'<a href="https://en.wiktionary.org/wiki/{head}#Chinese">'
-                            f'{w[:n]}</a>' + link(w[n:]))
-            return w[0] + link(w[1:])
-
-        def link_run(run: str) -> str:
-            """Words found in the dictionary rather than in the reading, for a
-            sentence whose reading cannot be aligned: 24小时 and 1GB spell their
-            numbers out, so nothing lines up character to syllable. Every character
-            is kept, linked or not."""
-            out, i = [], 0
-            while i < len(run):
-                if not CJK.match(run[i]):
-                    out.append(html.escape(run[i], quote=False))
-                    i += 1
-                    continue
-                for n in range(min(6, len(run) - i), 0, -1):
-                    if run[i:i + n] in to_trad:
-                        out.append(link(run[i:i + n]))
-                        i += n
-                        break
-                else:
-                    out.append(html.escape(run[i], quote=False))
-                    i += 1
-            return "".join(out)
-
         pinyin = checked.get(sentence)
         pairs = align(sentence, pinyin) if pinyin else None
         if not pairs:
@@ -919,8 +980,8 @@ def main() -> int:
                     or best_entry(cands, to_trad.get(piece), key, proper and i == 0)
                 trad = to_trad.get(piece, piece)
                 label = piece if trad == piece else f"{piece} ({trad})"
-                out.append(f'<div class="etymItem"><b>{label}</b> '
-                           f'{html.escape(gloss, quote=False)}</div>')
+                out.append(f'<div class="etymItem"><b>{link_words(label)}</b> '
+                           f'{link_words(html.escape(gloss, quote=False))}</div>')
                 i += n
                 break
             else:
@@ -1213,12 +1274,21 @@ def main() -> int:
                                              or info.get("definition") or "")), c),
                 clips, stroke, etym_block(c),
                 mask_answer(example_of(c), c), example_word(c),
+                part_origins(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
         ))
     decks += list(char_decks.values())
 
     pkg = genanki.Package(decks)
+    # The cards name glyphs no ordinary font carries -- 亼 and the rest of what a
+    # character is built from -- so the deck brings them itself, cut down to the ones
+    # it uses by scripts/make-font-subset.py. The leading underscore is how a media
+    # file says a template refers to it rather than a note.
+    for font in sorted((ROOT / "data/fonts").glob("_*.woff2")):
+        shutil.copy2(font, MEDIA / font.name)
+        media.add(font.name)
+
     staged = {p.name for p in MEDIA.iterdir() if p.is_file()}
     missing = sorted(media - staged)
     if missing:
