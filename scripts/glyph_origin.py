@@ -13,10 +13,23 @@ LOAN = re.compile(
     r"^\s*(?:Borrowed from|From English|From Japanese|From Proto-|Transliteration"
     r"|Orthographic borrowing|Phonetic (?:adaptation|transcription)|Calque|Clipping"
     r"|Abbreviation of|Contraction of)\b|transliteration of", re.I)
-# Vocabulary that only appears when the shape itself is being described.
+# Vocabulary that only appears when the shape itself is being described. Not every
+# account names a 六書 class: 司 is "a mouth 口 giving orders and a scepter 刁", 亻 is
+# "a stylization of 人", and 丐 is "a corruption of 匄". Each says where the shape came
+# from without using any of the words a classification would.
 GRAPH = re.compile(
     r"compound|pictogram|ideogram|phonetic|semantic|component|oracle|bronze"
-    r"|seal script|simplif|cursive|変|变体|variant form|radical|stroke", re.I)
+    r"|seal script|simplif|cursive|変|变体|variant form|radical|stroke"
+    r"|styliz|stylis|corrupt|same character|original form|proto-form|glyph|graph\b"
+    r"|Shuowen|說文|说文|interpret|inverted|depict|clerical script|this character",
+    re.I)
+
+
+# wiktextract renders a glyph it cannot reproduce as nothing at all, so an account
+# that consists of pointing at one comes through as "Derived from its seal script
+# form, ." -- a sentence whose subject was dropped. Only where that is the whole of it:
+# 騎 loses a reference midway through 2,349 characters that say plenty besides.
+LOST_REFERENCE = re.compile(r"[,:]\s*\.\s*$")
 
 
 def about_the_glyph(text: str, liushu: str = "") -> bool:
@@ -31,6 +44,8 @@ def about_the_glyph(text: str, liushu: str = "") -> bool:
     if liushu:
         return True
     if not text or LOAN.search(text):
+        return False
+    if len(text) < 120 and LOST_REFERENCE.search(text):
         return False
     return bool(GRAPH.search(text))
 

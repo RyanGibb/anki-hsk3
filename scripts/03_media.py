@@ -32,6 +32,9 @@ MMAH = (pathlib.Path(os.environ.get("MAKEMEAHANZI", "~/projects/makemeahanzi"))
         .expanduser() / "svgs-still")
 MMAH_DICT = MMAH.parent / "dictionary.txt"
 SWAC = ROOT / "data/swac-index.csv"
+# Clips with the silence cut off their ends, by scripts/trim-silence.py. Every clip
+# the deck ships passes through stage(), so preferring them here covers all of it.
+TRIMMED = ROOT / ".cache/trimmed"
 
 LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
@@ -111,6 +114,9 @@ def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> boo
 def stage(src: pathlib.Path, name: str) -> None:
     """Replaces a stale file of a different size: plain skip-if-exists kept every
     diagram black after the switch to svgs-still/."""
+    cut = TRIMMED / src.name
+    if cut.is_file():
+        src = cut
     dst = MEDIA / name
     if dst.exists() and dst.stat().st_size == src.stat().st_size:
         return
@@ -131,12 +137,14 @@ def main() -> int:
         if "_" not in p.name
     }
 
-    # Syllable recordings upstream reports as wrong: fifth-tone files are snippets cut
-    # from a discussion rather than recordings (audio-cmn#2, #13), zhu2 and zhu4 are
-    # the wrong audio (#10), and san1, bang2, bang4 and jv4 stop before the syllable
-    # ends (#12). Membership is by report and not by measurement, because these faults
-    # are audible but sit inside the corpus's normal duration and level range.
-    SUSPECT = re.compile(r"^[a-zü:]+5$|^zhu[24]$|^(?:san1|bang[24]|jv4)$")
+    # Syllable recordings not to use. Upstream reports most of them: fifth-tone files
+    # are snippets cut from a discussion rather than recordings (audio-cmn#2, #13),
+    # zhu2 and zhu4 are the wrong audio (#10), and san1, bang2, bang4 and jv4 stop
+    # before the syllable ends (#12). nu3 is Ryan's ear rather than a report.
+    # Membership is by listening either way, because these faults are audible while
+    # sitting inside the corpus's normal duration and level range: nu3 runs 1.30s in
+    # a single burst, which is what a good third tone looks like from the outside.
+    SUSPECT = re.compile(r"^[a-zü:]+5$|^zhu[24]$|^(?:san1|bang[24]|jv4|nu3)$")
     syllabs = {k: v for k, v in (
         (p.name[len("cmn-"):-len(".mp3")].lstrip("_"), p)
         for p in SYLLABS.glob("cmn-*.mp3")) if not SUSPECT.match(k)} \

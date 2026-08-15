@@ -262,19 +262,35 @@ PIPE = re.compile(r"([㐀-鿿，、。！？：；…]+)\|([㐀-鿿，、。！�
 def clean_xrefs(text: str) -> str:
     from pypinyin.contrib.tone_convert import to_tone
 
+    def reading(numbered: str) -> str:
+        """The syllables as one word, broken where a capital starts another.
+
+        The dictionary capitalises the syllables of a proper noun, and running them
+        all together gives LǐWángshì for 李王氏 and YàxìyàZhōu for 亚细亚洲, where a
+        capital inside a word is exactly where a word ends. The tone goes on the
+        lowercase form and the capital is put back afterwards, because a capitalised
+        bare vowel defeats the converter, which hands A1 back as it found it.
+        """
+        out = []
+        for i, syl in enumerate(SYLL.findall(numbered.replace("u:", "v"))):
+            toned = to_tone(syl.lower())
+            if syl[:1].isupper():
+                toned = toned[:1].upper() + toned[1:]
+                if i:
+                    out.append(" ")
+            out.append(toned)
+        return "".join(out)
+
     def one(m):
         word, numbered = m.group(2), m.group(3)
         try:
-            reading = "".join(to_tone(x) for x in
-                              SYLL.findall(numbered.replace("u:", "v")))
+            return f"{word} {reading(numbered)}"
         except Exception:
             return word
-        return f"{word} {reading}"
 
     def bare(m):
         try:
-            return "".join(to_tone(x) for x in
-                           SYLL.findall(m.group(1).replace("u:", "v")))
+            return reading(m.group(1))
         except Exception:
             return m.group(0)
 
@@ -433,6 +449,33 @@ def load_etymology():
                 etym[row["character"]] = [{"text": row["text"], "type": row["type"],
                                            "glosses": [], "senses": 0}]
 
+    # A page that only says "see X" has no account of its own, and the deck shows such
+    # characters as the parts of others: 餐 is phonetic 𣦼, whose shape is explained
+    # under 𣦻, and 故 is semantic 攵, explained under 攴. The variant's account is used
+    # and said to be the variant's. Two things have to hold. The target must give the
+    # character as a form of itself, which is Wiktionary saying the two shapes are one
+    # character: 攵 points at both 攴 and 文, and only 攴 claims it. And the target's
+    # account must not name the character, since 繼 as "semantic 糸 + phonetic 㡭"
+    # explains 繼 out of 㡭 rather than explaining 㡭.
+    redirect = json.loads((BUILD / "redirects.json").read_text(encoding="utf-8")) \
+        if (BUILD / "redirects.json").exists() else {}
+    variant = json.loads((BUILD / "variants.json").read_text(encoding="utf-8")) \
+        if (BUILD / "variants.json").exists() else {}
+    # Where a part is written one way and explained under another, Wiktionary links the
+    # two inside the glyph origin itself: 搬 shows 扌 and links 手. fetch-glyph-origins.py
+    # reads those links off the pages, which is the only place they exist -- the dump is
+    # plain text and drops them.
+    # What a character says it is in its own entry, which outranks anything inferred:
+    # 礻 is "Left radical form of 示", while the dump also carries a redirect from 礻 to
+    # 衤, the clothing radical it merely resembles.
+    radical_of = json.loads((BUILD / "radical-of.json").read_text(encoding="utf-8")) \
+        if (BUILD / "radical-of.json").exists() else {}
+    explained_by = {}
+    links = ROOT / "data/glyph-links.csv"
+    if links.exists():
+        explained_by = {r["character"]: r["explained_by"]
+                        for r in csv.DictReader(links.open(encoding="utf-8"))}
+
     def choose(ch: str) -> dict:
         """Which of a character's etymologies explains its shape.
 
@@ -442,7 +485,32 @@ def load_etymology():
         whose glosses match the definition on the card wins -- 許 has a phono-semantic
         account and a separate one for the surname, and both are about the graph.
         """
+        def borrow(other: str, lead: str) -> dict:
+            """Another character's account, where it is an account of this one too."""
+            for x in etym.get(other) or []:
+                if ch not in x.get("text", "") and about_the_glyph(
+                        x.get("text", ""), x.get("type", "")):
+                    return dict(x, text=lead + x["text"])
+            return {}
+
         sections = etym.get(trad.get(ch, ch)) or etym.get(ch) or []
+        if not any(about_the_glyph(x.get("text", ""), x.get("type", ""))
+                   for x in sections):
+            taken = {}
+            parent = radical_of.get(ch)
+            if parent:
+                taken = borrow(parent, f"Radical form of {parent}. ")
+            for other in ([] if taken else
+                          redirect.get(trad.get(ch, ch)) or redirect.get(ch) or []):
+                if ch in (variant.get(other) or []):
+                    taken = borrow(other, f"Also written {other}. ")
+                if taken:
+                    break
+            linked = explained_by.get(ch)
+            if not taken and linked:
+                taken = borrow(linked, f"Explained under {linked}. ")
+            if taken:
+                sections = [taken]
         # A card asking where a glyph came from has no use for the history of the
         # word: 答 is "cognate with 對 … compare Tibetan", true and about the word,
         # while the graph's own account sits under 荅. Drop those outright rather
@@ -468,6 +536,22 @@ def load_etymology():
                 out.append((bool(BULLET.match(p)), BULLET.sub("", p).strip()))
         return out
 
+    def simplification(ch: str) -> str:
+        """How the character came to be written the way the card writes it.
+
+        An account keyed on the traditional form explains a shape the card does not
+        show. 禮 is 礻 over phonetic 豊, and 礼 is not that: it is an ancient variant of
+        禮 that the 1956 scheme brought back. Wiktionary files that under the simplified
+        character, where the deck was passing over it -- 习 is 習 with 白 and 羽 gone,
+        丝 is 絲 through the variant 𢇁, 专 is 專 in cursive.
+        """
+        if trad.get(ch, ch) == ch:
+            return ""
+        for x in etym.get(ch) or []:
+            if about_the_glyph(x.get("text", ""), x.get("type", "")):
+                return x["text"].split("\n")[0].strip()
+        return ""
+
     def one(ch: str, full: bool) -> str:
         ps = paragraphs(ch)
         if not ps:
@@ -481,11 +565,24 @@ def load_etymology():
             i += 1
         if items:
             head = head.rstrip(":") + ": " + "; ".join(items)
-        head = html.escape(head, quote=False)
+        # wiktextract drops a glyph it cannot reproduce, leaving the sentence pointing
+        # at nothing: "recorded in Shuowen as ." Close it up rather than show the hole.
+        def tidy(text: str) -> str:
+            return html.escape(re.sub(r"(?:,| as| like| to)?\s+\.(?=\s|$)", ".", text),
+                               quote=False)
+
+        head = tidy(head)
+        # Two accounts of two shapes, so each is left whole and the simplified one comes
+        # last: putting it between the lead and the rest cut 禮's account in two and
+        # left "Originally written 豊, see there for more" hanging after 礼's.
+        later = simplification(ch)
+        block = (f'<div class="later"><b><a href="https://en.wiktionary.org/wiki/'
+                 f'{ch}#Chinese">{ch}</a></b> {tidy(later)}</div>'
+                 if later and later not in head else "")
         if not full or i >= len(ps):
-            return head
+            return head + block
         rest = " ".join(html.escape(p, quote=False) for _, p in ps[i:])
-        return f'{head}<div class="more">{rest}</div>'
+        return f'{head}<div class="more">{rest}</div>{block}'
 
     return one
 
@@ -545,6 +642,13 @@ def main() -> int:
         return "".join(out)
 
     CJK_RUN = re.compile(r"[㐀-鿿豈-﫿]+")
+
+    def label_link(shown: str, target: str) -> str:
+        """A label as a single link. 礼 (禮) is one thing to click and one page to
+        arrive at, the traditional form's, which is where its account is written;
+        linking only the 礼 of it left the (禮) beside the link looking like an aside."""
+        return (f'<a href="https://en.wiktionary.org/wiki/{target}#Chinese">'
+                f'{html.escape(shown, quote=False)}</a>')
 
     def link_words(fragment: str) -> str:
         """The Chinese in a rendered field, linked, leaving the field's own markup be.
@@ -659,7 +763,7 @@ def main() -> int:
             if not (senses or origin):
                 continue
             label = ch if trad == ch else f"{ch} ({trad})"
-            body = (f'<b>{link_words(label)}</b> '
+            body = (f'<b>{label_link(label, trad)}</b> '
                     f'{link_words(html.escape(senses, quote=False))}')
             if origin:
                 body += f'<div class=origin>{origin}</div>'
@@ -672,35 +776,91 @@ def main() -> int:
     # compares the character to others, so 氏 mentions 氐, 低, 昏, 柢 and 匕, none of
     # which it is made of. The walk stops of its own accord, at a pictogram or at a part
     # Wiktionary has nothing to say about.
-    ROLE = re.compile(r"\b(?:semantic|phonetic)\s+([㐀-鿿豈-﫿])")
-    PLUS = re.compile(r"([㐀-鿿豈-﫿])\s*\+\s*([㐀-鿿豈-﫿])")
+    shown_chars: set = set()
+    # A part can be a character no ordinary font has, which is the whole reason the
+    # deck carries glyphs for them: 餐 is phonetic 𣦼, up in Extension B.
+    PART = "[㐀-鿿豈-﫿\U00020000-\U0003134F]"
+    ROLE = re.compile(rf"\b(?:semantic|phonetic)\s+({PART})")
+    # Each part is usually glossed where it is named -- 門 (“door”) + 月 (“moon”) -- so
+    # the character and the plus are rarely neighbours, and a compound of three parts
+    # has two pluses to read. Both sides of every one are taken.
+    BEFORE = re.compile(rf"({PART})\s*(?:\([^)]*\))?\s*$")
+    AFTER = re.compile(rf"\s*({PART})")
+
+    def either_side(head: str) -> list:
+        out = []
+        for plus in re.finditer(r"\+", head):
+            for m in (BEFORE.search(head[:plus.start()]),
+                      AFTER.match(head[plus.end():])):
+                if m:
+                    out.append(m.group(1))
+        return out
+
+    # An account can answer by pointing at another character instead of taking this
+    # one apart: 间 is 閒 with 月 replaced by 日, and what 閒 is stands one step on.
+    # Followed only where the sentence says the shape changed, because a bare "variant
+    # of" covers two words as readily as two shapes -- 耶 is a variant of 邪 and is not
+    # built like it, 惹 is called a corruption of 了 and looks nothing like it.
+    GRAPHIC = re.compile(r"replaced by|styliz|stylis|radical form|cursive"
+                         r"|simplified form|abbreviat|written as|clerical", re.I)
+    FROM = re.compile(rf"\bform of ({PART})|\bstyliz(?:ation|ed) of ({PART})"
+                      rf"|\bof ({PART})")
 
     def made_of(ch: str) -> list:
         text = etym_char(ch, full=True) or ""
         head = re.split(r'<div class="more">', text)[0].split(". ")[0]
-        found = ROLE.findall(head) or [c for pair in PLUS.findall(head) for c in pair]
+        found = ROLE.findall(head) or either_side(head)
+        if not found and GRAPHIC.search(head):
+            named = FROM.search(head)
+            if named:
+                other = next(g for g in named.groups() if g)
+                # not where the other is explained out of this one, which would be a
+                # circle: 把 is semantic 扌 plus phonetic 巴, so 把 is no account of 巴
+                if ch not in (etym_char(other, full=True) or ""):
+                    found = [other]
         return [c for c in dict.fromkeys(found) if c != ch]
 
     def part_origins(simplified: str) -> str:
-        """The origins of the parts, and of their parts, under the word's own."""
+        """The origins of the parts, and of their parts, under the word's own.
+
+        A step at a time rather than a branch at a time, so what the word is made of
+        comes before what those are made of, and a rule divides the two: 答 gives 竹
+        and 合, then the 亼 and 口 that 合 is, then what those are. Read depth first it
+        would open with 竹 and descend, and the parts of the word would be scattered
+        down the card among the parts of its parts.
+        """
         seen = {c for c in simplified if CJK.match(c)}
-        queue = [c for ch in simplified if CJK.match(ch) for c in made_of(ch)]
-        out = []
+        shown_chars.update(seen)
+        queue = [(c, 1) for ch in simplified if CJK.match(ch) for c in made_of(ch)]
+        out, drawn = [], 1
         while queue:
-            ch = queue.pop(0)
+            ch, step = queue.pop(0)
             if ch in seen:
                 continue
             seen.add(ch)
-            queue += made_of(ch)
+            shown_chars.add(ch)
+            queue += [(c, step + 1) for c in made_of(ch)]
             origin = etym_char(ch, full=False)
             if not origin:
                 continue
+            if step > drawn and out:
+                out.append('<hr class=partStep>')
+                drawn = step
             senses = clean_xrefs(" / ".join(
                 p.strip() for p in
                 (char_meta.get(ch) or {}).get("meaning", "").split("/")[:2] if p.strip()))
             trad = (char_meta.get(ch) or {}).get("traditional") or ch
+            if not senses:
+                # char-meanings.json covers the characters the syllabus words are made
+                # of, and a part is not one: 攵 is absent from it while the dictionary
+                # calls it a variant of 攴, and 扌 the hand radical.
+                best = max((char_any.get(ch) or []),
+                           key=lambda e: (e[2], e[3]), default=None)
+                if best:
+                    senses = " / ".join(best[1].split(" / ")[:2])
+                    trad = best[0]
             label = ch if trad == ch else f"{ch} ({trad})"
-            body = f'<b>{link_words(label)}</b> '
+            body = f'<b>{label_link(label, trad)}</b> '
             if senses:
                 body += link_words(html.escape(senses, quote=False))
             out.append(f'<div class="etymItem">{body}'
@@ -777,7 +937,7 @@ def main() -> int:
             return ""
         trad = (char_meta.get(ch) or {}).get("traditional") or ch
         label = ch if trad == ch else f"{ch} ({trad})"
-        return f'<div class="etymItem"><b>{link_words(label)}</b> {origin}</div>'
+        return f'<div class="etymItem"><b>{label_link(label, trad)}</b> {origin}</div>'
 
     def example_word(ch: str) -> str:
         """The same examples with their characters, for the side that has answered."""
@@ -980,7 +1140,7 @@ def main() -> int:
                     or best_entry(cands, to_trad.get(piece), key, proper and i == 0)
                 trad = to_trad.get(piece, piece)
                 label = piece if trad == piece else f"{piece} ({trad})"
-                out.append(f'<div class="etymItem"><b>{link_words(label)}</b> '
+                out.append(f'<div class="etymItem"><b>{label_link(label, trad)}</b> '
                            f'{link_words(html.escape(gloss, quote=False))}</div>')
                 i += n
                 break
@@ -1314,6 +1474,12 @@ def main() -> int:
                     "silent": silent}, ensure_ascii=False, indent=1),
         encoding="utf-8")
     print(f"speech wanted: {len(set(wanted_audio))} sentences, {len(silent)} unvoiced")
+    # Every character a card shows, the parts among them. fetch-glyph-origins.py looks
+    # up what has no origin, and a part reached only by the walk is not in any word
+    # list, so nothing else can tell it they are wanted.
+    (BUILD / "shown-chars.json").write_text(
+        json.dumps(sorted(shown_chars), ensure_ascii=False), encoding="utf-8")
+    print(f"characters shown: {len(shown_chars)}")
     return 0
 
 

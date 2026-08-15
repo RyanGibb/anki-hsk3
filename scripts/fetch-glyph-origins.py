@@ -28,6 +28,7 @@ from glyph_origin import any_about_the_glyph   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/glyph-origins.csv"
+LINKS = ROOT / "data/glyph-links.csv"
 CACHE = ROOT / ".cache/wiktionary-glyph"
 API = "https://en.wiktionary.org/w/api.php"
 AGENT = "anki-hsk3/1.0 (https://github.com/; personal Anki deck build)"
@@ -130,6 +131,37 @@ def glyph_origin(char: str) -> tuple:
     return text, kind
 
 
+# Inside a Glyph origin, Wiktionary links each part to the page that explains it, and
+# the two are often different characters: 搬 shows 扌 and links 手, 伐 shows ⺅ and links
+# 人. The link is the encyclopedia resolving its own shorthand, which no wording in the
+# text can be trusted to do -- "alternative form of" covers both a variant shape and a
+# variant word. Taken only from that section, so it is always about the shape.
+ORIGIN_SECTION = re.compile(r'id="Glyph_origin.*?(?=<h2|\Z)', re.S)
+PART_LINK = re.compile(r'<a[^>]+href="/wiki/([^"#]+)[^"]*"[^>]*>([^<]{1,3})</a>')
+ONE_CHAR = re.compile(r"^[㐀-鿿豈-﫿\U00020000-\U0003134F]$")
+
+
+def harvest_links() -> int:
+    """Read every cached page for what it links its parts to."""
+    seen = {}
+    for page in sorted(CACHE.glob("*.json")):
+        html = json.loads(page.read_text(encoding="utf-8")).get("html") or ""
+        section = ORIGIN_SECTION.search(html)
+        if not section:
+            continue
+        for href, shown in PART_LINK.findall(section.group()):
+            target = urllib.parse.unquote(href)
+            if (ONE_CHAR.match(shown) and ONE_CHAR.match(target)
+                    and shown != target and shown not in seen):
+                seen[shown] = (target, page.stem)
+    with LINKS.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["character", "explained_by", "seen_on"])
+        for ch in sorted(seen):
+            w.writerow([ch, seen[ch][0], seen[ch][1]])
+    return len(seen)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--refresh", action="store_true")
@@ -151,8 +183,14 @@ def main() -> int:
                 if r["text"] and not BOILERPLATE.search(r["text"])}
 
     # Every character the deck shows, not only the ones written by hand: a glyph
-    # origin appears on a vocabulary card too, under each character of the word.
+    # origin appears on a vocabulary card too, under each character of the word, and
+    # under the parts that character is built from. The parts are not words and appear
+    # in no list, so the build writes down what it reached.
     writing = list(chars)
+    shown = ROOT / "build/shown-chars.json"
+    if shown.exists():
+        writing += [c for c in json.loads(shown.read_text(encoding="utf-8"))
+                    if c not in chars]
     # Not only the characters with no etymology at all: where the dump kept the word's
     # history instead of the glyph's, the slot is full but the card still has no answer
     # to the question it asks. 簡 is "borrowed from English Jane" and nothing else.
@@ -185,6 +223,7 @@ def main() -> int:
         for k in sorted(have):
             w.writerow(have[k])
     print(f"{found} new, {len(have)} in {OUT}")
+    print(f"{harvest_links()} parts linked to the page that explains them, in {LINKS}")
     return 0
 
 
