@@ -500,13 +500,18 @@ def main() -> int:
                         missing.add(ref)
             check("no [numbered pinyin] left in Meaning", leaked == 0,
                   f"{leaked} notes" if leaked else "")
-            ooo = con.execute(
-                "select count(*) from cards c join notes n on n.id=c.nid "
-                "where n.mid=(select cast(? as integer)) "
-                "and c.due <> cast(substr(n.flds,1,instr(n.flds,char(31))-1) as integer)",
+            # A vocabulary card is introduced at the syllabus's own index for the word.
+            # The Key numbers the whole deck rather than the syllabus, so the two are
+            # no longer the same number; what has to hold is that they agree on the
+            # order, since the Key counts the same words in the same sequence.
+            rows = con.execute(
+                "select cast(substr(n.flds,1,instr(n.flds,char(31))-1) as integer), c.due "
+                "from cards c join notes n on n.id=c.nid "
+                "where n.mid=(select cast(? as integer)) order by 1",
                 (int([m for m, x in models.items()
-                      if x["name"] == "HSK 3.0 Vocabulary"][0]),)).fetchone()[0]
-            check("vocabulary due order = syllabus index", ooo == 0,
+                      if x["name"] == "HSK 3.0 Vocabulary"][0]),)).fetchall()
+            ooo = sum(1 for a, b in zip(rows, rows[1:]) if b[1] <= a[1])
+            check("vocabulary due order = syllabus order", ooo == 0,
                   f"{ooo} out of order" if ooo else "")
 
             check("all media references resolve", not missing,

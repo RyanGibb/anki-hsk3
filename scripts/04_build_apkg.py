@@ -43,7 +43,7 @@ VOCAB_FIELDS = ["Key", "Level", "Simplified", "Sense", "Traditional", "Pinyin",
                 "PinyinNumbered", "Meaning", "PartOfSpeech", "PartOfSpeechGlossed",
                 "Classifier", "Audio",
                 "Homophones", "Homographs", "StrokeOrder",
-                "Components", "Literal", "PartOrigins"]
+                "Components", "Literal", "ExampleSentence", "PartOrigins"]
 
 vocab_model = genanki.Model(
     MID_VOCAB, "HSK 3.0 Vocabulary",
@@ -283,6 +283,13 @@ def clean_xrefs(text: str) -> str:
 
     def one(m):
         word, numbered = m.group(2), m.group(3)
+        # A character named in a gloss is a label, and the deck labels a character
+        # with both its forms: 閒 is a variant of 间 (間), which is how the row above
+        # it in the same list is headed, and naming only one of the two left the two
+        # rows looking like they were about different characters. A word quoted in
+        # the middle of a sentence is prose, where 超级市场 (超級市場) is an interruption.
+        if m.group(1) and m.group(1) != word and len(word) == 1:
+            word = f"{word} ({m.group(1)})"
         try:
             return f"{word} {reading(numbered)}"
         except Exception:
@@ -300,6 +307,13 @@ def clean_xrefs(text: str) -> str:
     # such field, and "greens (CL:棵 kē)" is not what 菜 means.
     out = re.sub(r"\s*\(CL:[^)]*\)", "", out)
     out = re.sub(r"\s*/?\s*CL:[^/]*", "", out)
+    # The deck teaches one standard: the syllabus's readings, spoken by mainland
+    # voices, tested by a mainland exam. A reading from another standard is not a
+    # meaning, and 结 as "(of a plant) to produce (fruit or seeds) / Taiwan pr. jié"
+    # offers a card its own recording contradicts. An "also pr." is kept: that is an
+    # alternative within the standard, and the reading field carries it too.
+    out = re.sub(r"\s*\(Taiwan pr\.[^)]*\)", "", out)
+    out = re.sub(r"\s*/?\s*Taiwan pr\.[^/]*", "", out)
     return out.strip(" /")
 
 
@@ -612,6 +626,14 @@ def main() -> int:
         if m and m.group(2) not in to_trad:
             to_trad[m.group(2)] = m.group(1)
     to_trad.update({w["simplified"]: w["traditional"] for w in words})
+    # A traditional character stands in the text of a gloss as well as beside a
+    # simplified one -- "variant of 间 (間)" -- and 間 unlinked next to a linked 间 read
+    # as an aside rather than as the other half of the same label. Its page is its own.
+    # Single characters only: a run of them is a word, and which words there are is
+    # decided by the entries above, not by this.
+    for trad in list(to_trad.values()):
+        if len(trad) == 1:
+            to_trad.setdefault(trad, trad)
 
     def link(w: str) -> str:
         """A pinyin word is not always a dictionary word: 吃了 is written chīle but
@@ -717,6 +739,12 @@ def main() -> int:
     etym_char = load_etymology()
 
     char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
+    # Wiktionary names a character's parts in their traditional forms while the deck's
+    # tables are keyed on the simplified: 簡 is phonetic 間, and what the deck knows and
+    # can gloss is 间. Only where the deck holds that character, so 閒 is left alone --
+    # the 闲 the deck teaches is 閑, a different character that merely looks like it.
+    deck_form = {v["traditional"]: c for c, v in char_meta.items()
+                 if v.get("traditional") and v["traditional"] != c}
     literal = json.loads((BUILD / "literal-meanings.json").read_text(encoding="utf-8"))
 
     def pick_char(ch: str, reading: str, want_trad: str):
@@ -736,6 +764,17 @@ def main() -> int:
         chosen = max(exact, key=char_rank)
         # 佔's own entry says only "variant of 占": keep the form, borrow the meaning
         return chosen if chosen[2] else (chosen[0], best[1], best[2], best[3], chosen[4])
+
+    # The simplified form's account stands beside the traditional one rather than
+    # inside it. Opacity composites a whole subtree, so a block nested in the origin
+    # is dimmed by the origin as well as by the glosses around it, and 脑's link would
+    # read a shade darker than every other link on the card.
+    LATER = '<div class="later">'
+
+    def origin_block(origin: str) -> str:
+        first, sep, later = origin.partition(LATER)
+        return (f'<div class=origin>{first}</div>'
+                + (LATER + later if sep else ""))
 
     def components(simplified: str, numbered: str = "", traditional: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
@@ -773,7 +812,7 @@ def main() -> int:
             body = (f'<b>{label_link(label, trad)}</b> '
                     f'{link_words(html.escape(senses, quote=False))}')
             if origin:
-                body += f'<div class=origin>{origin}</div>'
+                body += origin_block(origin)
             out.append(f'<div class="gloss">{body}</div>')
         return "".join(out)
 
@@ -813,17 +852,28 @@ def main() -> int:
     FROM = re.compile(rf"\bform of ({PART})|\bstyliz(?:ation|ed) of ({PART})"
                       rf"|\bof ({PART})")
 
-    def made_of(ch: str) -> list:
+    def lead(ch: str) -> str:
         text = etym_char(ch, full=True) or ""
-        head = re.split(r'<div class="more">', text)[0].split(". ")[0]
-        found = ROLE.findall(head) or either_side(head)
+        return re.split(r'<div class="more">', text)[0].split(". ")[0]
+
+    def named_parts(head: str) -> list:
+        """The parts an account takes the character apart into, before any pointer
+        is followed. The guard below needs this much of the answer and no more, so
+        following one pointer cannot set off another."""
+        return ROLE.findall(head) or either_side(head)
+
+    def made_of(ch: str) -> list:
+        head = lead(ch)
+        found = named_parts(head)
         if not found and GRAPHIC.search(head):
             named = FROM.search(head)
             if named:
                 other = next(g for g in named.groups() if g)
-                # not where the other is explained out of this one, which would be a
-                # circle: 把 is semantic 扌 plus phonetic 巴, so 把 is no account of 巴
-                if ch not in (etym_char(other, full=True) or ""):
+                # not where the other is built out of this one, which would be a
+                # circle: 把 is semantic 扌 plus phonetic 巴, so 把 is no account of
+                # 巴. Being mentioned is not being built from: 閒 is 門 + 月 and adds
+                # that it is the original character of 間, which is why 間 points here.
+                if ch not in named_parts(lead(other)):
                     found = [other]
         return [c for c in dict.fromkeys(found) if c != ch]
 
@@ -842,6 +892,7 @@ def main() -> int:
         out, drawn = [], 1
         while queue:
             ch, step = queue.pop(0)
+            ch = deck_form.get(ch, ch)
             if ch in seen:
                 continue
             seen.add(ch)
@@ -870,8 +921,7 @@ def main() -> int:
             body = f'<b>{label_link(label, trad)}</b> '
             if senses:
                 body += link_words(html.escape(senses, quote=False))
-            out.append(f'<div class="gloss">{body}'
-                       f'<div class=origin>{origin}</div></div>')
+            out.append(f'<div class="gloss">{body}{origin_block(origin)}</div>')
         return "".join(out)
 
     # The earliest word in which a character is read a given way. 地 is 地铁 as dì and
@@ -1003,6 +1053,22 @@ def main() -> int:
                 p))
         return "、".join(out)
 
+    # The Key is what the browser sorts on, and one that starts again at 1 for each
+    # kind of note interleaves three sequences into no order at all: three notes claim
+    # 1, three claim 2. It is numbered once across the deck instead -- every
+    # vocabulary note, then every writing note, then every sentence, each in level
+    # order. Where a note sits within its own section is unchanged; only the number is.
+    #
+    # Not the position a card is introduced at, which stays the syllabus's own index
+    # for a word and the source order for the rest. What the browser lists and what
+    # the scheduler deals are different questions.
+    SECTION = {"vocab": 0, "writing": 1, "grammar": 2}
+    keyed = []
+
+    def number(section: str, level: str, note) -> None:
+        keyed.append((SECTION[section], LEVELS.index(level), len(keyed), note))
+
+    vocab_notes = []
     for w in words:
         tags = [f"HSK3.0::L{w['level']}"]
         tags += [f"HSK3.0::also-L{x}" for x in w["also_levels"]]
@@ -1029,10 +1095,14 @@ def main() -> int:
                 w["stroke_order"],
                 components(w["simplified"], w["pinyin_numbered"], w["traditional"]),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
+                # filled in once the sentences have been built, below
+                "",
                 part_origins(w["simplified"]),
             ],
             tags=tags,
         )
+        vocab_notes.append((w, note))
+        number("vocab", w["level"], note)
         vocab_decks[w["level"]].add_note(note)
         for m in re.findall(r"\[sound:([^]]+)\]", w["audio"]):
             media.add(m)
@@ -1092,47 +1162,58 @@ def main() -> int:
             checked[r["chinese"]] = r["pinyin"]
             checked.setdefault(unindex(r["chinese"]), r["pinyin"])
 
-    def linked(sentence: str) -> str:
-        """The sentence with each word linked to its Wiktionary entry.
+    def pieces(sentence: str) -> list:
+        """The sentence in the words its reading was written in, each with the
+        syllables it was read as, punctuation between them.
 
         Where the words are is only knowable from the checked pinyin: 里边 is one word
         because it was written as one group of syllables, and nothing in the characters
-        says so. A sentence whose reading was generated rather than checked is left
-        alone.
+        says so. A sentence whose reading was generated rather than checked has no
+        words to give.
         """
         pinyin = checked.get(sentence)
         pairs = align(sentence, pinyin) if pinyin else None
         if not pairs:
-            return link_run(sentence)
-        out, word, i, n = [], "", 0, 0
+            return []
+        out, word, read, i, n = [], "", [], 0, 0
+
+        def flush():
+            nonlocal word, read
+            if word:
+                out.append((word, read))
+            word, read = "", []
+
         while i < len(sentence):
             if ALIGNABLE.match(sentence[i]) and n < len(pairs):
-                text, _, starts = pairs[n]
-                if starts and word:
-                    out.append(word)
-                    word = ""
+                text, syl, starts = pairs[n]
+                if starts:
+                    flush()
                 # 一下（儿） is one syllable over two characters that are not adjacent,
                 # so follow the characters rather than counting them
                 for want in text:
                     while i < len(sentence) and sentence[i] != want:
-                        if word:
-                            out.append(word)
-                            word = ""
-                        out.append(html.escape(sentence[i], quote=False))
+                        flush()
+                        out.append((html.escape(sentence[i], quote=False), []))
                         i += 1
                     if i < len(sentence):
                         word += sentence[i]
                         i += 1
+                read.append(syl)
                 n += 1
             else:
-                if word:
-                    out.append(word)
-                    word = ""
-                out.append(html.escape(sentence[i], quote=False))
+                flush()
+                out.append((html.escape(sentence[i], quote=False), []))
                 i += 1
-        if word:
-            out.append(word)
-        return "".join(link(w) for w in out)
+        flush()
+        return out
+
+    def linked(sentence: str) -> str:
+        """The sentence with each word linked to its Wiktionary entry. One whose
+        reading was generated rather than checked is left alone."""
+        got = pieces(sentence)
+        if not got:
+            return link_run(sentence)
+        return "".join(link(text) for text, _ in got)
 
     # Words whose entry no rule picks correctly: 京 is Beijing and not the surname
     # Jing, 春节 is a festival and not 春 the surname, 经医生 is "after the doctor" and
@@ -1306,6 +1387,10 @@ def main() -> int:
 
     seen_sentence = set()
     wanted_audio = []
+    # The sentences a vocabulary card may borrow, in the order the deck teaches them.
+    # An exchange is two turns that answer each other, and half of one on a vocabulary
+    # card is a reply to nothing, so only a sentence that stands alone is taken.
+    usable = []
     # A point that lists several items -- 按理、按说、百般 -- is taught one item at a
     # time, so two sentences under it are only saying the same thing when they use the
     # same item. The first sentence for an item carries it; the rest are extra
@@ -1337,13 +1422,15 @@ def main() -> int:
             if key in seen_sentence:
                 continue
             seen_sentence.add(key)
+            if len(lines) == 1:
+                usable.append(lines[0])
             wanted_audio.extend(as_said(x) for x in lines)
             n += 1
             unit = (point, teaches(point, "".join(lines)))
             extra = unit in taught
             taught.add(unit)
             join = "<br>".join
-            grammar_decks[lv].add_note(genanki.Note(
+            sentence_note = genanki.Note(
                 model=sentence_model,
                 due=n,
                 guid=genanki.guid_for("hsk3-sentence", key),
@@ -1372,8 +1459,57 @@ def main() -> int:
                 ],
                 tags=[f"HSK3.0::sentence::L{lv}"]
                 + (["HSK3.0::sentence::extra"] if extra else []),
-            ))
+            )
+            number("grammar", lv, sentence_note)
+            grammar_decks[lv].add_note(sentence_note)
     decks += list(grammar_decks.values())
+
+    # A word that names a thing is answered by its meaning; one that does a job is not.
+    # 得 as "structural particle" is a category, and 我尝了尝，觉得很好吃 is the thing
+    # itself. So a vocabulary card carries a sentence that uses the word, taken from
+    # the sentences the deck already teaches -- the earliest one, which is the one it
+    # will have met first.
+    #
+    # The word has to be a word of the sentence and not a run of characters inside one:
+    # 得 occurs in 觉得, where it is no more an example of 得 than 的 is of 目. Which is
+    # why the reading decides it, being the only thing that says where the words are.
+    def spoken_as(read) -> str:
+        return "".join(numbered(x) for x in read).replace("ü", "v").lower()
+
+    # Some of what the syllabus files as a case is a pair of phrases rather than a
+    # sentence -- 次 opens with 去一次、看一次 -- and a phrase shows the word without
+    # showing it doing anything. A whole sentence is preferred wherever there is one,
+    # and the order among those is untouched.
+    ENDS = re.compile(r"[。？！]\s*$")
+    example_sentence = {}
+    for text in sorted(usable, key=lambda s: not ENDS.search(s)):
+        english = translated.get(text)
+        reading = checked.get(text)
+        if not (english and reading):
+            continue
+        shown = (f'<div class=sentence>{linked(text)}</div>'
+                 f'<div class="pinyin ofSentence">'
+                 f'{html.escape(reading, quote=False)}</div>'
+                 f'<div class="english ofSentence">'
+                 f'{html.escape(english, quote=False)}</div>')
+        for word, read in pieces(text):
+            if not (read and CJK.match(word[0])):
+                continue
+            keys = [(word, spoken_as(read)), (word, "")]
+            for k in keys:
+                example_sentence.setdefault(k, shown)
+
+    at = VOCAB_FIELDS.index("ExampleSentence")
+    for w, note in vocab_notes:
+        # 地 is taught twice, as de and as dì, and a sentence using one is no example
+        # of the other. Only where no sentence uses the reading the card teaches does
+        # the word alone decide it.
+        said_as = w["pinyin_numbered"].replace(" ", "").replace("ü", "v").lower()
+        note.fields[at] = (example_sentence.get((w["simplified"], said_as))
+                           or example_sentence.get((w["simplified"], "")) or "")
+    print(f"  example sentences: {sum(1 for _, n in vocab_notes if n.fields[at])}"
+          f"/{len(vocab_notes)} words")
+
     print(f"  grammar pinyin: {py_stats['checked']} sentences hand-checked; "
           f"the rest generated from {py_stats['syllabus']} syllabus tokens, "
           f"{py_stats['pypinyin']} pypinyin, {py_stats['override']} overridden")
@@ -1446,7 +1582,7 @@ def main() -> int:
         clips = "".join(voiced.get(n, {}).get("sound", "") for n in order)
         for m in re.findall(r"\[sound:([^]]+)\]", clips):
             media.add(m)
-        char_decks[lv].add_note(genanki.Note(
+        char_note = genanki.Note(
             model=char_model,
             due=n,
             guid=genanki.guid_for("hsk3-char", c),
@@ -1478,8 +1614,14 @@ def main() -> int:
                 part_origins(c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
-        ))
+        )
+        number("writing", lv, char_note)
+        char_decks[lv].add_note(char_note)
     decks += list(char_decks.values())
+
+    for i, (*_, note) in enumerate(sorted(keyed, key=lambda x: x[:3]), 1):
+        note.fields[0] = str(i)
+    print(f"keys: 1 to {len(keyed)} across the deck")
 
     pkg = genanki.Package(decks)
     # The cards name glyphs no ordinary font carries -- 亼 and the rest of what a

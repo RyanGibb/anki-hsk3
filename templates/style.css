@@ -174,8 +174,10 @@ img.stroke {
 }
 
 .more {
-  /* 20px inside a meaning, which is 24 */
-  font-size: calc(20 / 24 * 1em);
+  /* Flat rather than a fraction of what it sits in: the senses a meaning carries on
+     with sit inside 24px text and the tail of a glyph origin inside 16px, and both
+     are read at the same size. */
+  font-size: 16px;
   opacity: 0.7;
   margin-top: 4px;
 }
@@ -197,6 +199,8 @@ img.stroke {
 
 .gloss > b { font-size: 24px; }
 
+.gloss > b, .later > b, .example > b { font-weight: normal; }
+
 .example {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 16px;
@@ -208,10 +212,17 @@ img.stroke {
 
 .literal {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
-  font-size: 24px;
+  font-size: 20px;
   opacity: 0.7;
   margin-top: 6px;
 }
+
+/* A sentence borrowed onto a vocabulary card, where it illustrates the word rather
+   than being the thing asked about, so it is set below the word's own headline. */
+.usage { margin-top: 12px; opacity: 0.85; }
+.usage .sentence { font-size: 24px; }
+.usage .pinyin.ofSentence { font-size: 18px; }
+.usage .english.ofSentence { font-size: 16px; }
 
 .origin {
   font-size: 16px;
@@ -243,6 +254,8 @@ img.stroke {
 /* How the character on the card came from the shape just described: its own answer,
    so its own line. */
 .later { margin-top: 0.7em; }
+/* Set beside the account of the traditional form, it keeps that account's indent. */
+.origin + .later { margin-left: 1.2em; }
 /* The other words the character is met in, after the one the card leads with. */
 .alsoIn { margin-top: 0.3em; opacity: 0.75; }
 /* One rule for each step away from the character itself: its strokes, then what it is
