@@ -129,6 +129,33 @@ def main() -> int:
             if claimed.count(s) != 1:
                 lost.append(f"{simp}: {'unclaimed' if not claimed.count(s) else 'twice'}"
                             f" {s[:32]}")
+    # data/sense-pos.csv divides one entry's senses between parts of speech. Divides,
+    # so every sense is claimed once and nothing new is written, matched verbatim as
+    # the homograph file is. A part of speech the syllabus does not give the word is
+    # allowed -- 比 is a noun to the dictionary and not to the syllabus, and the card
+    # sets that quietly under the rest -- but it has to be one the deck has a name for.
+    known = {row["zh"] for row in csv.DictReader(
+        (ROOT / "data/pos-labels.csv").open(encoding="utf-8"))}
+    pos_bad = []
+    for w in words:
+        split = w.get("meaning_by_pos") or []
+        if not split:
+            continue
+        own = [s for s in w["meaning"].split("/") if s]
+        claimed = [s for _, m in split for s in m.split("/") if s]
+        for p, _ in split:
+            if p not in known:
+                pos_bad.append(f"{w['entry']}: {p} is not a part of speech")
+        for s in own:
+            if claimed.count(s) != 1:
+                pos_bad.append(f"{w['entry']}: {'unclaimed' if not claimed.count(s) else 'twice'}"
+                               f" {s[:32]}")
+        for s in claimed:
+            if s not in own:
+                pos_bad.append(f"{w['entry']}: invented {s[:32]}")
+    check("every sense of a split entry belongs to exactly one part of speech",
+          not pos_bad, f"{len(pos_bad)}: {pos_bad[:3]}" if pos_bad else "")
+
     # A word with no dictionary entry keeps its simplified form as its traditional
     # one, which is right for 新能源 and wrong for 压轴 (壓軸). Any word left that way
     # whose characters do have traditional forms is a word the patch should cover.

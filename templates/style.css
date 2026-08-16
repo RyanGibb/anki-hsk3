@@ -238,6 +238,10 @@ img.stroke {
 
 .charSense { margin: 2px 0; }
 
+/* A meaning the dictionary gives under a part of speech the syllabus does not teach
+   the word as. Worth knowing, not what is being asked. */
+.beyond { font-size: 16px; opacity: 0.7; }
+
 /* A gloss that quotes the character being written would give the answer away, so the
    question side blanks it. The answer side leaves it alone. */
 .question .mask {

@@ -249,6 +249,9 @@ def make_pinyin(words):
     return gen, stats
 
 
+# The syllabus writes a word's parts of speech as one string, and marks the ones
+# taught at a later level in brackets: 对 is 形、介、（动、量）.
+POS_SPLIT = re.compile(r"[、,（）()]")
 POINTER = re.compile(r"^(variant of|old variant of|see|abbr\. for)\b", re.I)
 # "abbr. for 超級市場|超级市场[chao1 ji2 shi4 chang3]"
 XREF = re.compile(r"(?:([㐀-鿿]+)\|)?([㐀-鿿]+)\[([A-Za-z0-9:, ]+)\]")
@@ -702,7 +705,13 @@ def main() -> int:
         if not m:
             continue
         trad, simp, reading, body = m.groups()
-        senses = [d for d in body.split("/") if not d.startswith("CL:")][:3]
+        # A word glossed inside a sentence has to be read at a glance, so three senses
+        # is enough there. A character's own card is where the character is the
+        # subject, and cutting at three cut 會 exactly where the verb ends: it said
+        # "can, to be likely to, to meet" and never that 会 is a meeting. 661 of the
+        # 1200 characters written have more than three.
+        all_senses = [d for d in body.split("/") if not d.startswith("CL:")]
+        senses = all_senses[:3]
         if senses:
             # Candidates keyed by reading, the way the vocabulary path chooses, with
             # the case left alone: CC-CEDICT capitalises a proper noun's reading, so
@@ -715,9 +724,9 @@ def main() -> int:
             # several entries can share a reading, and the surname is often first:
             # 还 huán is "surname Huan" before it is "to give back". Take the fullest.
             key = (simp, reading.replace(" ", "").lower())
-            defining = [d for d in senses if not POINTER.match(d)]
-            entry = (trad, clean_xrefs(" / ".join(defining or senses)),
-                     len(defining), len(senses), reading)
+            defining = [d for d in all_senses if not POINTER.match(d)]
+            entry = (trad, clean_xrefs(" / ".join(defining or all_senses)),
+                     len(defining), len(all_senses), reading)
             char_by_reading.setdefault(key, []).append(entry)
             char_any.setdefault(simp, []).append(entry)
     # "see 苏州市" is a direction to look elsewhere, not a meaning, and on a sentence
@@ -799,7 +808,11 @@ def main() -> int:
                                    trad_of.get(ch, (char_meta.get(ch) or {})
                                                .get("traditional") or ch))
             if by_reading:
-                trad, senses = by_reading[0], by_reading[1]
+                # A row here says what a character of the word means, in a list of
+                # them. Three senses is what that is worth; the character's own card
+                # is where the rest belongs.
+                trad = by_reading[0]
+                senses = " / ".join(by_reading[1].split(" / ")[:3])
             else:
                 senses = (char_meta.get(ch) or {}).get("meaning", "")
                 senses = clean_xrefs(" / ".join(
@@ -1043,6 +1056,52 @@ def main() -> int:
     tone_hint.__defaults__ = (groups, pos_en)
     also_read.__defaults__ = (by_entry_all, pos_en)
 
+    def pos_label(p: str) -> str:
+        en = pos_en.get(p, "")
+        return f'{p}{f" <span class=en>{en}</span>" if en else ""}'
+
+    def sense_blocks(w: dict) -> str:
+        """The meaning under the part of speech it belongs to.
+
+        可以 is 动、形 and means "can, may, possible, able to, not bad, pretty good";
+        which two of those are the adjective is the thing the card was not saying.
+        Every card is headed this way, divided or not, so a word that is only a verb
+        reads the same as one that is a verb and a noun.
+
+        A part of speech the syllabus does not give the word is still worth knowing
+        and is not what is being taught: 比 is a preposition and a verb to the
+        syllabus, and the dictionary also calls it a noun, "ratio". Those are set
+        quietly under the rest.
+        """
+        def senses(m: str) -> str:
+            return link_words(" / ".join(
+                html.escape(clean_xrefs(x.strip()), quote=False)
+                for x in m.split("/") if x.strip()))
+
+        split = w.get("meaning_by_pos") or []
+        if not split:
+            head = pos_glossed(w["pos"])
+            body = link_words(render_senses(w["meaning"]))
+            return f'<div class=charSense>{head} {body}</div>' if head else body
+        declared = {p for group in w["pos"] for p in POS_SPLIT.split(group) if p}
+        # 动荡 is a verb and an adjective to the syllabus, and the dictionary glosses
+        # it only as "unrest, turmoil, upheaval" -- nouns, every one. Setting the whole
+        # meaning aside as an afterthought would leave the card with nothing to say at
+        # full size, so where nothing is declared nothing is set aside.
+        if not any(p in declared for p, _ in split):
+            declared = {p for p, _ in split}
+        # A part of speech the syllabus gives the word and the dictionary glosses no
+        # sense under still says something: 动荡 is a verb and an adjective, and that
+        # its four glosses are all nouns does not make it less so. The heading stands
+        # on its own and the meaning above it is the meaning.
+        bare = [p for group in w["pos"] for p in POS_SPLIT.split(group)
+                if p and p not in {q for q, _ in split}]
+        return "".join(
+            f'<div class="charSense{"" if p in declared else " beyond"}">'
+            f'{"" if p in declared else "also "}{pos_label(p)} {senses(m)}</div>'
+            for p, m in split) + "".join(
+            f'<div class=charSense>{pos_label(p)}</div>' for p in bare)
+
     def pos_glossed(parts: list[str]) -> str:
         out = []
         for p in parts:
@@ -1088,8 +1147,10 @@ def main() -> int:
             fields=[
                 w["key"], w["level"], w["simplified"], tone_hint(w),
                 w["traditional"], spoken(w["pinyin"]), w["pinyin_numbered"],
-                link_words(render_senses(w["meaning"])),
-                "、".join(w["pos"]), pos_glossed(w["pos"]),
+                sense_blocks(w),
+                # Every meaning is headed by its part of speech now, so the line that
+                # used to carry it below said it a second time.
+                "、".join(w["pos"]), "",
                 link_words(w.get("classifier", "")), w["audio"],
                 link_words(" ".join(w["homophone"][:12])), also_read(w),
                 w["stroke_order"],
@@ -1526,6 +1587,7 @@ def main() -> int:
     # thing. A card that prints one reading and every reading's senses together says
     # 地 is "earth ... and also a particle", which is two words in one answer.
     taught_readings = {}
+    taught_entries = {}
     variant_readings = set()
     for w in words:
         if len(w["simplified"]) != 1:
@@ -1543,15 +1605,55 @@ def main() -> int:
             entry = (mark, num, w["traditional"])
             if entry not in taught_readings.setdefault(w["simplified"], []):
                 taught_readings[w["simplified"]].append(entry)
+        taught_entries.setdefault(w["simplified"], []).append(w)
+
+    def by_part_of_speech(ch: str, numbered: str) -> list:
+        """[(part of speech, senses)] where a reading is taught as more than one.
+
+        The dictionary gives 會 one entry of six senses. The syllabus gives it two,
+        會1 a verb at level 1 and 會2 a noun at level 3, and data/homograph-glosses.csv
+        divides the six between them -- so which three are the noun is already written
+        down, and the writing card can say it. Where a reading is taught once there is
+        nothing to divide and the dictionary's own entry stands.
+        """
+        blocks = []
+        for w in taught_entries.get(ch, []):
+            if w["pinyin_numbered"].replace(" ", "").replace("ü", "v").lower() != numbered:
+                continue
+            if not w["pos"]:
+                continue
+            declared = {p for group in w["pos"] for p in POS_SPLIT.split(group) if p}
+            split = w.get("meaning_by_pos") or [("、".join(w["pos"]), w["meaning"])]
+            # where nothing the dictionary gives is a part of speech the syllabus
+            # names, nothing is set aside -- see sense_blocks
+            if not any(p in declared for p, _ in split):
+                declared = {p for p, _ in split}
+            blocks += [(p, m, p in declared) for p, m in split]
+        # The dictionary's own glosses arrive cleaned and spaced about their slashes;
+        # these come from the word list, where 之 still reads "literary equivalent of
+        # 的[de5]" and 会 reads "to know how to/to be likely to".
+        return [(p, " / ".join(x.strip() for x in clean_xrefs(m).split("/") if x.strip()), d)
+                for p, m, d in blocks] if len(blocks) > 1 else []
 
     def char_reading_senses(ch: str):
-        """[(reading, senses)] for a character, one entry per way it is read.
+        """[(label, senses, bold, declared)] for a character, one block per way it is
+        taught. Not declared means the dictionary gives the character a part of speech
+        the syllabus does not: 比 is a verb and a preposition to the syllabus, and a
+        noun, "ratio", to the dictionary.
 
         A reading heard inside a word says so: 子 zi cannot be recorded alone, so the
         card plays 包子 and tells you that is what it is playing.
         """
         out = []
-        for marked, numbered, trad in taught_readings.get(ch, []):
+        readings = taught_readings.get(ch, [])
+        for marked, numbered, trad in readings:
+            heard = (char_audio.get(ch) or {}).get(numbered, {}).get("in", "")
+            said = marked + (f" (in {heard})" if heard else "")
+            split = by_part_of_speech(ch, numbered)
+            if split:
+                out += [(f"{said} {pos_glossed([p])}" if len(readings) > 1
+                         else pos_glossed([p]), m, False, d) for p, m, d in split]
+                continue
             entry = pick_char(ch, numbered, trad)
             if entry and not entry[2]:
                 # 血 xiě is entered only as "see 血 xuè"; the other reading defines it
@@ -1559,9 +1661,41 @@ def main() -> int:
                 if elsewhere:
                     entry = max(elsewhere, key=char_rank)
             if entry:
-                heard = (char_audio.get(ch) or {}).get(numbered, {}).get("in", "")
-                out.append((marked + (f" (in {heard})" if heard else ""), entry[1]))
+                out.append((said, entry[1], True, True))
         return out
+
+    def char_meaning(ch: str, info: dict) -> str:
+        """A reading is a label to be picked out; a part of speech is a glyph, and
+        bold would thicken strokes the card is teaching."""
+        blocks = char_reading_senses(ch)
+        # 名 is a noun and is also a character the card asks you to write, so a
+        # heading naming its part of speech would answer the question. Such a card
+        # gives its senses unheaded. A reading is never the character, so a card split
+        # by reading is unaffected.
+        if any(ch in lab for lab, *_ in blocks):
+            blocks = [("", " / ".join(m for _, m, *_ in blocks), False, True)]
+        if len(blocks) > 1:
+            # These are the dictionary's full lists, and 掉 has seventeen. A block
+            # leads with its first sense and carries the rest quietly, as a card with
+            # one block always has. A part of speech the syllabus does not give the
+            # character is set quieter still, as it is on a vocabulary card.
+            return "".join(
+                f'<div class="charSense{"" if declared else " beyond"}">'
+                f'{"" if declared else "also "}{f"<b>{lab}</b>" if bold else lab} '
+                f'{render_senses(m)}</div>' for lab, m, bold, declared in blocks)
+        # One block is still headed by its part of speech, as a vocabulary card is:
+        # 年 is a noun and a classifier whether or not the dictionary divides its one
+        # sense between them. Only where the syllabus lists the character on its own,
+        # and only once -- where it lists it twice the blocks above say it instead.
+        entries = taught_entries.get(ch, [])
+        head = pos_glossed(entries[0]["pos"]) if len(entries) == 1 else ""
+        if ch in head:
+            head = ""
+        body = (render_senses(blocks[0][1]) if blocks else
+                render_senses(char_info.get(ch, {}).get("meaning")
+                              or info.get("definition") or ""))
+        return f'<div class=charSense>{head} {body}</div>' if head and body else body
+
     writing = {r["word"]: lvl_of(r["examLevelId"])
                for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
     char_decks = {lv: deck("writing", lv) for lv in LEVELS}
@@ -1599,15 +1733,7 @@ def main() -> int:
                     + next((f' (in {v["in"]})'
                             for v in (char_audio.get(c) or {}).values()
                             if v.get("in")), "")),
-                mask_answer(
-                    "".join(f'<div class=charSense><b>{r}</b> '
-                            f'{html.escape(m, quote=False)}</div>'
-                            for r, m in char_reading_senses(c))
-                    if len(char_reading_senses(c)) > 1
-                    else (render_senses(char_reading_senses(c)[0][1])
-                          if char_reading_senses(c)
-                          else render_senses(char_info.get(c, {}).get("meaning")
-                                             or info.get("definition") or "")), c),
+                mask_answer(char_meaning(c, info), c),
                 clips, stroke, etym_block(c),
                 mask_answer(example_of(c, lv), c),
                 example_word(c, lv),

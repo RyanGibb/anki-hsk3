@@ -361,6 +361,19 @@ def main() -> int:
             }
         )
 
+    # The dictionary keeps a reading in the same slot as a meaning, separated by the
+    # same slash: 差 ends "not up to standard; inferior/Taiwan pr. [cha1]". The deck
+    # teaches one standard and drops those, and dropping them here rather than when
+    # the card is drawn means everything downstream sees the list the card will show.
+    # Without it 差 has a sense that is neither adjective nor verb and cannot be
+    # divided by part of speech, over a string no card ever displays.
+    READING_ONLY = re.compile(r"^\(?(?:Taiwan|also|old|dial\.?|coll\.?)\s+pr\.", re.I)
+    for w in words:
+        for field in ("meaning", "meaning_full"):
+            kept = [s for s in w[field].split("/") if s and not READING_ONLY.match(s.strip())]
+            if kept:
+                w[field] = "/".join(kept)
+
     curated = {
         row["entry"]: row["meaning"]
         for row in csv.DictReader(
@@ -375,6 +388,21 @@ def main() -> int:
             curated_used += 1
         else:
             w["meaning_source"] = "cc-cedict"
+
+    # The syllabus marks 可以 动、形 and then leaves you to work out which of "can, may,
+    # possible, able to, not bad, pretty good" is the adjective. Where a word is split
+    # across two entries the division is written in homograph-glosses.csv; where one
+    # entry carries two parts of speech there is nothing to hang it on, so it is
+    # written here instead. The dictionary says which senses are verbs, in that it
+    # writes them "to ...", and says nothing about the rest.
+    by_pos = collections.defaultdict(list)
+    path = ROOT / "data/sense-pos.csv"
+    if path.exists():
+        for row in csv.DictReader(path.open(encoding="utf-8")):
+            by_pos[row["entry"]].append((row["pos"], row["meaning"]))
+    for w in words:
+        w["meaning_by_pos"] = by_pos.get(w["entry"], [])
+    print(f"  senses split by part of speech: {len(by_pos)} entries")
 
     # A card leads with the first sense and hides the rest, so the first has to be the
     # sense the syllabus is teaching. 种 at level 3 is marked 量, a classifier, and the
