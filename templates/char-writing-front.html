@@ -1,7 +1,7 @@
 <div class=question>
   <div class=pinyin>{{Pinyin}}</div>
   <div class=english>{{Meaning}}</div>
-  {{Audio}}
+  <div class=say>{{Audio}}</div>
 </div>
 <div>
   <canvas id="canvas" class="drawbox"></canvas>
@@ -30,9 +30,9 @@ setTimeout(function () {
   const INK = getComputedStyle(document.querySelector(".card") || document.body).color;
   const GRID = INK.replace(/^rgb\((.*)\)$/, "rgba($1, 0.35)");
 
-  // the same size as the diagram that answers it, so the card does not shift
-  // when it turns over
-  const size = Math.min(376, window.innerWidth * 0.91, window.innerHeight - 50);
+  // The drawing buffer matches the size the stylesheet gave the canvas, so a stroke
+  // lands where it is drawn and the box is the same square as the diagram answering it.
+  const size = Math.round(canvas.getBoundingClientRect().width);
   canvas.width  = size;
   canvas.height = size;
 

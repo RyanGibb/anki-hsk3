@@ -91,24 +91,30 @@ def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> boo
     they are the same word. Strictly where the deck teaches two words written alike:
     过 guò and 过 guo are not one word said casually, and a recording of the first
     teaches the wrong sound on the second's card.
+
+    A word of one syllable is read strictly whatever is asked. An unstressed syllable
+    is one that gave its tone to the syllable before it, and a word of one syllable has
+    no syllable before it: 子 the suffix is zi and 子 the noun is zǐ, and a card
+    teaching the first is not taught by a recording of the second.
     """
     if norm(card) == norm(recorded):
         return True
     if strict or toneless(card) != toneless(recorded):
         return False
+    alone = len(toneless(card).split()) == 1 and len(word) == 1
     # The syllables now differ only in their tone marks. Two differences are the
     # notation and not the speaker: a syllable written unstressed by one source and
     # not the other, and the sandhi of 一 and 不, which sit wherever the word puts
     # them -- 进一步, 从容不迫 -- so the tones are read against the characters.
     ours, theirs = tones(word, card), tones(word, recorded)
     if ours and theirs and len(ours) == len(theirs):
-        return all(x == y or "5" in (x, y) or char[:1] in "一不"
+        return all(x == y or ("5" in (x, y) and not alone) or char[:1] in "一不"
                    for (char, x), (_, y) in zip(ours, theirs))
     a, b = TONED.findall(norm(card)), TONED.findall(norm(recorded))
     # sheí and shéi are the same syllable with the mark typed on a different vowel
     if [TONE_VALUE[x] for x in a] == [TONE_VALUE[x] for x in b]:
         return True
-    return len(a) != len(b)                # neutral tone
+    return len(a) != len(b) and not alone   # neutral tone
 
 
 def stage(src: pathlib.Path, name: str) -> None:
@@ -338,6 +344,25 @@ def main() -> int:
             char_audio[c] = got
         elif c in cmn and c in swac:
             skipped_chars.append((c, "/".join(readings), swac[c]))
+
+    # A syllable said light is said inside a word or not at all, so a word that is one
+    # such syllable is heard in another: 子 in 包子, 头 in 石头. The card says which,
+    # as the writing card does, since what plays is not the word on the card.
+    heard = 0
+    for w in words:
+        if w["audio"] or len(w["simplified"]) != 1:
+            continue
+        reading = w["pinyin_numbered"].replace(" ", "").lower()
+        word = in_word.get((w["simplified"], reading))
+        if not word:
+            continue
+        src = cmn[word]
+        stage(src, src.name)
+        w["audio"] = f"[sound:{src.name}]"
+        w["audio_source"] = "audio-cmn (in a word)"
+        w["heard_in"] = word
+        heard += 1
+    print(f"heard inside a word  : {heard} words")
 
     # Anything the corpus never recorded: a clip made by hand where one exists, else
     # a synthesised one. Both are optional -- a checkout with neither still builds.

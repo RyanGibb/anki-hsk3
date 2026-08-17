@@ -11,6 +11,14 @@
 }
 
 .card {
+  /* Every square on a card is this wide: the box you write in, the diagram that
+     answers it, a tapped diagram, and a row of two with their gap. Stated once so
+     they share a margin however the screen is shaped. */
+  --plate: min(376px, 91vw);
+
+  /* the corner the replay button is pinned into */
+  position: relative;
+
     font-family: "Rare CJK", "Rare CJK 2", arial;
     font-size: 16px;
     text-align: center;
@@ -39,6 +47,16 @@
 
 .english.ofSentence { font-size: 18px; }
 
+/* A sentence runs to several lines and its reading and meaning run with it, so they
+   are read down a left edge rather than centred line by line. */
+.pinyin.ofSentence,
+.english.ofSentence {
+  max-width: min(34em, 94vw);
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
 .sentence{
     font-family: "Rare CJK", "Rare CJK 2", SimSun;
     font-size: 36px;
@@ -57,7 +75,7 @@
   display: flex;
   gap: 1rem;
   justify-content: center;
-  width: min(376px, 91vw);
+  width: var(--plate);
   margin: 0 auto;
 }
 
@@ -145,15 +163,14 @@ img.stroke {
 
 /* a word has several characters; the writing card has one, beside your attempt */
 .strokes img.stroke {
-  /* two of these and the gap between them come to the width of the box you write in,
-     stated rather than arrived at, so the two cards inset their diagrams alike */
-  width: calc((min(376px, 91vw) - 1rem) / 2);
+  /* two of these and the gap between them come to one plate */
+  width: calc((var(--plate) - 1rem) / 2);
   cursor: pointer;
 }
 
+/* Tapped, a diagram fills the plate, as the box you write in does. */
 .strokes img.stroke.big {
-  width: 640px;
-  max-width: 96vw;
+  width: var(--plate);
 }
 
 
@@ -161,11 +178,21 @@ img.stroke {
   border: 1px solid currentColor;
   border-radius: 4px;
   opacity: 0.9;
-  /* Never wider than the card. The script sizes the drawing buffer from the window,
-     which is not the width the card is given, and a canvas that overflows is drawn
-     scaled -- the pointer then lands somewhere other than where it is touched. */
-  max-width: 100%;
+  /* A plate, unless the screen is too short for one, and square. The border counts
+     inside it, as it does on a diagram, so the two are inset alike. */
+  box-sizing: border-box;
+  width: min(var(--plate), calc(100vh - 50px));
+  aspect-ratio: 1;
   height: auto;
+}
+
+/* A replay button is a control, not a line of the card: pinned to the corner rather
+   than given a line of its own between the things it interrupts. */
+.say {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
 }
 
 .en {
@@ -199,14 +226,28 @@ img.stroke {
 
 .gloss > b { font-size: 24px; }
 
-.gloss > b, .later > b, .example > b { font-weight: normal; }
+.gloss > b, .later > b, .example b { font-weight: normal; }
 
-.example {
+/* The words a character is met in, one to a line. Three columns so that "as in"
+   starts at one edge and the dashes stand at another, whatever the words are. */
+.examples {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 16px;
   opacity: 0.7;
   margin-top: 6px;
+  display: grid;
+  /* the meaning takes what is left and wraps inside it, so a long one stays on the
+     card and its second line begins under the dash */
+  grid-template-columns: max-content max-content minmax(0, max-content);
+  justify-content: center;
+  max-width: var(--plate);
+  margin-left: auto;
+  margin-right: auto;
+  column-gap: 0.4em;
+  text-align: left;
 }
+
+.example { display: contents; }
 
 .exPinyin { font-family: "Rare CJK", "Rare CJK 2", Gentium Plus; }
 
@@ -219,7 +260,14 @@ img.stroke {
 
 /* A sentence borrowed onto a vocabulary card, where it illustrates the word rather
    than being the thing asked about, so it is set below the word's own headline. */
-.usage { margin-top: 12px; opacity: 0.85; }
+.usage {
+  margin-top: 12px;
+  opacity: 0.85;
+  max-width: min(34em, 94vw);
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
 .usage .sentence { font-size: 24px; }
 .usage .pinyin.ofSentence { font-size: 18px; }
 .usage .english.ofSentence { font-size: 16px; }
@@ -236,7 +284,15 @@ img.stroke {
   margin-top: -6px;
 }
 
-.charSense { margin: 2px 0; }
+/* A meaning read as a list of what the word is: each part of speech starts at the
+   same edge, the block itself centred on the card. */
+.charSense {
+  margin: 2px 0;
+  max-width: min(34em, 94vw);
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
 
 /* A meaning the dictionary gives under a part of speech the syllabus does not teach
    the word as. Worth knowing, not what is being asked. */
@@ -267,4 +323,28 @@ img.stroke {
 .partStep {
   border: 0; border-top: 3px solid currentColor; opacity: 0.35;
   border-radius: 3px; margin: 1.1em auto; width: 28%;
+}
+
+/* The reading of a character named in a list of them. Its own reading: 朋友 is
+   péngyou and the 友 beneath it is yǒu, which is the tone the compound flattened. */
+.charRead {
+  font-family: "Rare CJK", "Rare CJK 2", Gentium Plus;
+  opacity: 0.75;
+}
+
+/* The senses a meaning carries on with belong to the sense in front of them: 形
+   adjective single / sole / odd number is one list and is set as one, falling where it
+   fits and wrapping where it does not. Only inside a meaning -- the tail of a glyph
+   origin is a paragraph and takes its own line. */
+.english .more {
+  display: inline;
+  margin-top: 0;
+}
+
+.english .more::before { content: " / "; }
+
+/* Another way the character is read, and what it means then. Set under the reading
+   the word gives it, indented with the account of the glyph. */
+.alsoRead {
+  margin: 1px 0 0 1.2em;
 }
