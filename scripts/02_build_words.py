@@ -83,7 +83,7 @@ def split_classifiers(defs: list[str]) -> tuple[list[str], str]:
 
 # Glosses describing a spelling, not a meaning: "variant of 藥|药" against "medicine".
 META = re.compile(
-    r"^(?:old |erroneous |archaic )?variant of "
+    r"^(?:old |erroneous |archaic |erhua )?variant of "
     r"|^see (?:also )?[㐀-鿿豈-﫿]"
     r"|^used in \S"
     r"|^surname \S+$"

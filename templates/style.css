@@ -120,10 +120,20 @@ a {
 a:hover {
   text-decoration: underline;
 }
+/* The other cards this word is written on, one to a line, laid out as the words a
+   character is met in are: what tells them apart at one edge, the dashes at another. */
 .homograph {
     font-family: "Rare CJK", "Rare CJK 2", Georgia;
     font-size: 16px;
     opacity: 0.55;
+    display: grid;
+    grid-template-columns: max-content minmax(0, max-content);
+    justify-content: center;
+    max-width: var(--plate);
+    margin-left: auto;
+    margin-right: auto;
+    column-gap: 0.4em;
+    text-align: left;
 }
 
 
@@ -247,7 +257,7 @@ img.stroke {
   text-align: left;
 }
 
-.example { display: contents; }
+.example, .alsoWritten { display: contents; }
 
 .exPinyin { font-family: "Rare CJK", "Rare CJK 2", Gentium Plus; }
 

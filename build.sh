@@ -13,6 +13,10 @@ fetch data/raw/cedict_ts.u8 \
 # them 压轴 and 致力于 have no entry at all, so nothing gives their traditional form.
 fetch data/raw/cedict_patch.u8 \
   https://raw.githubusercontent.com/Punpuf/hsk-syllabus-vocabulary-parser/main/data/cedict_patch.u8
+# What each character breaks down into, in Ideographic Description Sequences. Wiktionary
+# names the parts; this says whether the character carries the shape it names.
+fetch data/raw/ids.txt \
+  https://raw.githubusercontent.com/cjkvi/cjkvi-ids/master/ids.txt
 
 if [ ! -d .cache/audio-cmn/64k/syllabs ]; then
   [ -d .cache/audio-cmn ] || git clone --depth 1 --filter=blob:none --sparse \
