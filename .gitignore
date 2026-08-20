@@ -4,3 +4,4 @@ data/raw/*.pdf
 build/
 .cache/
 __pycache__/
+data/raw/ids.txt
