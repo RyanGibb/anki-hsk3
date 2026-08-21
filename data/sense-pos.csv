@@ -232,9 +232,6 @@ entry,pos,meaning
 正,副,exactly/just (at that time)/right (in that place)
 正,形,straight/upright/proper/main/principal/(math.) positive
 正,动,to correct/to rectify
-周,名,circle/circumference/lap/cycle
-周,动,to make a circuit/to circle/to help financially
-周,形,complete/all/all over/thorough
 把,量,"classifier: handful, bundle, bunch/classifier for things with handles"
 把,介,(used to put the object before the verb: 把[ba3] + {noun} + {verb})
 把,动,to hold; to grasp/to hold a baby in position to help it urinate or defecate
@@ -394,7 +391,6 @@ entry,pos,meaning
 奖,名,prize; award; bonus; reward
 奖,动,(bound form) to encourage; to commend; to praise/to award; to give as a reward
 交,动,to hand over; to deliver; to pay (money); to turn over/to make friends/(of lines) to intersect
-交,名,variant of 跤[jiao1]
 骄傲,形,conceited/proud of sth
 骄傲,名,pride/arrogance
 教育,名,education
@@ -1229,7 +1225,6 @@ entry,pos,meaning
 害,动,to do harm to/to cause trouble to
 狠,形,ruthless; fierce; ferocious/determined; resolute
 狠,动,to harden (one's heart)
-狠,副,old variant of 很[hen3]
 横,形,horizontal/across/crosswise/in a jumble/chaotic/(in fixed expressions) harsh and unreasonable/violent
 横,动,"to place (sth) flat (on a surface)/to cross (a river, etc)"
 横,名,horizontal stroke (in Chinese characters)
@@ -2258,7 +2253,7 @@ entry,pos,meaning
 皱,形,wrinkled
 主宰,动,to dominate/to rule/to dictate
 主宰,名,master
-注,动,"(bound form) to pour into; to flow into; to inject/(bound form) to focus (one's spirit, gaze etc) on a single point; to concentrate/variant of 註|注[zhu4]"
+注,动,"(bound form) to pour into; to flow into; to inject/(bound form) to focus (one's spirit, gaze etc) on a single point; to concentrate"
 注,名,(bound form) stake (in gambling)
 注,量,"classifier for stakes, sums of money, transactions or beams of light"
 助力,动,to help; to aid
@@ -2283,3 +2278,5 @@ entry,pos,meaning
 纵横,动,able to move unhindered
 纵横,名,"abbr. for 合縱連橫|合纵连横[He2 zong4 Lian2 heng2], School of Diplomacy during the Warring States Period (475-221 BC)"
 作为2,名,one's conduct/deed/activity/accomplishment/achievement
+周,名,week
+周,量,weekly

@@ -267,7 +267,9 @@ POS_SPLIT = re.compile(r"[、,（）()]")
 # a word that is only ever the end or the start of another
 AFFIX = re.compile(r"前缀|后缀")
 WORDS = re.compile(r"[A-Za-z\u3400-\u9fff]")
-POINTER = re.compile(r"^(variant of|old variant of|see|abbr\. for)\b", re.I)
+# "erhua variant of 好玩" is a direction elsewhere like any other: the deck follows
+# it rather than printing it, so 一点儿 says "a bit; a little bit" and not where to look.
+POINTER = re.compile(r"^((?:old |erhua )?variant of|see|abbr\. for)\b", re.I)
 # "abbr. for 超級市場|超级市场[chao1 ji2 shi4 chang3]"
 XREF = re.compile(r"(?:([㐀-鿿]+)\|)?([㐀-鿿]+)\[([A-Za-z0-9:, ]+)\]")
 # "also pr. [di4]", "Taiwan pr. [zhi1dao5]" -- not reliably spaced, so split on digits
@@ -511,9 +513,12 @@ def best_entry(cands, want_trad, key, proper=False):
                 # 只 [zhi1] is "variant of 隻" while 隻 [zhi1] is the classifier
                 # itself, the same test the character glosses use.
                 not POINTER.match(gloss),
-                n_senses,
-                # The form decides what is left, as it does for 裡 against 里.
-                trad == want_trad)
+                # The form the deck settled on, before length: 秊 is filed under 年 as
+                # "grain; harvest (old); variant of 年" and says more than 年 itself,
+                # which is "year" and a classifier, so 一年有十二个月 was glossed grain.
+                # It decides 裡 against 里 as well.
+                trad == want_trad,
+                n_senses)
     return max(cands, key=rank)[1]
 
 
@@ -644,7 +649,13 @@ def load_etymology():
                 and ps[i][1][:1].islower():
             head = f"{head} {ps[i][1]}"
             i += 1
-        while i < len(ps) and (ps[i][0] or ps[i - 1][0] == ";"):
+        # Only where the head asks for them. A colon promises a list and says nothing
+        # without it -- "Two kinds of glyph are found in Warring States era:" -- while
+        # a head that closes itself is complete, and the bullets under it belong to
+        # something else: 洛 is a phono-semantic compound, and what follows is a note
+        # on clipping 洛必達法則 for l'Hôpital's rule.
+        while re.search(r"[:：]$", head) and i < len(ps) \
+                and (ps[i][0] or ps[i - 1][0] == ";"):
             items.append(ps[i][1].rstrip("."))
             i += 1
         if items:
@@ -951,6 +962,50 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
                 i += 1
         return out
 
+    # What the syllabus teaches a word as, which is a better opening than the order
+    # CC-CEDICT happens to file its senses in: 件 opens on "item" where the syllabus
+    # teaches the classifier, and 位 on "position" where it teaches the one for people.
+    taught_word: dict[str, list] = collections.defaultdict(list)
+    forms: dict[str, set] = collections.defaultdict(set)
+    for w in words:
+        taught_word[w["simplified"]].append(w)
+        forms[w["simplified"]].add(w["traditional"])
+    # A word the syllabus teaches twice can be two traditional characters -- 面 is 面
+    # "face" and 麵 "flour" -- and to_trad keeps whichever was written down last, so
+    # asking for that form would settle the sentence on the order of a file.
+    two_formed = {s for s, ts in forms.items() if len(ts) > 1}
+
+    def taught_senses(piece: str, key: str) -> list:
+        """The senses the syllabus teaches, where it settles which they are.
+
+        A word it teaches once is unarguable. One it teaches twice is settled by the
+        reading where the two differ -- 挂着 is zhe and 着凉 is zhuó -- and by nothing
+        the deck has where they do not: 别 is bié as "don't" and bié as "to part", and
+        which of them a sentence means is not written down anywhere. Those keep the
+        dictionary's own order.
+        """
+        ws = taught_word.get(piece) or []
+        if len(ws) > 1 and key:
+            ws = [x for x in ws
+                  if syllable(x["pinyin_numbered"]) == syllable(key)]
+        if len(ws) != 1:
+            return []
+        w = ws[0]
+
+        def senses(m):
+            return [x.strip() for x in clean_xrefs(m).split("/") if x.strip()]
+
+        # Where the meaning is divided by part of speech, the syllabus's own order of
+        # them decides: 跟 is 介、连、（名、动） and the preposition is what 跟我说说 and
+        # 我的爱好跟他一样 turn on, while the dictionary opens on "heel".
+        split = dict(w.get("meaning_by_pos") or [])
+        out: list = []
+        for p in PartsOfSpeech.named(w["pos"]):
+            if p in split:
+                out += senses(split[p])
+        seen = {x.casefold() for x in out}
+        return out + [x for x in senses(w["meaning"]) if x.casefold() not in seen]
+
     def gloss_word(sentence: str, w: str, read=(), proper=False) -> str:
         """One entry per word, and per leftover piece of it: 读了 and 人们 are one word
         to the reading and no word to the dictionary, and 了 and 们 are usually the
@@ -971,12 +1026,36 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
                     or cedict_defs.get(piece)
                 if not cands:
                     continue
-                gloss = word_gloss.get((sentence, piece)) \
-                    or best_entry(cands, wiki.to_trad.get(piece), key, proper and i == 0)
+                written = word_gloss.get((sentence, piece))
+                gloss = best_entry(
+                    cands, None if piece in two_formed else wiki.to_trad.get(piece),
+                    key, proper and i == 0)
                 trad = wiki.to_trad.get(piece, piece)
                 label = piece if trad == piece else f"{piece} ({trad})"
+                # The sense the sentence draws on is not worked out, so every sense is
+                # given; the first at full size and the rest quietly under it, as a
+                # word's own card carries a long meaning. 跟 turns on "compared with",
+                # its sixth, and a reader should not have to take the whole list at
+                # once to reach it.
+                said = [p.strip() for p in gloss.split(" / ") if p.strip()]
+                # What the sentence means by the word leads, and the dictionary's other
+                # senses follow rather than being thrown away: a word written down for
+                # this sentence first, since that is the only place the deck knows which
+                # of two senses a sentence draws on -- 别 is bié either way -- then what
+                # the syllabus teaches, then the dictionary's own order.
+                lead = ([p.strip() for p in clean_xrefs(written).split(" / ")
+                         if p.strip()] if written else taught_senses(piece, key))
+                if lead:
+                    already = {s.casefold() for s in lead}
+                    said = lead + [s for s in said if s.casefold() not in already]
+                body = wiki.markup(html.escape(said[0], quote=False)) if said else ""
+                if len(said) > 1:
+                    body += ('<div class="more">'
+                             + wiki.markup(html.escape(" / ".join(said[1:]),
+                                                       quote=False))
+                             + "</div>")
                 out.append(f'<div class="gloss"><b>{wiki.label(label, trad)}</b> '
-                           f'{wiki.markup(html.escape(gloss, quote=False))}</div>')
+                           f'{body}</div>')
                 i += n
                 break
             else:
@@ -1115,8 +1194,32 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
         lv = lvl_of(r["examLevelId"])
         # the source text is the key for everything looked up by sentence; the
         # cleaned one is what the card shows
-        cases = [(c.strip(), unindex(c.strip(), r))
-                 for c in (r.get("cases") or "").split("|") if c.strip()]
+        # The source wraps a long sentence and the wrap lands on the separator, so
+        # 毅然选|择回乡工作 arrives as two pieces and the card showed the first half
+        # alone. A piece this long that closes nothing is the front of the next one.
+        # The item lists that end without punctuation on purpose -- 哥哥姐姐、今天和明天
+        # -- are all shorter than the wrap, so the two do not meet.
+        WRAP = 32
+        whole: list = []
+        for c in (r.get("cases") or "").split("|"):
+            for c in re.split(r"(?<=[。！？])\s+", c.strip()):
+                # 择回乡工作。年轻人的私事… — one piece holding two examples with a
+                # space where the separator should be. The only one in the file.
+                c = c.strip()
+                if not c:
+                    continue
+                if whole and len(whole[-1]) >= WRAP \
+                        and whole[-1][-1] not in "。？！”』）)…":
+                    # only as far as the sentence it was cut out of: what follows the
+                    # first full stop is the next example, run on without a separator
+                    stop = re.search(r"[。！？]", c)
+                    cut = stop.end() if stop else len(c)
+                    whole[-1] += c[:cut]
+                    c = c[cut:].strip()
+                    if not c:
+                        continue
+                whole.append(c)
+        cases = [(c, unindex(c, r)) for c in whole]
         # A：你的手机呢？ and B：我的手机在房间里。 are one exchange, and the answer
         # on its own is a stray B with nothing to answer. Keep the turns together.
         grouped, i = [], 0
@@ -1634,13 +1737,13 @@ def read_glossary(words, wiki, readings) -> Glossary:
         if not m:
             continue
         trad, simp, reading, body = m.groups()
-        # A word glossed inside a sentence has to be read at a glance, so three senses
-        # is enough there. A character's own card is where the character is the
-        # subject, and cutting at three cut 會 exactly where the verb ends: it said
-        # "can, to be likely to, to meet" and never that 会 is a meeting. 661 of the
-        # 1200 characters written have more than three.
+        # Every sense, since the deck does not work out which one a sentence draws on
+        # and cutting the list decides it by accident: 别浪费时间了 is "don't waste time"
+        # and the first three senses of 别 are to leave, to differentiate and to turn
+        # aside, so the card said everything except what the sentence meant. Likewise
+        # 若 without "if" and 跟 without "compared with".
         all_senses = [d for d in body.split("/") if not d.startswith("CL:")]
-        senses = all_senses[:3]
+        senses = all_senses
         if senses:
             # Candidates keyed by reading, the way the vocabulary path chooses, with
             # the case left alone: CC-CEDICT capitalises a proper noun's reading, so
@@ -1669,8 +1772,8 @@ def read_glossary(words, wiki, readings) -> Glossary:
     # "see 苏州市" is a direction to look elsewhere, not a meaning, and on a sentence
     # card there is nowhere to look. Where every sense of an entry points at another
     # word, say what that word says instead.
-    target_of = re.compile(r"^(?:see(?: also)?|variant of|old variant of|abbr\. for"
-                           r"|used in)\s+([㐀-鿿豈-﫿]+)")
+    target_of = re.compile(r"^(?:see(?: also)?|(?:old |erhua )?variant of|abbr\. for"
+                           r"|erhua form of|used in)\s+([㐀-鿿豈-﫿]+)")
     for k, entries in cedict_defs.items():
         for i, (trad, gloss, reading, n) in enumerate(entries):
             if not POINTER.match(gloss):
@@ -2045,15 +2148,38 @@ def read_glossary(words, wiki, readings) -> Glossary:
                     out.add(entry_reading(ch, neutralised.get((ch, part), part)))
         return out
 
-    def gloss_at(ch: str, reading: str) -> str:
-        """What the character means when it is read that way."""
+    # Which traditional character the deck means by a simplified one at a given
+    # reading. 只 is two characters: 隻 read zhī and 只 read zhǐ.
+    taught_trad = {(c, num): trad
+                   for c, ways in readings.by_char.items()
+                   for _, num, trad in ways}
+
+    def gloss_at(ch: str, reading: str, depth: int = 0) -> str:
+        """What the character means when it is read that way.
+
+        Among entries sharing a reading the traditional form the deck teaches decides,
+        as it does when the reading is the one being taught: 只 read zhī is 隻 the
+        classifier and not 秖, "grain that has begun to ripen", a different character
+        that happens to share the simplified form. An entry that only points elsewhere
+        is followed rather than shown -- 甚 read shén is "variant of 什", and what a
+        reader wants there is what 什 means.
+        """
+        want = taught_trad.get((ch, reading))
         best = None
         for e in char_any.get(ch, []):
             if syllable(e[4]) != reading:
                 continue
-            if best is None or char_rank(e) > char_rank(best):
-                best = e
-        return best[1] if best else ""
+            rank = (e[0] == want,) + tuple(char_rank(e))
+            if best is None or rank > best[0]:
+                best = (rank, e)
+        if not best:
+            return ""
+        gloss = best[1][1]
+        if depth < 2 and POINTER.match(gloss):
+            aimed = re.search(r"(?:variant of|see|abbr\. for)\s+([㐀-鿿豈-﫿]+)", gloss)
+            if aimed and aimed.group(1) != ch:
+                return gloss_at(aimed.group(1), reading, depth + 1) or gloss
+        return gloss
 
     def dictionary_readings(ch: str, every: bool = False) -> list:
         """The readings the dictionary gives a character, the fullest first.

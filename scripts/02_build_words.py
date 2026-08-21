@@ -92,6 +92,7 @@ META = re.compile(
     r"|^abbr\. for "
 )
 
+VARIANT = re.compile(r"^(?:old |erroneous |archaic |erhua )?variant of ")
 POINTER = re.compile(r"(?:variant of|also written|see) ([㐀-鿿豈-﫿]+)(?:\||\[|$)")
 POINTER_SIMP = re.compile(
     r"(?:variant of|also written|see(?: also)?|abbr\. for) "
@@ -318,6 +319,14 @@ def main() -> int:
         if chosen:
             traditional = chosen["trad"]
             defs, classifier = split_classifiers(follow_pointer(chosen["defs"]))
+            # A note that one spelling is a variant of another is not a meaning, and
+            # where the entry says something of its own it is only clutter: 週 is
+            # "week; weekly; variant of 周" and 搜 "to search; variant of 蒐". Only
+            # variants: "abbr. for 环境保护" is what 环保 means, and "see 正版" points
+            # somewhere a reader may want to go. Where every sense is a direction
+            # follow_pointer has already replaced them, so this never takes them all.
+            if any(not VARIANT.match(d) for d in defs):
+                defs = [d for d in defs if not VARIANT.match(d)]
             meaning = "/".join(defs)
         else:
             traditional = simplified
@@ -334,6 +343,9 @@ def main() -> int:
                 if match:
                     defs, classifier = split_classifiers(
                         list(dict.fromkeys(d for e in match for d in e["defs"])))
+                    # the same rule the chosen entry gets
+                    if any(not VARIANT.match(d) for d in defs):
+                        defs = [d for d in defs if not VARIANT.match(d)]
                     meaning = "/".join(defs)
             traditional = decided
             trad_src = "adjudicated"

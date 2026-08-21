@@ -310,11 +310,19 @@ def main() -> int:
     fixes = ROOT / "data/sentence-word-glosses.csv"
     if fixes.exists():
         rows = list(csv.DictReader(fixes.open(encoding="utf-8")))
-        sentences = {r["chinese"] for r in
+
+        def bare(s: str) -> str:
+            """The sentence as the card carries it. The source writes 才2明白 to index
+            which 才 its point is about and the deck takes the digit out, so the two
+            are stripped alike and compared on the same footing."""
+            return re.sub(r"(?<=[㐀-鿿])[0-9](?![0-9])", "", s)
+
+        sentences = {bare(r["chinese"]) for r in
                      csv.DictReader((ROOT / "data/grammar-pinyin.csv")
                                     .open(encoding="utf-8"))}
         stale = [f'{r["word"]} in {r["chinese"][:18]}' for r in rows
-                 if r["chinese"] not in sentences or r["word"] not in r["chinese"]]
+                 if bare(r["chinese"]) not in sentences
+                 or r["word"] not in r["chinese"]]
         check(f"{len(rows)} hand-picked sentence glosses all still match", not stale,
               ", ".join(stale) if stale else "")
 
@@ -478,8 +486,11 @@ def main() -> int:
             con = sqlite3.connect(pathlib.Path(td) / db)
             n_notes = con.execute("select count(*) from notes").fetchone()[0]
             n_cards = con.execute("select count(*) from cards").fetchone()[0]
-            # 10999 vocabulary + 1200 writing + one per sentence
-            check(f"{n_notes} notes in db", n_notes == 10999 + 1200 + 2043)
+            # 10999 vocabulary + 1200 writing + one per sentence. Seven sentences the
+            # source wrapped onto its separator were two cards each and are now one,
+            # and the piece one of them was joined to held two more examples run
+            # together, so 2043 became 2038.
+            check(f"{n_notes} notes in db", n_notes == 10999 + 1200 + 2038)
             # forgetting HSK_DECK_ROOT silently leaves an empty deck tree on import
             decks = json.loads(con.execute("select decks from col").fetchone()[0])
             roots = {d["name"].split("::")[0] for d in decks.values()
