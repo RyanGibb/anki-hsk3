@@ -448,7 +448,8 @@ def gloss_words(text: str) -> set:
 
 # 老李 and 小高 are how a familiar name is formed, and a surname before a title is the
 # other place one appears. Nothing else in a sentence is a name.
-TITLE = re.compile(r"^(老师|先生|女士|小姐|医生|经理|教授|同学|阿姨|叔叔|大夫|师傅)")
+TITLE = re.compile(r"^(老师|先生|女士|小姐|医生|经理|教授|同学|阿姨|叔叔|大夫|师傅"
+                   r"|校长|老板|某)")
 
 
 def mask_answer(text: str, ch: str) -> str:
@@ -489,8 +490,8 @@ def char_rank(entry):
     return (not reading[:1].isupper(), defining > 0, defining, senses)
 
 
-def best_entry(cands, want_trad, key, proper=False):
-    """Which CC-CEDICT entry a word in a sentence means.
+def best_entry(cands, want_trad, key, proper=False, simp=""):
+    """The CC-CEDICT entry a word in a sentence means.
 
     Every test here is something the dictionary states about the entry rather than
     something read out of its wording: the reading it is filed under, the capital that
@@ -504,22 +505,33 @@ def best_entry(cands, want_trad, key, proper=False):
     decides it and this only has to agree.
     """
     def rank(e):
-        trad, gloss, reading, n_senses = e
+        trad, gloss, reading, n_senses, borrowed = e
         bare = re.sub(r"[0-9]", "", reading).lower()
         want = re.sub(r"[0-9]", "", key).lower()
         return (reading.lower() == key.lower(),
                 bool(key) and bare == want,
                 reading[:1].isupper() == proper,
                 # 只 [zhi1] is "variant of 隻" while 隻 [zhi1] is the classifier
-                # itself, the same test the character glosses use.
-                not POINTER.match(gloss),
+                # itself, the same test the character glosses use. An entry whose
+                # senses were borrowed from the word it points at is ranked with the
+                # pointers it came from, not with the entries that have senses of
+                # their own.
+                not POINTER.match(gloss) and not borrowed,
                 # The form the deck settled on, before length: 秊 is filed under 年 as
                 # "grain; harvest (old); variant of 年" and says more than 年 itself,
                 # which is "year" and a classifier, so 一年有十二个月 was glossed grain.
                 # It decides 裡 against 里 as well.
                 trad == want_trad,
-                n_senses)
-    return max(cands, key=rank)[1]
+                # How much it has to say. The count alone ties 隻, whose classifier
+                # runs "for birds and certain animals, one of a pair, some utensils,
+                # vessels etc" as a single sense, with 秖 "grain that has begun to
+                # ripen", and the tie went to whichever the file listed first.
+                n_senses, len(gloss),
+                # Last, so it only settles a tie nothing else can. 卹 and 恤 are entered
+                # with the same senses at the same reading, and the tie fell to the file,
+                # leaving a T恤 labelled 恤 (卹) as though that were how it is written.
+                trad == simp)
+    return max(cands, key=rank)
 
 
 def load_etymology():
@@ -1027,16 +1039,29 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
                 if not cands:
                     continue
                 written = word_gloss.get((sentence, piece))
-                gloss = best_entry(
+                # A sense written down for this sentence says which entry is meant, not
+                # only which of its senses leads. 游 in 游游泳 is the 游 that swims and
+                # not the 遊 that tours, and taking the sense without the entry left the
+                # card glossing "to swim" under a 遊 it is not written with.
+                if written:
+                    said = clean_xrefs(written).split(" / ")[0].strip().casefold()
+                    same = [c for c in cands if said and said in c[1].casefold()]
+                    cands = same or cands
+                chose = best_entry(
                     cands, None if piece in two_formed else wiki.to_trad.get(piece),
-                    key, proper and i == 0)
-                trad = wiki.to_trad.get(piece, piece)
+                    key, proper and i == 0, piece)
+                gloss = chose[1]
+                # The form to print is the one the senses were read from. A character
+                # map arrives at a form on its own and the two then disagree: 干 glossed
+                # "to do" was labelled 乾 "dry", 面 in 没见过面 was labelled 麵 "noodles",
+                # and 春, whose traditional form is itself, was labelled with the
+                # variant 旾.
+                trad = chose[0]
                 label = piece if trad == piece else f"{piece} ({trad})"
-                # The sense the sentence draws on is not worked out, so every sense is
-                # given; the first at full size and the rest quietly under it, as a
-                # word's own card carries a long meaning. 跟 turns on "compared with",
-                # its sixth, and a reader should not have to take the whole list at
-                # once to reach it.
+                # Every sense is given, the first at full size and the rest quietly
+                # under it, as a word's own card carries a long meaning. 跟 turns on
+                # "compared with", its sixth, and a reader should not have to take the
+                # whole list at once to reach it.
                 said = [p.strip() for p in gloss.split(" / ") if p.strip()]
                 # What the sentence means by the word leads, and the dictionary's other
                 # senses follow rather than being thrown away: a word written down for
@@ -1083,7 +1108,39 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
                                  + re.escape(i[1]), sentence))]
         return max(hit, key=len) if hit else sentence
 
-    def sentence_words(sentence: str) -> str:
+    # 离合词, the words the syllabus teaches as coming apart: 帮忙 is said 帮我一个忙 and
+    # 洗澡 洗个澡, so the two halves stand where the dictionary has one word. Taken from
+    # the syllabus rather than listed here, which is where the deck learns what it is
+    # teaching.
+    apart = {w for r in rows if "离合词" in (r.get("grammarDetail") or "")
+             for w in re.split(r"[、，/／]", r["content"] or "")
+             if len(w.strip()) == 2 and CJK.search(w)}
+
+    def split_verbs(sentence: str, pieces: set, point: str) -> list:
+        """The separable verbs this sentence says in halves, each with its own entry.
+
+        Glossing 帮 and 忙 where the sentence means 帮忙 leaves the reader the two
+        literal halves -- to help, and busy -- and never the word they make.
+
+        Only where the sentence is teaching that word. What goes between the halves is
+        anything at all -- 帮我一个忙 -- so reading the halves alone would take 坐下一班
+        地铁, the next train, for 下班 finishing work. The syllabus says which word each
+        sentence is an example of, and that settles it.
+        """
+        out = []
+        for w in sorted(apart):
+            if w not in point or w in sentence:
+                continue
+            if w[0] not in pieces or w[1] not in pieces:
+                continue
+            if not re.search(re.escape(w[0]) + r".{1,4}?" + re.escape(w[1]), sentence):
+                continue
+            cands = cedict_defs.get(w)
+            if cands:
+                out.append((w, best_entry(cands, wiki.to_trad.get(w), "", False, w)))
+        return out
+
+    def sentence_words(sentence: str, point: str = "") -> str:
         """Each word of the sentence with what it means, as a compound's card does for
         its characters. Words are as the checked pinyin divides them."""
         pinyin = checked.get(sentence)
@@ -1135,6 +1192,20 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
             # unexplained, and those are usually the point of the sentence, so what is
             # left over is glossed in turn.
             out.append(gloss_word(sentence, w, read, proper))
+        # The halves are glossed where they stand, and the word they make is said after
+        # them: the sentence has 帮 and it has 忙, and neither is 帮忙.
+        glossed = {p for w, _ in words for p in w}
+        for whole, chose in split_verbs(sentence, glossed, point):
+            trad = chose[0]
+            label = whole if trad == whole else f"{whole} ({trad})"
+            said = [p.strip() for p in chose[1].split(" / ") if p.strip()]
+            body = wiki.markup(html.escape(said[0], quote=False)) if said else ""
+            if len(said) > 1:
+                body += ('<div class="more">'
+                         + wiki.markup(html.escape(" / ".join(said[1:]), quote=False))
+                         + "</div>")
+            out.append(f'<div class="gloss"><b>{wiki.label(label, trad)}</b> '
+                       f'{body}</div>')
         return "".join(out)
 
     def gen_pinyin(sentence: str) -> str:
@@ -1258,7 +1329,7 @@ def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
                     join(html.escape(gen_pinyin(x), quote=False) for x in lines),
                     join(html.escape(translated.get(x, ""), quote=False)
                          for x in lines),
-                    "".join(sentence_words(x) for x in lines),
+                    "".join(sentence_words(x, point) for x in lines),
                     point, point_en_of.get(point) or label_en(point),
                     " &middot; ".join(
                         v + (f' <span class=en>{en}</span>' if en else "")
@@ -1749,7 +1820,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
             # the case left alone: CC-CEDICT capitalises a proper noun's reading, so
             # 那 [Na4] "surname Na" cannot match a sentence reading nà written [na4].
             entry = (trad, clean_xrefs(" / ".join(senses)),
-                     reading.replace(" ", "").replace("u:", "v"), len(senses))
+                     reading.replace(" ", "").replace("u:", "v"), len(senses), False)
             cedict_defs.setdefault((simp, entry[2].lower()), []).append(entry)
             cedict_defs.setdefault(simp, []).append(entry)
         if senses and len(simp) == 1:
@@ -1775,7 +1846,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
     target_of = re.compile(r"^(?:see(?: also)?|(?:old |erhua )?variant of|abbr\. for"
                            r"|erhua form of|used in)\s+([㐀-鿿豈-﫿]+)")
     for k, entries in cedict_defs.items():
-        for i, (trad, gloss, reading, n) in enumerate(entries):
+        for i, (trad, gloss, reading, n, _borrowed) in enumerate(entries):
             if not POINTER.match(gloss):
                 continue
             m = target_of.match(gloss)
@@ -1789,7 +1860,12 @@ def read_glossary(words, wiki, readings) -> Glossary:
             same = [o for o in aimed if o[2] == reading]
             for other in same + aimed:
                 if not POINTER.match(other[1]):
-                    entries[i] = (trad, other[1], reading, other[3])
+                    # Marked as borrowed: the senses are another entry's, and which
+                    # entry is settled by the order they were read in, so this cannot
+                    # speak for the word the way one with senses of its own can. 只
+                    # zhī points at 隻 the classifier and lands on 秖 "grain that has
+                    # begun to ripen", the entry that happens to come first.
+                    entries[i] = (trad, other[1], reading, other[3], True)
                     break
     etym_char = load_etymology()
 
