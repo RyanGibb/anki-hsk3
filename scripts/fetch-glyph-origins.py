@@ -20,6 +20,7 @@ import pathlib
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -29,6 +30,9 @@ from glyph_origin import any_about_the_glyph   # noqa: E402
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/glyph-origins.csv"
 LINKS = ROOT / "data/glyph-links.csv"
+# Corrections to what a page says, applied and named as data/grammar-fixes.csv's are,
+# so a --refresh does not quietly put the page's wording back.
+FIXES = ROOT / "data/glyph-origin-fixes.csv"
 CACHE = ROOT / ".cache/wiktionary-glyph"
 API = "https://en.wiktionary.org/w/api.php"
 AGENT = "anki-hsk3/1.0 (https://github.com/; personal Anki deck build)"
@@ -46,7 +50,11 @@ TAG = re.compile(r"<[^>]+>")
 PARA = re.compile(r"<(p|li)\b[^>]*>(.*?)</\1>", re.S)
 # Wiktionary marks a doubtful reading with a superscript reference; it reads as a stray
 # digit once the tags are gone.
-CITE = re.compile(r"\[\d+\]|\[edit\]|\[note \d+\]")
+# Footnotes come numbered plain or in a named group -- 咸 carries [字源 1] -- and a
+# group whose reference list the page never renders leaves MediaWiki's complaint
+# inline where the marker stood. Neither says anything about the glyph.
+CITE = re.compile(r"\[\d+\]|\[edit\]|\[note \d+\]|\[[^\[\]]{1,10} \d+\]"
+                  r"|Cite error:.*")
 # The table of ancient forms carries its own caption and source note. A page can have
 # the table and no explanation, and that note is not a glyph origin.
 BOILERPLATE = re.compile(
@@ -66,8 +74,17 @@ BOILERPLATE = re.compile(
 def get(params: dict) -> dict:
     url = API + "?" + urllib.parse.urlencode({**params, "format": "json"})
     req = urllib.request.Request(url, headers={"User-Agent": AGENT})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read().decode("utf-8"))
+    # A 429 names its own delay, and one pause is cheaper than a character silently
+    # left without its origin until somebody notices a hole in the file.
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 4:
+                raise
+            wait = int(e.headers.get("Retry-After") or 0) or 5 * 2 ** attempt
+            time.sleep(wait)
 
 
 def prose(fragment: str) -> str:
@@ -77,6 +94,10 @@ def prose(fragment: str) -> str:
     for kind, para in PARA.findall(fragment):
         text = html.unescape(TAG.sub("", para))
         text = CITE.sub("", text)
+        # "For etymology 2, simplified from 鹹" numbers the page's own sections,
+        # which the card does not have. The sentence stands without it.
+        text = re.sub(r"^For etymology \d+, *([a-z])",
+                      lambda m: m.group(1).upper(), text)
         text = re.sub(r"\s+", " ", text).strip()
         if text and not BOILERPLATE.search(text):
             # 再's account is a line followed by the competing readings as a list, and
@@ -215,6 +236,17 @@ def main() -> int:
             found += 1
         if n % 25 == 0:
             print(f"  {n}/{len(missing)}, {found} found")
+
+    fixes = list(csv.DictReader(FIXES.open(encoding="utf-8"))) if FIXES.exists() else []
+    for fix in fixes:
+        row = have.get(fix["character"])
+        # A row already carrying the correction is a fix at rest, not a stale one:
+        # only --refresh re-derives every row, so most runs see the corrected text.
+        if row and fix["wrong"] in row["text"]:
+            row["text"] = row["text"].replace(fix["wrong"], fix["right"])
+            print(f"  corrected {fix['character']}: {fix['why']}")
+        elif not (row and fix["right"] in row["text"]):
+            print(f"  correction no longer matches {fix['character']}: {fix['wrong'][:40]!r}")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", encoding="utf-8", newline="") as fh:
