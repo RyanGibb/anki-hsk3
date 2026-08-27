@@ -1526,6 +1526,44 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
                               or info.get("definition") or ""))
         return f'<div class=charSense>{head} {body}</div>' if head and body else body
 
+    def unsaid_reading(ch: str, level: str, marks: list):
+        """The reading the cited words give a character where its header never does.
+
+        奔 is taught alone as bèn, to head for, and written at level 6, where the only
+        word that shows it is 奔跑 bēnpǎo -- so every example on the card reads it a
+        way the header did not say. The header takes that reading up, named after the
+        word it is heard in; what it means then is already glossed beneath, where the
+        etymology block gives the character's other readings. A character never
+        taught alone heads with the dictionary's reading and meets the same fate: 卓
+        is zhuō to the dictionary and zhuó in 卓越, the only word that cites it.
+
+        一 and 不 are left alone: yí in 一半 is the sandhi the deck's convention
+        writes, not another reading. So is a header reading said neutral inside a
+        word, as the zi of 电子 is zǐ.
+        """
+        if ch in "一不":
+            return None
+        ways = ({syllable(num) for _, num, _ in readings.by_char.get(ch, [])}
+                or {syllable(numbered(m)) for m in marks})
+        if not ways:
+            return None
+        bases = {w[:-1] for w in ways}
+
+        def read_in(word, mark):
+            return [syllable(numbered(sy))
+                    for c2, sy, _ in align(word, mark) or [] if c2 == ch]
+
+        def header_says(num):
+            return num in ways or (num.endswith("5") and num[:-1] in bases)
+
+        cited = gloss.examples(ch, level)
+        said = [num for word, mark, _ in cited for num in read_in(word, mark)]
+        if not said or any(header_says(num) for num in said):
+            return None
+        num = collections.Counter(said).most_common(1)[0][0]
+        where = next(word for word, mark, _ in cited if num in read_in(word, mark))
+        return toned(num), where
+
     writing = {r["word"]: lvl_of(r["examLevelId"])
                for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
     char_decks = {lv: deck("writing", lv) for lv in LEVELS}
@@ -1546,6 +1584,19 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         clips = "".join(voiced.get(n, {}).get("sound", "") for n in order)
         for m in re.findall(r"\[sound:([^]]+)\]", clips):
             media.add(m)
+        read = ((" (also ".join(r for r, _, _ in readings.by_char.get(c, [])) + ")"
+                 if c in readings.variant else
+                 " / ".join(
+                     r + (f' (in {(char_audio.get(c) or {}).get(n, {}).get("in", "")})'
+                          if (char_audio.get(c) or {}).get(n, {}).get("in") else "")
+                     for r, n, _ in readings.by_char.get(c, [])))
+                or (" ".join(info.get("pinyin") or [])
+                    + next((f' (in {v["in"]})'
+                            for v in (char_audio.get(c) or {}).values()
+                            if v.get("in")), "")))
+        unsaid = unsaid_reading(c, lv, info.get("pinyin") or [])
+        if unsaid:
+            read += f" / {unsaid[0]} (in {unsaid[1]})"
         char_note = genanki.Note(
             model=char_model,
             due=n,
@@ -1556,17 +1607,7 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
                 # A reading heard inside a word names that word, and a word holding
                 # this character is the answer to the card asking for it, so the
                 # character is masked here as it is in a gloss that quotes itself.
-                mask_answer(
-                    (" (also ".join(r for r, _, _ in readings.by_char.get(c, [])) + ")"
-                     if c in readings.variant else
-                     " / ".join(
-                         r + (f' (in {(char_audio.get(c) or {}).get(n, {}).get("in", "")})'
-                              if (char_audio.get(c) or {}).get(n, {}).get("in") else "")
-                         for r, n, _ in readings.by_char.get(c, [])))
-                    or (" ".join(info.get("pinyin") or [])
-                        + next((f' (in {v["in"]})'
-                                for v in (char_audio.get(c) or {}).values()
-                                if v.get("in")), "")), c),
+                mask_answer(read, c),
                 mask_answer(char_meaning(c, info), c),
                 clips, stroke,
                 gloss.etym_block(c, "/".join(
@@ -1787,7 +1828,7 @@ class Numbering:
 Glossary = collections.namedtuple(
     "Glossary",
     "cedict_defs char_any shown_chars pick_char components part_origins"
-    " etym_block example_of example_word")
+    " etym_block examples example_of example_word")
 
 
 def read_glossary(words, wiki, readings) -> Glossary:
@@ -2419,6 +2460,10 @@ def read_glossary(words, wiki, readings) -> Glossary:
         return [(w, p, m) for lvl, _key, w, p, m in words_using.get(ch, [])
                 if lvl <= cap and w not in already]
 
+    def examples(ch: str, level: str = "") -> list:
+        """The words a writing card cites, as (word, pinyin, meaning)."""
+        return examples_of(ch) + (also_seen(ch, level) if level else [])
+
     def example_of(ch: str, level: str = "") -> str:
         """The examples with no characters, for the side that asks you to write it.
 
@@ -2430,7 +2475,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
             f'<div class=example><span>as in</span>'
             f'<span class=exPinyin>{html.escape(p, quote=False)}</span>'
             f'<span>&mdash; {html.escape(m, quote=False)}</span></div>'
-            for _, p, m in examples_of(ch) + (also_seen(ch, level) if level else []))
+            for _, p, m in examples(ch, level))
         return f'<div class=examples>{rows}</div>' if rows else ""
 
     def etym_block(ch: str, numbered: str = "") -> str:
@@ -2457,13 +2502,14 @@ def read_glossary(words, wiki, readings) -> Glossary:
             f'<span><b>{wiki.markup(html.escape(w, quote=False))}</b> '
             f'<span class=exPinyin>{html.escape(p, quote=False)}</span></span>'
             f'<span>&mdash; {html.escape(m, quote=False)}</span></div>'
-            for w, p, m in examples_of(ch) + (also_seen(ch, level) if level else []))
+            for w, p, m in examples(ch, level))
         return f'<div class=examples>{rows}</div>' if rows else ""
 
     return Glossary(cedict_defs=cedict_defs, char_any=char_any,
                     shown_chars=shown_chars,
                     pick_char=pick_char, components=components,
                     part_origins=part_origins, etym_block=etym_block,
+                    examples=examples,
                     example_of=example_of, example_word=example_word)
 
 
