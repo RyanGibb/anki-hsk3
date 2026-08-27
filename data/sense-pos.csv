@@ -16,8 +16,8 @@ entry,pos,meaning
 不行,形,won't do/be out of the question/be no good
 爱好,动,to like; to be fond of; to take pleasure in; to be keen on
 爱好,名,interest; hobby
-开始,动,to begin/to start
-开始,名,beginning/initial
+开始,动,to begin; to start
+开始,名,beginning; start
 考试,动,to take an exam
 考试,名,exam
 努力,动,to make an effort; to try hard; to strive
@@ -44,8 +44,8 @@ entry,pos,meaning
 分,名,(bound form) branch of (an organization); sub- (as in 分局[fen1 ju2])/fraction
 给,动,to give/to allow/to do sth (for sb)
 给,介,to/for/for the benefit of/(grammatical equivalent of 被)/(grammatical equivalent of 把)/(sentence intensifier)
-几,代,how much/how many
-几,数,several/a few
+几,代,how many; how much
+几,数,several; a few
 家,名,"home/family/(polite) my (sister, uncle etc)/refers to the philosophical schools of pre-Han China"
 家,量,classifier for families or businesses
 家,后缀,"noun suffix for a specialist in some activity, such as a musician or revolutionary, corresponding to English -ist, -er, -ary or -ian"
@@ -69,7 +69,7 @@ entry,pos,meaning
 一下,数量,"(after a verb) a bit; a little (indicating brief duration, or softening the tone, or suggesting giving sth a try)"
 一下,副,all at once; suddenly
 有些,代,some
-有些,副,somewhat
+有些,副,somewhat; rather; a bit
 在,动,to exist; to be alive/(of sb or sth) to be (located) at
 在,副,(used before a verb to indicate an action in progress)
 真,副,really/truly/indeed
@@ -111,8 +111,6 @@ entry,pos,meaning
 条,名,strip/item/article/clause (of law or treaty)
 姓,名,family name; surname
 姓,动,to be surnamed ...
-因为,介,owing to/on account of
-因为,连,because
 运动,动,to move/to exercise
 运动,名,sports/exercise/motion/movement/campaign
 比赛,动,to compete
@@ -177,8 +175,8 @@ entry,pos,meaning
 像,名,appearance/image/portrait/image under a mapping (math.)
 要求,动,to request/to require/to stake a claim/to ask/to demand
 要求,名,requirement
-一定,形,fixed/a certain (extent etc)/given/particular
-一定,副,surely/certainly/necessarily/must
+一定,形,fixed; settled/a certain ...; a given ...
+一定,副,surely; certainly; definitely
 影响,动,to influence/to affect (usually adversely)/to disturb
 影响,名,influence/effect
 有关,动,to have sth to do with/to relate to/related to/to concern
@@ -187,14 +185,14 @@ entry,pos,meaning
 只是,连,but; however
 边,名,side/edge/margin/border/boundary
 边,副,simultaneously
-号,名,ordinal number/day of a month/mark/sign/business establishment/size/ship suffix/horn (wind instrument)/bugle call/assumed name
-号,量,classifier used to indicate number of people
-号,动,to take a pulse
-回,动,to circle/to go back/to turn around/to answer/to return/to revolve
-回,量,time/classifier for acts of a play/section or chapter (of a classic book)
-回,名,Hui ethnic group (Chinese Muslims)
+号,名,"day of the month (e.g. 七號|七号[qi1 hao4] ""the 7th"")/(after a numeral) number designation (e.g. 237號房間|237号房间[er4 san1 qi1 hao4 fang2 jian1] ""Room 237"")/(bound form) size; type; category (e.g. 五號電池|五号电池[wu3 hao4 dian4 chi2])/(bound form) name; appellation (e.g. 國號|国号[guo2 hao4], 年號|年号[nian2 hao4], 遼寧號|辽宁号[Liao2 ning2 Hao4])/(bound form) mark; sign/(bound form) signal; bugle call (e.g. 起床號|起床号[qi3 chuang2 hao4])/(bound form) bugle; trumpet"
+号,量,classifier for numbered people or items
+号,动,(literary) to call out; to command/to mark; to label; to assign a number/(TCM) to feel (the pulse) (used in 號脈|号脉[hao4 mai4])
+回,动,to go back; to return; to turn back; to turn around/to reply; to answer
+回,量,"classifier for literary divisions (acts of a play, sections or chapters of a classic book)/classifier for occurrences or times"
 日,量,day
-日,名,"sun/date, day of the month"
+日,名,(bound form) sun/day of the month/(bound form) Japan (abbr. for 日本[Ri4 ben3])
+日,动,(vulgar) to fuck; to have sex with
 小,形,small/tiny/few/young
 比,动,to compare/to gesture
 比,介,(followed by a noun and adjective) more {adj.} than {noun}
@@ -215,7 +213,7 @@ entry,pos,meaning
 高,形,high/tall/above average/loud/your (honorific)
 就,副,(after a suppositional clause) in that case; then/(after a clause of action) as soon as; immediately after/(same as 就是[jiu4 shi4]) merely; nothing else but; simply; just; precisely; exactly/only; as little as/as much as; as many as/(pattern: 就[jiu4] ... 也[ye3] ...) even if ... still .../(pattern: 不[bu4] ... 就[jiu4] ...) if not ... then must be ...
 就,介,(often followed by 著|着[zhe5]) taking advantage of/with regard to; concerning
-就,动,to approach; to move towards/to undertake; to engage in/(of food) to go with
+就,动,to approach; to move towards/to undertake; to engage in/(of food) to go with/(bound form) to reach; to attain (as in 一蹴而就[yi1 cu4 er2 jiu4])
 快,形,rapid/quick/clever/sharp (of knives or wits)/forthright/plainspoken/gratified/pleased/pleasant
 快,副,soon/almost
 快,名,speed/rate
@@ -244,9 +242,8 @@ entry,pos,meaning
 冰,形,(of a person) cold/unfriendly
 差,形,different/wrong; mistaken/not up to standard; inferior
 差,动,to fall short; to lack
-决定,动,to decide (to do something)/to resolve
+决定,动,to decide; to determine; to make up one's mind
 决定,名,decision
-决定,副,certainly
 可,连,but; however
 可,动,to approve; to permit/to suit
 可,前缀,(prefix) can; may; able to; -able
@@ -462,9 +459,9 @@ entry,pos,meaning
 偶尔,副,occasionally/once in a while/sometimes
 拍,动,to pat/to clap/to slap/to swat/to take (a photo)/to shoot (a film)
 拍,名,racket (sports)/beat (music)
-排,动,to set in order/to arrange/to line up/to eliminate/to drain/to push open
-排,名,a row/a line/platoon/raft
-排,量,"classifier for lines, rows etc"
+排,动,to arrange in order; to line up/to exclude; to eliminate; to repel; to expel; to discharge/(literary) to push aside; to force open/to rehearse
+排,名,row; line/platoon/(bound form) steak; chop/(bound form) raft
+排,量,classifier for rows or lines (of people or things)
 篇,名,sheet/piece of writing/bound set of bamboo slips used for record keeping (old)
 篇,量,"classifier for written items: chapter, article"
 片,名,thin piece/flake/a slice/film/TV play/Kangxi radical 91
@@ -487,7 +484,8 @@ entry,pos,meaning
 身,量,"classifier for sets of clothes: suit, twinset"
 身,副,personally
 身,形,pregnant
-生2,形,raw/uncooked
+生2,形,raw; uncooked; unprocessed/unfamiliar; strange
+生2,副,(bound form) very; intensely (as in 生疼[sheng1 teng2])/(bound form) in a forced manner (as in 生拉硬拽[sheng1 la1 ying4 zhuai4])
 失败,动,to be defeated/to lose/to fail (e.g. experiments)
 失败,名,failure/defeat
 失望,动,to lose hope/to despair
@@ -499,13 +497,13 @@ entry,pos,meaning
 实在,名,(philosophy) reality
 收入,动,to take in
 收入,名,income/revenue
-首先,副,first (of all)/in the first place
+首先,副,first of all; in the first place
 说明,动,to explain/to illustrate/to indicate/to show/to prove
 说明,名,explanation/directions/caption
 死,动,to die
 死,形,impassable/uncrossable/inflexible/rigid
 死,副,extremely/damned
-算,动,to regard as/to figure/to calculate/to compute
+算,动,to calculate; to figure out/to include; to count in/to count; to be valid; to carry weight/to regard as; to consider (to be ...)
 随便,形,negligent/casual/wanton
 随便,副,as one wishes/as one pleases/at random
 所有,形,all
@@ -556,9 +554,9 @@ entry,pos,meaning
 永远,副,forever/eternal
 由于,介,due to/as a result of/thanks to/owing to
 由于,连,since/because
-与,介,together with
-与,连,and
-与,动,to give
+与,介,"(formal) with; from (marking the other participant in an interaction, comparison, or contrast, e.g. 與他握手|与他握手[yu3 ta1 wo4 shou3] ""shake hands with him"", 與去年不同|与去年不同[yu3 qu4 nian2 bu4 tong2] ""different from last year"")"
+与,连,"(formal) and; together with (linking parallel nouns, verbs, or phrases)"
+与,动,(literary) to give; to grant; to bestow
 原来,形,original; former
 原来,副,"originally; formerly; at first/so, actually, as it turns out"
 约,动,to make an appointment/to invite/to economize/to restrict/to reduce (a fraction)
@@ -621,10 +619,10 @@ entry,pos,meaning
 把握,动,to grasp (also fig.)/to seize/to hold
 把握,名,assurance/certainty
 把握,形,sure (of the outcome)
-白,形,white/snowy/pure/bright/empty/blank/plain/clear/reactionary/anti-communist
-白,副,in vain/gratuitous/free of charge
-白,动,to make clear/to stare coldly/to write wrong character/to state/to explain
-白,名,funeral/vernacular/spoken lines in opera
+白,形,"white/(bound form) (of facts, the truth, a situation) clear; evident (e.g. 真相大白[zhen1 xiang4 da4 bai2])/(bound form) plain; without additions (e.g. 白飯|白饭[bai2 fan4])/(bound form) reactionary; anti-communist (e.g. 白區|白区[bai2 qu1])"
+白,副,in vain/free of charge
+白,动,(bound form) to explain; to state (e.g. 辯白|辩白[bian4 bai2])/(bound form) to give a disdainful look (e.g. 白了他一眼[bai2 le5 ta1 yi1 yan3])
+白,名,(bound form) vernacular (e.g. 白話|白话[bai2 hua4])/(bound form) spoken lines in opera (e.g. 念白[nian4 bai2])
 半夜,数量,in the middle of the night
 半夜,名,midnight
 包裹,动,to wrap up/to bind up
@@ -665,8 +663,6 @@ entry,pos,meaning
 不足,副,not worth/cannot/should not
 裁判,动,(law) to judge; to adjudicate; verdict; judgement/(sports) to referee
 裁判,名,(sports) umpire; referee; judge
-长期,名,long term/long time
-长期,形,long range (of a forecast)
 朝,动,to make a pilgrimage to
 朝,介,facing/towards
 朝,名,imperial or royal court/government/dynasty/reign of a sovereign or emperor/court or assembly held by a sovereign or emperor
@@ -680,13 +676,11 @@ entry,pos,meaning
 成人,名,an adult
 成熟,动,to mature; to ripen
 成熟,形,mature; ripe
-初,名,(at the) beginning
-初,副,at first
-初,前缀,first/junior/basic
+初,名,"(bound form) (in lunar calendar dates, before numerals 1–10) days 1 to 10 of a month, as in 初三[chu1 san1] ""the third"""
+初,副,(bound form) at first; initially
+初,前缀,(bound form) first; early
 传说,动,to repeat from mouth to mouth; they say that...
 传说,名,legend; folk tale
-传统,名,tradition/convention
-传统,形,traditional/conventional
 创新,动,to bring forth new ideas; to blaze new trails
 创新,名,innovation
 创作,动,to create; to produce; to write
@@ -722,8 +716,6 @@ entry,pos,meaning
 度,量,"degree (angles, temperature etc)/kilowatt-hour/classifier for events and occurrences"
 度,名,measure/limit/extent/degree of intensity
 度,动,to pass/to spend (time)
-短期,名,short term
-短期,形,short-term
 堆,动,to pile up/to heap up
 堆,名,a mass/pile/heap/stack
 堆,量,large amount
@@ -755,7 +747,7 @@ entry,pos,meaning
 方,副,just when/only or just
 方,量,classifier for square things/abbr. for square or cubic meter
 分别,动,to part; to leave each other/to distinguish; to tell apart
-分别,副,in different ways; differently/separately; individually
+分别,副,in different ways; differently/separately; individually; respectively
 分别,名,difference; distinction
 纷纷,形,diverse/numerous and confused/pell-mell
 纷纷,副,one after another/in succession/one by one/continuously/in profusion
@@ -786,10 +778,10 @@ entry,pos,meaning
 构成,动,to constitute/to form/to compose/to make up/to configure (computing)
 鼓,名,drum
 鼓,动,to drum/to strike/to rouse/to bulge/to swell
-怪,形,bewildering/odd/strange/uncanny
-怪,动,to wonder at/to blame
-怪,副,quite/rather
-怪,名,devil/monster
+怪,形,odd; strange; uncanny
+怪,动,to find strange; to regard as odd/to blame
+怪,副,(coll.) somewhat; rather
+怪,名,(bound form) monster; supernatural being
 光明,名,light/radiance
 光明,形,(fig.) bright (prospects etc)/openhearted
 规律,名,rule (e.g. of science)/law of behavior/regular pattern/rhythm/discipline
@@ -886,9 +878,9 @@ entry,pos,meaning
 矛盾,形,contradictory
 秘密,形,secret; private; confidential; clandestine
 秘密,名,a secret
-密切,形,close/familiar/intimate
-密切,动,to foster close ties/to pay close attention
-密切,副,closely (related)
+密切,形,close; intimate
+密切,动,"to strengthen (ties, cooperation etc)/(math.) to osculate"
+密切,副,closely; intently; carefully
 明确,形,clear-cut; definite; explicit
 明确,动,to clarify; to specify; to make definite
 模糊,形,vague; indistinct; fuzzy
@@ -901,9 +893,9 @@ entry,pos,meaning
 配,动,to join/to fit/to mate/to mix/to match/to deserve/to make up (a prescription)/to allocate
 品,动,to taste sth; to sample/to criticize; to comment; to judge; to size up
 品,名,(bound form) article; commodity; product; goods/(bound form) grade; rank/kind; type; variety/character; disposition; nature; temperament/fret (on a guitar or lute)
-平,形,flat/level/equal/calm/peaceful
-平,动,to tie (make the same score)/to draw (score)
-平,名,abbr. for 平聲|平声[ping2 sheng1]
+平,形,flat; level; smooth/equal; on the same level/(bound form) fair; impartial/(bound form) average; ordinary/(bound form) calm; peaceful
+平,动,to make even; to level/to tie; to draw/(bound form) to quell; to suppress; to put down
+平,名,(abbr. for 平聲|平声[ping2 sheng1])/(coll.) square meter (abbr. for 平方米[ping2 fang1 mi3])
 凭,动,to lean against/to rely on
 凭,介,on the basis of
 凭,连,"no matter (how, what etc)"
@@ -946,7 +938,7 @@ entry,pos,meaning
 如,连,as if/such as
 伤,名,injury/wound
 伤,动,to injure
-烧,动,"to burn/to cook/to stew/to bake/to roast/to heat/to boil (tea, water etc)/to run a temperature/(coll.) to let things go to one's head"
+烧,动,"to burn; to set on fire/to heat (over a fire); to boil (water, tea etc)/to braise/to cook; to prepare food/to run a fever/(coll.) to become full of oneself; to get carried away"
 烧,名,fever
 设计,动,to design; to plan
 设计,名,design; plan
@@ -971,7 +963,7 @@ entry,pos,meaning
 顺,形,favorable
 说不定,动,can't say for sure
 说不定,副,maybe
-思维,名,(line of) thought/thinking
+思维,名,(line of) thought; thinking
 碎,动,(transitive or intransitive) to break into pieces; to shatter; to crumble
 碎,形,broken; fragmentary; scattered/garrulous
 损失,动,to lose/to suffer damage
@@ -1036,8 +1028,8 @@ entry,pos,meaning
 相对,副,relatively
 相对,介,vis-a-vis
 相对,名,counterpart
-象征,动,to symbolize/to signify/to stand for
-象征,名,emblem/symbol/token/badge
+象征,动,to symbolize; to signify; to represent
+象征,名,symbol; emblem
 斜,形,inclined/slanting/oblique/tilting
 协议,名,agreement/pact/protocol
 行动,动,to move about
@@ -1194,7 +1186,7 @@ entry,pos,meaning
 粉,形,white/pink
 粉,动,to turn to powder/(dialect) to whitewash/to be a fan of
 粉,后缀,(suffix) fan (abbr. for 粉絲|粉丝[fen3 si1])
-福利,名,material benefit/benefit in kind/(social) welfare
+福利,名,benefit (provided by an employer or organization)/(social) welfare
 辅助,动,to assist; to aid
 辅助,形,supplementary; auxiliary
 干脆,形,candid/direct and to the point
@@ -1246,8 +1238,8 @@ entry,pos,meaning
 机械,名,machine/machinery
 机械,形,mechanical/(old) cunning/scheming
 加倍,动,to double/to redouble
-加以,动,"(used before a disyllabic verb to indicate that the action of the verb is applied to sth or sb previously mentioned)/to apply (restrictions etc) to (sb)/to give (support, consideration etc) to (sth)"
-加以,连,in addition/moreover
+加以,动,"(formal) to apply; to carry out; to take action to (do sth) (used before a disyllabic verb, indicating that the action is directed at sth previously mentioned, e.g. 加以說明|加以说明[jia1 yi3 shuo1 ming2]); to apply (restrictions etc); to give (support, consideration etc)"
+加以,连,(literary) moreover; in addition
 假设,动,to suppose/to presume/to assume
 假设,名,hypothesis/conjecture
 假设,连,supposing that .../if
@@ -1290,8 +1282,8 @@ entry,pos,meaning
 款,量,classifier for versions or models (of a product)
 赖,形,bad/rascally
 赖,动,to depend on/to hang on in a place/to renege (on promise)/to disclaim/to rat (on debts)/to blame/to put the blame on
-牢,名,fold (for animals)/sacrifice/prison
-牢,形,firm/sturdy
+牢,名,(literary) pen; fold (for livestock)/prison; jail
+牢,形,firm; secure; fast
 理,名,texture/grain (of wood)/inner essence/intrinsic order/reason/logic/truth/science/natural science (esp. physics)
 理,动,to manage/to pay attention to/to run (affairs)/to handle/to put in order/to tidy up
 理性,形,rational
@@ -1387,8 +1379,9 @@ entry,pos,meaning
 网,名,net; web/network
 网,动,to net; to catch with a net
 为难,动,to feel embarrassed or awkward/to make things difficult (for someone)/to find things difficult (to do or manage)
-委屈,动,to feel wronged/to cause sb to feel wronged
-委屈,名,grievance
+委屈,形,wronged; aggrieved
+委屈,动,to inconvenience; to put (sb) at a disadvantage; to do sb wrong
+委屈,名,sense of being wronged
 文明,名,civilization/culture
 文明,形,civilized
 误解,动,to misunderstand
@@ -1432,8 +1425,8 @@ entry,pos,meaning
 预料,名,expectation
 晕,形,confused/dizzy/giddy
 晕,动,to faint/to swoon/to lose consciousness/to pass out
-遭遇,动,to meet with/to encounter
-遭遇,名,(bitter) experience
+遭遇,动,to meet with; to encounter (esp. misfortune or hardship)
+遭遇,名,an experience (esp. adverse)
 造型,动,to model; to shape
 造型,名,appearance; style; design; form; pose
 则1,连,(literary) (conjunction used to express contrast with a previous clause) but; then
@@ -1446,8 +1439,8 @@ entry,pos,meaning
 镇,名,garrison/small town
 正面,名,front/obverse side/right side
 正面,形,positive/direct/open
-正义,名,justice/righteousness
-正义,形,just/righteous
+正义,名,justice; righteousness/(in the titles of traditional commentaries) correct interpretation
+正义,形,just; righteous
 枝,名,branch
 枝,量,"classifier for sticks, rods, pencils etc"
 支出,动,to spend; to pay out
@@ -1490,16 +1483,16 @@ entry,pos,meaning
 磅,量,"(loanword) pound (unit of weight, about 454 grams)/(printing) point (unit used to measure the size of type)/(Tw) (printing) pound; ream weight (used to describe paper thickness)"
 磅,名,scale (instrument for weighing)
 磅,动,to weigh
-煲,名,pot/saucepan
-煲,动,to cook slowly over a low flame
+煲,名,deep cooking pot
+煲,动,to cook slowly in such a pot
 保守,动,to guard/to keep
 保守,形,conservative
 备,动,(bound form) to prepare; to equip
 备,副,(literary) fully; completely
 本分,名,(to play) one's part/one's role/one's duty/(to stay within) one's bounds
 本分,形,dutiful/keeping to one's role
-编号,动,to number
-编号,名,numbering/serial number
+编号,动,to number; to assign numbers
+编号,名,serial number
 编剧,动,to write a play
 编剧,名,scenario/dramatist/screenwriter
 边缘,名,edge; fringe; verge; brink; periphery
@@ -1508,8 +1501,8 @@ entry,pos,meaning
 辩证,形,dialectical
 标记,动,to mark up
 标记,名,sign/mark/symbol/(computing) token
-标识,动,to symbolize; to indicate; to mark
-标识,名,sign; mark; symbol; logo
+标识,动,to mark or label for identification/to symbolize; to indicate; to mark
+标识,名,"identifying mark, sign, label etc/sign; mark; symbol; logo"
 憋,动,to choke/to stifle/to restrain/to hold back/to hold in (urine)/to hold (one's breath)
 并肩,副,alongside/shoulder to shoulder/side by side/abreast
 拨,动,"to push aside with the hand, foot, a stick etc/to dial/to allocate/to set aside (money)/to poke (the fire)/to pluck (a string instrument)/to turn round"
@@ -1714,9 +1707,8 @@ entry,pos,meaning
 鬼,后缀,(suffix) person with a certain vice or addiction etc
 果真,副,really/as expected/sure enough
 果真,连,if indeed.../if it's really...
-过往,动,to come and go/to have friendly relations with
-过往,名,in the past
-过往,形,previous
+过往,动,to come and go/to associate with; to have dealings with
+过往,名,the past; former times
 含蓄,动,to contain/to hold
 含蓄,形,"(of a person or style etc) reserved/restrained/(of words, writings) full of hidden meaning/implicit/veiled (criticism)"
 好歹,名,good and bad/most unfortunate occurrence
@@ -1740,8 +1732,8 @@ entry,pos,meaning
 积淀,名,"deposits accumulated over long periods/fig. valuable experience, accumulated wisdom"
 机关,名,mechanism; gear/office; agency; organ; organization; establishment; institution; body/stratagem; scheme; intrigue; plot; trick
 机关,形,machine-operated
-机密,形,classified (information)
-机密,名,secret
+机密,形,secret; classified
+机密,名,classified information; secret
 积蓄,动,to save; to put aside
 积蓄,名,savings
 集会,动,to gather
@@ -1895,8 +1887,8 @@ entry,pos,meaning
 模范,名,model/fine example
 抹,动,to smear/to wipe/to erase
 抹,量,"classifier for wisps of cloud, light-beams etc"
-默契,形,connected at a deep level with each other/(of team members) well coordinated/tight
-默契,名,tacit understanding/mutual understanding/rapport
+默契,形,(of people) in sync; well coordinated
+默契,名,tacit understanding; unwritten agreement/rapport
 难怪,动,(it's) not surprising (that)
 难怪,副,(it's) no wonder (that...)
 难堪,形,hard to take/embarrassed
@@ -1933,8 +1925,8 @@ entry,pos,meaning
 气派,形,impressive/stylish/magnificent
 欠缺,动,to be deficient in
 欠缺,名,lapse/deficiency
-亲近,形,intimate
-亲近,动,to get close to
+亲近,形,(of people or relationships) close; intimate
+亲近,动,"to draw close to; to engage with; to become familiar with (nature, places, ideas, art etc)"
 亲热,形,affectionate; intimate; warmhearted
 亲热,动,to show affection for/(coll.) to get intimate with sb
 情愿,动,willingness
@@ -2019,8 +2011,6 @@ entry,pos,meaning
 堂,名,(main) hall/large room for a specific purpose/relationship between cousins etc on the paternal side of a family
 堂,量,"classifier for classes, lectures etc/classifier for sets of furniture"
 堂,前缀,of the same clan
-提议,动,to propose/to suggest
-提议,名,proposal/suggestion
 体面,名,dignity; prestige; face
 体面,形,honorable; creditable/(of sb's appearance) presentable; respectable
 替补,动,"to replace (a damaged component with a new one, an injured player with a substitute player, full-time workers with casual workers etc)"
@@ -2054,7 +2044,7 @@ entry,pos,meaning
 为人,名,behavior; conduct; personal character
 伪装,动,to pretend to be (asleep etc)/to disguise oneself as/(military) to camouflage
 伪装,名,pretense/disguise/camouflage
-卫星,名,satellite/moon
+卫星,名,(aerospace) satellite/(astronomy) satellite; moon
 吻,动,to kiss
 吻,名,kiss/mouth
 稳固,形,stable/steady/firm
@@ -2064,8 +2054,8 @@ entry,pos,meaning
 窝,量,classifier for litters and broods
 污秽,形,(literary) dirty; filthy
 污秽,名,(literary) dirt; filth
-无辜,形,innocent/not guilty (law)
-无辜,名,innocence
+无辜,形,blameless; innocent
+无辜,名,the innocent
 无赖,形,rascally/scoundrelly
 无赖,名,hoodlum/rascal/rogue
 无形,形,incorporeal/virtual/formless/invisible (assets)/intangible
@@ -2131,8 +2121,6 @@ entry,pos,meaning
 喧闹,形,noisy
 喧闹,动,to make a noise
 宣言,名,declaration/manifesto
-压轴,动,opera term: to present the second to last item in a theatrical performance
-压轴,名,short for 壓軸子|压轴子
 沿途,名,along the sides of the road
 沿途,副,by the wayside
 掩护,动,to screen/to shield/to cover
@@ -2170,7 +2158,7 @@ entry,pos,meaning
 踊跃,动,to leap/to jump
 踊跃,形,eager
 踊跃,副,enthusiastically
-油腻,形,(of food) greasy; oily; fatty/(neologism c. 2017) (of a middle-aged man) obnoxious; pretentious; vulgar
+油腻,形,"(of food) greasy; oily; fatty/(neologism, attested by 2017) (of a middle-aged man) obnoxious; pretentious; vulgar"
 油腻,名,greasy food; oily food
 油漆,名,oil paints/lacquer
 油漆,动,to paint
@@ -2237,7 +2225,8 @@ entry,pos,meaning
 支架,动,to prop up/to resist; to withstand (an enemy attack etc)
 直线,名,straight line
 直线,副,sharply (rise or fall)
-指令,名,order/command/instruction
+指令,动,to order; to command
+指令,名,an order; a command; an instruction
 指望,动,to count on; to hope for
 指望,名,prospect; hope
 指向,动,to point towards/aimed at/facing
@@ -2267,7 +2256,7 @@ entry,pos,meaning
 装置,名,installation/equipment/system/unit/device
 壮,形,strong/robust
 壮,动,to strengthen
-壮大,动,to expand/to strengthen
+壮大,动,to strengthen; to build up/to grow strong and large
 壮观,名,magnificent sight
 壮观,形,spectacular
 坠,动,to fall/to drop/to weigh down

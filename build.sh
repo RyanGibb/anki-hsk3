@@ -7,8 +7,12 @@ fetch() { [ -s "$1" ] || curl -fL --progress-bar -o "$1" "$2"; }
 mkdir -p data/raw
 fetch data/raw/kaikki-zh.jsonl \
   https://kaikki.org/dictionary/Chinese/kaikki.org-dictionary-Chinese.jsonl
-fetch data/raw/cedict_ts.u8 \
-  https://raw.githubusercontent.com/Punpuf/hsk-syllabus-vocabulary-parser/main/cedict_ts.u8
+# The live dictionary, not the copy frozen in the syllabus parser's repo: entries
+# keep improving -- 俘虏 grew its verb in 2026 -- and a refresh is a re-download.
+if [ ! -s data/raw/cedict_ts.u8 ]; then
+  curl -fL --progress-bar "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz" \
+    | gunzip > data/raw/cedict_ts.u8
+fi
 # Words CC-CEDICT does not carry, written in its format by the syllabus parser. Without
 # them 压轴 and 致力于 have no entry at all, so nothing gives their traditional form.
 fetch data/raw/cedict_patch.u8 \
