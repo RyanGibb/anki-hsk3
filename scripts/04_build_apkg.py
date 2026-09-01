@@ -294,8 +294,17 @@ def toned(numbered: str) -> str:
         return numbered
 
 
+# What the deck's own convention writes into a word's reading, and what the character
+# is read on its own. 一 and 不 shift tone before certain tones -- 一起 is yìqǐ -- and
+# erhua wears 儿 down to an r. A row citing the character undoes exactly this and no
+# more: a general "the tone differs, so cite the dictionary" rule would lose 相, where
+# xiāng and xiàng are two readings rather than one worn into the other.
+SANDHI = {("一", "yi2"): "yi1", ("一", "yi4"): "yi1",
+          ("不", "bu2"): "bu4", ("儿", "r5"): "er2"}
+
+
 def citation_readings() -> dict:
-    """character -> the reading a neutral tone in a word is standing in for.
+    """character -> the reading a word's spelling is standing in for.
 
     朋友 is written peng2 you5 and 友 on its own is yǒu; the card says the word and the
     row beneath it should say the character. Only where the dictionary leaves no doubt:
@@ -303,6 +312,8 @@ def citation_readings() -> dict:
     ma5, and the question particle is not either of them, so it is left neutral. Nor is
     a light syllable the dictionary enters in its own right worn down from anything:
     子 is zi3 "son, child" and separately zi5, the noun suffix of 包子.
+
+    A tone the convention wrote is undone here too, by SANDHI above.
     """
     by_base = collections.defaultdict(set)
     for line in cedict_lines():
@@ -318,6 +329,7 @@ def citation_readings() -> dict:
         full = [r for r in rs if not r.endswith("5")]
         if len(full) == 1 and f"{base}5" not in rs:
             out[(ch, f"{base}5")] = full[0]
+    out.update(SANDHI)
     return out
 
 
@@ -2035,7 +2047,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
             # gloss each reading they name. Two spellings of one reading stay together:
             # 谁 is entered as one word said two ways, shei2/shui2, and both are the
             # reading of the character in front of you.
-            spoken_here, shown = [], set()
+            spoken_here, shown, worn = [], set(), []
             for syll in heard.get(ch, []):
                 for part in syll.split("/"):
                     if not part:
@@ -2049,7 +2061,15 @@ def read_glossary(words, wiki, readings) -> Glossary:
                     t = toned(said_as)
                     if t not in spoken_here:
                         spoken_here.append(t)
+                    # The convention wrote a change into the word above this row -- 一
+                    # before a fourth tone is yì -- and the row cites yī, so it says
+                    # which. A neutral tone is not worth saying: the word spells it
+                    # light and the row spells it out, and that is the whole of it.
+                    if (ch, part) in SANDHI and toned(part) not in worn:
+                        worn.append(toned(part))
             said = " / ".join(spoken_here)
+            if said and worn:
+                said += (' <span class=sandhi>(' + " / ".join(worn) + " here)</span>")
             body = (f'<b>{wiki.label(label, trad)}</b>'
                     f'{f" <span class=charRead>{said}</span>" if said else ""} '
                     f'{wiki.markup(html.escape(senses, quote=False))}'

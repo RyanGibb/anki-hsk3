@@ -358,3 +358,7 @@ img.stroke {
 .alsoRead {
   margin: 1px 0 0 1.2em;
 }
+
+/* The word above a row changed the character's tone, and the row says which: 一起 is
+   yìqǐ and the 一 beneath it is yī. Set inside the reading it qualifies. */
+.sandhi { opacity: 0.75; font-size: 0.85em; }
