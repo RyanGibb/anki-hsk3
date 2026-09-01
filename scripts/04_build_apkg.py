@@ -2395,7 +2395,11 @@ def read_glossary(words, wiki, readings) -> Glossary:
             seen.add(ch)
             shown_chars.add(ch)
             queue += [(c, step + 1) for c in made_of(ch)]
-            origin = etym_char(ch, full=False)
+            # The whole account, as the card teaching that character gives it. Cut to
+            # its lead, 退 under 腿 read only as its oracle bone form and stopped before
+            # the two paragraphs saying the vessel 皀 became 艮 and what Shuowen made of
+            # it -- which is the part of it about the shape on the page.
+            origin = etym_char(ch, full=True)
             if not origin:
                 continue
             if step > drawn and out:
