@@ -2234,6 +2234,16 @@ def read_glossary(words, wiki, readings) -> Glossary:
                  + [b for _, b in ARROW.findall(later)]
                  + named_parts(later))
         found = found + [c for c in named if c in carries]
+        # An account can be about a shape the card does not show, and then none of the
+        # parts it names is in the character at all. 響 is 鄉 + 音, and 响 on the page is
+        # 口 + 向: the origin is fetched from the traditional page because 响 has no
+        # Chinese section of its own, and it says nothing about the simplified form. 退
+        # is the same from the other direction, taken apart as its oracle bone form,
+        # 皀 + 夊, where what is written is 辶 and 艮. The account keeps its rows, since
+        # it is why the character sounds and means what it does; the breakdown answers
+        # for what is on the page.
+        if found and not any(c in carries or c in ch for c in found):
+            found += [c for c in breaks_into.get(ch, ()) if c != ch]
         return [c for c in dict.fromkeys(found) if c != ch]
 
     # How often each character is read each way across the words the syllabus teaches.
