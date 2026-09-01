@@ -1526,27 +1526,31 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
                               or info.get("definition") or ""))
         return f'<div class=charSense>{head} {body}</div>' if head and body else body
 
-    def unsaid_reading(ch: str, level: str, marks: list):
-        """The reading the cited words give a character where its header never does.
+    def unsaid_readings(ch: str, level: str, marks: list) -> list:
+        """Every reading the cited words give a character that its header never does.
 
-        奔 is taught alone as bèn, to head for, and written at level 6, where the only
-        word that shows it is 奔跑 bēnpǎo -- so every example on the card reads it a
-        way the header did not say. The header takes that reading up, named after the
-        word it is heard in; what it means then is already glossed beneath, where the
-        etymology block gives the character's other readings. A character never
-        taught alone heads with the dictionary's reading and meets the same fate: 卓
-        is zhuō to the dictionary and zhuó in 卓越, the only word that cites it.
+        应 is on the writing list at level 3 because of 应该 yīnggāi, and the syllabus
+        enters it as a word only at 7-9, as yìng, to answer. Read from the entries
+        alone the header, the meaning and the recording are all built at a reading no
+        word at that level uses, and "should" appears nowhere on the card. 奔 is the
+        plainer case: taught alone as bèn, written at 6, shown only in 奔跑 bēnpǎo. A
+        character never taught alone heads with the dictionary's reading and meets the
+        same fate: 卓 is zhuō to the dictionary and zhuó in 卓越, the only word citing it.
 
-        一 and 不 are left alone: yí in 一半 is the sandhi the deck's convention
-        writes, not another reading. So is a header reading said neutral inside a
-        word, as the zi of 电子 is zǐ.
+        Each reading is taken up on its own. Asking whether the header said any of them
+        at all let one example that agrees silence every one that does not -- 适应
+        shìyìng vetoed 应该, and 应 lost the reading it is written for.
+
+        一, 不 and 儿 are left alone: yí in 一半 and the r of 一点儿 are the sandhi and
+        erhua the convention writes, not other readings. So is a header reading said
+        neutral inside a word, as the zi of 电子 is zǐ.
         """
-        if ch in "一不":
-            return None
+        if ch in "一不儿":
+            return []
         ways = ({syllable(num) for _, num, _ in readings.by_char.get(ch, [])}
                 or {syllable(numbered(m)) for m in marks})
         if not ways:
-            return None
+            return []
         bases = {w[:-1] for w in ways}
 
         def read_in(word, mark):
@@ -1557,15 +1561,30 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
             return num in ways or (num.endswith("5") and num[:-1] in bases)
 
         cited = gloss.examples(ch, level)
-        said = [num for word, mark, _ in cited for num in read_in(word, mark)]
-        if not said or any(header_says(num) for num in said):
-            return None
-        num = collections.Counter(said).most_common(1)[0][0]
-        where = next(word for word, mark, _ in cited if num in read_in(word, mark))
-        return toned(num), where
+        out = []
+        for num in dict.fromkeys(n for word, mark, _ in cited
+                                 for n in read_in(word, mark)):
+            if header_says(num):
+                continue
+            where = next(word for word, mark, _ in cited if num in read_in(word, mark))
+            out.append((toned(num), num, where))
+        return out
 
     writing = {r["word"]: lvl_of(r["examLevelId"])
                for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
+    # Taken up before any card is built, so that everything a reading decides follows
+    # from it: the meaning under each reading, the etymology block, the example each
+    # one is heard in, and which recordings play. Only the writing cards are touched --
+    # a vocabulary card is one entry and knows its own reading.
+    heard_in: dict = {}
+    for c, lv in writing.items():
+        trad = char_info.get(c, {}).get("traditional") or c
+        for mark, num, where in unsaid_readings(
+                c, lv, (mmah.get(c) or {}).get("pinyin") or []):
+            entry = (mark, num, trad)
+            if entry not in readings.by_char.setdefault(c, []):
+                readings.by_char[c].append(entry)
+                heard_in[(c, num)] = where
     char_decks = {lv: deck("writing", lv) for lv in LEVELS}
     seen = set()
     for n, r in enumerate(read_tsv(RAW / "chelsea_hanzi_writing.tsv"), 1):
@@ -1584,19 +1603,22 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         clips = "".join(voiced.get(n, {}).get("sound", "") for n in order)
         for m in re.findall(r"\[sound:([^]]+)\]", clips):
             media.add(m)
+        # A reading is named after a word wherever the character alone will not say it:
+        # a syllable that cannot be recorded on its own plays inside a word, and a
+        # reading taken from the examples is only ever met in one.
+        def named_after(n: str) -> str:
+            where = ((char_audio.get(c) or {}).get(n, {}).get("in")
+                     or heard_in.get((c, n), ""))
+            return f" (in {where})" if where else ""
+
         read = ((" (also ".join(r for r, _, _ in readings.by_char.get(c, [])) + ")"
                  if c in readings.variant else
-                 " / ".join(
-                     r + (f' (in {(char_audio.get(c) or {}).get(n, {}).get("in", "")})'
-                          if (char_audio.get(c) or {}).get(n, {}).get("in") else "")
-                     for r, n, _ in readings.by_char.get(c, [])))
+                 " / ".join(r + named_after(n)
+                            for r, n, _ in readings.by_char.get(c, [])))
                 or (" ".join(info.get("pinyin") or [])
                     + next((f' (in {v["in"]})'
                             for v in (char_audio.get(c) or {}).values()
                             if v.get("in")), "")))
-        unsaid = unsaid_reading(c, lv, info.get("pinyin") or [])
-        if unsaid:
-            read += f" / {unsaid[0]} (in {unsaid[1]})"
         char_note = genanki.Note(
             model=char_model,
             due=n,
