@@ -440,11 +440,17 @@ def main() -> int:
     for w in words:
         by_pinyin[w["pinyin_numbered"].replace(" ", "")].append(w["entry"])
         by_simplified[w["simplified"]].append(w["entry"])
+    # An entry is the syllabus's own key for telling two words of one spelling apart,
+    # 只1 from 只2, and it belongs in a lookup and not on a card. A homophone is shown,
+    # so it is shown as the word is written -- and two entries of one spelling are one
+    # homophone, not 支1 and 支2 side by side.
+    written = {w["entry"]: w["simplified"] for w in words}
     for w in words:
         key = w["pinyin_numbered"].replace(" ", "")
         w["homograph"] = [e for e in by_simplified[w["simplified"]] if e != w["entry"]]
         same_word = set(by_simplified[w["simplified"]])
-        w["homophone"] = [e for e in by_pinyin[key] if e not in same_word]
+        w["homophone"] = list(dict.fromkeys(
+            written[e] for e in by_pinyin[key] if e not in same_word))
 
     # every character in the vocabulary, not just the 1200 that get a writing card:
     # the etymology on a word's answer side is keyed on each character's traditional form
