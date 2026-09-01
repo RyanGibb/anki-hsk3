@@ -2095,6 +2095,9 @@ def read_glossary(words, wiki, readings) -> Glossary:
     # has two pluses to read. Both sides of every one are taken.
     BEFORE = re.compile(rf"({PART})\s*(?:\([^)]*\))?\s*$")
     AFTER = re.compile(rf"\s*({PART})")
+    # An account that spells the sum out in words rather than writing it with a plus:
+    # 意 is "Modern form is a compound of 音 and 心".
+    COMPOUND = re.compile(rf"compound of ({PART})\s*(?:\([^)]*\))?\s*and\s+({PART})")
 
     def either_side(head: str) -> list:
         out = []
@@ -2196,7 +2199,11 @@ def read_glossary(words, wiki, readings) -> Glossary:
         """The parts an account takes the character apart into, before any pointer
         is followed. The guard below needs this much of the answer and no more, so
         following one pointer cannot set off another."""
-        return ROLE.findall(head) or either_side(head)
+        # Most accounts name the parts around a plus sign or by their role. A few say
+        # it in words instead -- 意 is "a compound of 音 and 心" -- and read only by
+        # the two patterns above, those characters end up with no parts at all.
+        return (ROLE.findall(head) or either_side(head)
+                or [c for pair in COMPOUND.findall(head) for c in pair])
 
     def made_of(ch: str) -> list:
         head = lead(ch)
