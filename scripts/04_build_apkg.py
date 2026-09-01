@@ -1597,6 +1597,28 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
             if entry not in readings.by_char.setdefault(c, []):
                 readings.by_char[c].append(entry)
                 heard_in[(c, num)] = where
+
+    # Where a character is read more than one way the card leads on one of them, and
+    # that one should be the way a learner has already met it. Taking the entries first
+    # and the examples after led 应 -- written at level 3 for 应该 yīnggāi -- with the
+    # yìng of the word it is entered as, at 7-9. So the readings are ordered by where
+    # each is first taught, which the header, the meaning, the etymology and the
+    # recordings all follow. Sorted rather than rebuilt: readings met at the same level
+    # keep the order they were found in.
+    first_taught = {}
+    for w in words:
+        chars = [c for c in w["simplified"] if CJK.match(c)]
+        sylls = [x for x in w["pinyin_numbered"].split(" ") if x]
+        if len(chars) != len(sylls):
+            continue
+        at = LEVELS.index(w["level"])
+        for c, s in zip(chars, sylls):
+            if at < first_taught.get((c, syllable(s)), len(LEVELS)):
+                first_taught[(c, syllable(s))] = at
+    for c in writing:
+        readings.by_char.get(c, []).sort(
+            key=lambda e: first_taught.get((c, syllable(e[1])), len(LEVELS)))
+
     char_decks = {lv: deck("writing", lv) for lv in LEVELS}
     seen = set()
     for n, r in enumerate(read_tsv(RAW / "chelsea_hanzi_writing.tsv"), 1):
