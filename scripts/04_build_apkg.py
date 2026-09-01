@@ -2436,6 +2436,15 @@ def read_glossary(words, wiki, readings) -> Glossary:
                 if best:
                     senses = best[1]
                     trad = best[0]
+            # A part the dictionary only points elsewhere for explains nothing: 夊 is
+            # entered as "see 夂", and 退 answered what it is built from with a
+            # cross-reference. The character it points at is the same shape rather than
+            # a part of it, so it joins this step instead of opening another, and
+            # arrives with its own gloss and its own account.
+            if senses and POINTER.match(senses):
+                aimed = re.search(PART, senses)
+                if aimed and aimed.group() not in seen:
+                    queue.insert(0, (aimed.group(), step))
             label = ch if trad == ch else f"{ch} ({trad})"
             said = part_readings(ch)
             body = (f'<b>{wiki.label(label, trad)}</b>'
