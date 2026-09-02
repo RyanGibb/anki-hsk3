@@ -2418,7 +2418,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
         seen = {c for c in simplified if CJK.match(c)}
         shown_chars.update(seen)
         queue = [(c, 1) for ch in simplified if CJK.match(ch) for c in made_of(ch)]
-        out, drawn = [], 1
+        out, drawn, printed = [], 1, set()
         while queue:
             ch, step = queue.pop(0)
             ch = deck_form.get(ch, ch)
@@ -2434,6 +2434,17 @@ def read_glossary(words, wiki, readings) -> Glossary:
             origin = etym_char(ch, full=True)
             if not origin:
                 continue
+            # Once. A radical form borrows its parent's whole account and names it as
+            # the parent's -- "Radical form of 手. Pictogram ..." -- and the parent's
+            # own row then said it all again. The first telling stands, whichever
+            # shape brought it; the later row keeps its gloss line, which is the one
+            # thing the borrowing row does not carry.
+            key = re.sub(r"^(?:Radical form of|Also written|Explained under)"
+                         r" .{1,4}\.\s*", "", re.sub("<[^>]+>", "", origin))[:100]
+            if key in printed:
+                origin = ""
+            else:
+                printed.add(key)
             if step > drawn and out:
                 out.append('<hr class=partStep>')
                 drawn = step
@@ -2471,10 +2482,13 @@ def read_glossary(words, wiki, readings) -> Glossary:
             said = part_readings(ch)
             body = (f'<b>{wiki.label(label, trad)}</b>'
                     f'{f" <span class=charRead>{said}</span>" if said else ""} ')
+            if not senses and not origin:
+                continue
             if senses:
                 body += wiki.markup(html.escape(senses, quote=False))
             body += also_read(ch, set(here))
-            out.append(f'<div class="gloss">{body}{origin_block(origin)}</div>')
+            out.append(f'<div class="gloss">{body}'
+                       f'{origin_block(origin) if origin else ""}</div>')
         return "".join(out)
 
     # The earliest word in which a character is read a given way. 地 is 地铁 as dì and
