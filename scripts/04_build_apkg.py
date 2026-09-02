@@ -141,10 +141,12 @@ def also_read(w, by_entry={}, pos=None) -> str:
         told = other["pinyin"] if other["pinyin"] != w["pinyin"] else ""
         split = other.get("meaning_by_pos") or []
         taught = pos.taught(other.get("pos") or [], split) if split else set()
-        # Every part of speech the other card teaches, since the card being read is
-        # where they are being told about it: 花 is a noun and an adjective there, and
-        # naming the noun alone would be as partial as naming neither.
-        parts = [(pos.label(p), m) for p, m in split if p in taught] \
+        # Every block of the other card, the taught ones first, since the card being
+        # read is where they are being told about it: 本2 files root and origin under
+        # a noun the syllabus never names, and keeping only the taught blocks left
+        # "root" nowhere on the classifier's card at all.
+        parts = ([(pos.label(p), m) for p, m in split if p in taught]
+                 + [(pos.label(p), m) for p, m in split if p not in taught]) \
             or [(pos.glossed(other.get("pos") or []), other["meaning"])]
         for i, (head, m) in enumerate(parts):
             rows.append(f'<div class=alsoWritten>'
