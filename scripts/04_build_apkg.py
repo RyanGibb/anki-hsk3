@@ -2013,12 +2013,12 @@ def read_glossary(words, wiki, readings) -> Glossary:
         return (f'<div class=origin>{first}</div>'
                 + (LATER + later if sep else ""))
 
-    def components(simplified: str, numbered: str = "", traditional: str = "",
-                   full: bool | None = None) -> str:
+    def components(simplified: str, numbered: str = "",
+                   traditional: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
-        A one-character word gets one too -- that is where the glyph origin is most
-        of what there is to say, so it gets the whole account rather than the lead,
-        and the two cards teaching that character agree on it.
+        The whole account, wherever the row stands -- 较 under 比较 is the same
+        character as 较 on its own card, and cutting its account to the lead there
+        dropped the paragraph saying the phonetic was 爻 before it was 交.
 
         The reading decides the senses: 长 is "long" in 长处 and "chief" in 校长, and a
         card showing one while saying the other is simply wrong. Where the syllables do
@@ -2028,8 +2028,6 @@ def read_glossary(words, wiki, readings) -> Glossary:
         the whole dump -- so 机 is listed as machine, opportunity and aircraft alike.
         """
         chars = [c for c in simplified if CJK.match(c)]
-        if full is None:
-            full = len(chars) == 1
         sylls = [x for x in numbered.split(" ") if x]
         # Every way the word reads the character, in the order it reads them: 一模一样
         # is yì mú yí yàng and one row answers for both 一. A reduplication reads its
@@ -2057,7 +2055,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
                 senses = clean_xrefs(" / ".join(
                     p.strip() for p in senses.split("/") if p.strip()))
                 trad = (char_meta.get(ch) or {}).get("traditional") or ch
-            origin = etym_char(ch, full=full)
+            origin = etym_char(ch, full=True)
             if not (senses or origin):
                 continue
             label = ch if trad == ch else f"{ch} ({trad})"
@@ -2597,8 +2595,7 @@ def read_glossary(words, wiki, readings) -> Glossary:
         # A character the syllabus never lists on its own has no reading from the
         # syllabus either, and 物 should still say wù.
         return components(ch, numbered or " ".join(dictionary_readings(ch)[:1]),
-                          (char_meta.get(ch) or {}).get("traditional") or ch,
-                          full=True)
+                          (char_meta.get(ch) or {}).get("traditional") or ch)
 
     def example_word(ch: str, level: str = "") -> str:
         """The same examples with their characters, for the side that has answered.
