@@ -2656,6 +2656,22 @@ def main() -> int:
     decks += sentences.decks
 
     at = VOCAB_FIELDS.index("ExampleSentence")
+
+    def worn_light(numbered: str):
+        """The readings a sentence gives the word when it speaks a later syllable
+        neutral: 关系 is guānxì to the word list and guānxi in every sentence that
+        uses it, the citation tone worn down rather than another word. One
+        direction only, and never the first syllable, so 地 taught as dì still
+        refuses a sentence reading it de, and 东西 taught light does not take
+        east-and-west."""
+        sylls = numbered.split()
+        spots = [i for i in range(1, len(sylls)) if not sylls[i].endswith("5")]
+        for mask in range(1, 1 << len(spots)):
+            worn = {s for b, s in enumerate(spots) if mask >> b & 1}
+            yield syllable(" ".join(
+                re.sub(r"\d$", "5", s) if i in worn else s
+                for i, s in enumerate(sylls)))
+
     for w, note in vocab_notes:
         # 地 is taught twice, as de and as dì, and a sentence using one is no example
         # of the other. Only where no sentence uses the reading the card teaches does
@@ -2666,6 +2682,10 @@ def main() -> int:
         # suffix is not shown by 子系统, where it is zǐ, and 头 the suffix is not
         # shown by 十几头牛, where it counts cattle.
         cited = sentences.example_sentence.get((w["simplified"], said_as), "")
+        for worn in worn_light(w["pinyin_numbered"]) if not cited else ():
+            cited = sentences.example_sentence.get((w["simplified"], worn), "")
+            if cited:
+                break
         # A word the syllabus marks an affix appears only inside another word, so a
         # sentence using it is a sentence with it on the end of something.
         if not cited and len(w["simplified"]) == 1 and AFFIX.search("".join(w["pos"])):
