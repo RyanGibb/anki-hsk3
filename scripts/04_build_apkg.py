@@ -1783,9 +1783,13 @@ class PartsOfSpeech:
             return f'<div class=charSense>{head} {body}</div>' if head else body
         taught = self.taught(w["pos"], split)
         bare = [p for p in self.named(w["pos"]) if p not in {q for q, _ in split}]
+        # Each block leads with its first sense and carries the rest quietly, as an
+        # unsplit meaning does and as every block on a writing card does: 就 has
+        # seven senses under 副 alone, and a card is not a dictionary page.
         return "".join(
             f'<div class="charSense{"" if p in taught else " beyond"}">'
-            f'{"" if p in taught else "also "}{self.label(p)} {self.senses(m)}</div>'
+            f'{"" if p in taught else "also "}{self.label(p)} '
+            f'{self.wiki.markup(render_senses(m))}</div>'
             for p, m in split) + "".join(
             f'<div class=charSense>{self.label(p)}</div>' for p in bare)
 
