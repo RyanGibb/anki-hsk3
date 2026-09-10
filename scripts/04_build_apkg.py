@@ -753,13 +753,14 @@ def load_etymology():
         block = (f'<div class="later"><b><a href="https://en.wiktionary.org/wiki/'
                  f'{ch}#Chinese">{ch}</a></b> {tidy(later)}</div>'
                  if later and later not in head else "")
-        # The paragraphs after the lead wander off the shape and into the word: 礼
-        # continues "Uncertain. Schuessler (2007) proposes that this is an old areal
-        # etymon. Compare Tibetan ཞེ་ས", and elsewhere into Peng'im romanisations and
-        # notes on where traditional characters are used. A card asking where a glyph
-        # came from wants none of it, so each paragraph faces the same test the section
-        # did. Of 3,376, some 800 are about the shape.
-        tail = [p for _, p in ps[i:] if about_the_glyph(p, "")]
+        # The section is chosen for being an account of the glyph, and then it comes
+        # whole. Judging its paragraphs one by one cannot be done well from here --
+        # 於 kept "Schuessler (2007) sees this pronunciation" and dropped the two
+        # paragraphs saying whose pronunciation and why, and 礼 keeps its Tibetan
+        # cognate while losing what the account was building towards. Completeness
+        # is the better policy: a paragraph the reader skims costs less than an
+        # account that stops without finishing.
+        tail = [p for _, p in ps[i:]]
         if not full or not tail:
             return head + block
         rest = " ".join(html.escape(p, quote=False) for p in tail)
