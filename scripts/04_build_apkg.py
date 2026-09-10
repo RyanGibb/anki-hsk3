@@ -643,17 +643,31 @@ def load_etymology():
             e.get("senses", 0), len(e["text"])))
 
     def split_up(text: str) -> list[tuple[str, str]]:
-        """The paragraphs, each with the list marker it carries."""
+        """The paragraphs, each with the list marker it carries.
+
+        The dump can break one sentence across two paragraphs: 聿 opens "Pictogram
+        (象形) or" and carries on "ideogrammic compound (會意 /会意): hand (又) holding a
+        brush" below it. A paragraph that neither closes the sentence above it nor
+        opens one of its own is the rest of that sentence, and the halves are put
+        back together here so that wherever they land they land together -- 於 gave
+        its second half alone and the card opened mid-sentence, on "from 于,
+        essentially treating this phenomenon as xundu".
+        """
         out = []
         for p in text.split("\n"):
             p = p.strip()
             # A paragraph carrying no word at all is what is left of something the
             # dump could not reproduce: 車 opens on a bare "]". The account is the
             # first paragraph, so an empty one would be the whole of it.
-            if p and WORDS.search(p):
-                mark = BULLET.match(p)
-                out.append((mark.group(1)[:1] if mark else "",
-                            BULLET.sub("", p).strip()))
+            if not (p and WORDS.search(p)):
+                continue
+            mark = BULLET.match(p)
+            mark, p = (mark.group(1)[:1] if mark else ""), BULLET.sub("", p).strip()
+            if out and not mark and p[:1].islower() \
+                    and not re.search(r"[.!?:]$", out[-1][1]):
+                out[-1] = (out[-1][0], f"{out[-1][1]} {p}")
+            else:
+                out.append((mark, p))
         return out
 
     def lead_of(ps: list) -> tuple[str, int]:
@@ -667,14 +681,6 @@ def load_etymology():
         the Sanjin glyph and the Chu glyph each described a line below its own term.
         """
         head, i, items = ps[0][1], 1, []
-        # The dump can break one sentence across two paragraphs: 聿 opens "Pictogram
-        # (象形) or" and carries on "ideogrammic compound (會意 /会意): hand (又) holding a
-        # brush" below it. A paragraph that neither closes the sentence above it nor
-        # opens one of its own is the rest of that sentence.
-        while i < len(ps) and not ps[i][0] and not re.search(r"[.!?:]$", head) \
-                and ps[i][1][:1].islower():
-            head = f"{head} {ps[i][1]}"
-            i += 1
         # Only where the head asks for them. A colon promises a list and says nothing
         # without it -- "Two kinds of glyph are found in Warring States era:" -- while
         # a head that closes itself is complete, and the bullets under it belong to
