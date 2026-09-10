@@ -452,8 +452,12 @@ def short_gloss(meaning: str) -> str:
 
 
 def render_senses(meaning: str) -> str:
-    parts = [html.escape(clean_xrefs(p.strip()), quote=False)
-             for p in meaning.split("/") if p.strip()]
+    # A sense can empty out in the cleaning: 究 is entered "after all/to investigate/
+    # to study carefully/Taiwan pr. [jiu4]", and the reading note is not a sense of
+    # the word. What is left is nothing, so the slot goes too, rather than standing
+    # as a slash with no sense after it.
+    parts = [x for x in (html.escape(clean_xrefs(p.strip()), quote=False)
+                         for p in meaning.split("/")) if x.strip()]
     if not parts:
         return ""
     if len(parts) == 1:
@@ -1808,8 +1812,8 @@ class PartsOfSpeech:
     def senses(self, m: str) -> str:
         """One part of speech's worth of meaning, as CC-CEDICT divides it."""
         return self.wiki.markup(" / ".join(
-            html.escape(clean_xrefs(x.strip()), quote=False)
-            for x in m.split("/") if x.strip()))
+            x for x in (html.escape(clean_xrefs(p.strip()), quote=False)
+                        for p in m.split("/")) if x.strip()))
 
     def blocks(self, w: dict) -> str:
         """The meaning under the part of speech it belongs to.
