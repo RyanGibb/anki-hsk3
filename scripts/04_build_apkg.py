@@ -717,22 +717,30 @@ def load_etymology():
             out.pop(0)
         return out
 
-    def simplification(ch: str) -> str:
-        """How the character came to be written the way the card writes it.
+    def simplification(ch: str) -> tuple[str, list]:
+        """How the character came to be written the way the card writes it, as the
+        opening paragraph and what follows it.
 
         An account keyed on the traditional form explains a shape the card does not
         show. 禮 is 礻 over phonetic 豊, and 礼 is not that: it is an ancient variant of
         禮 that the 1956 scheme brought back. Wiktionary files that under the simplified
         character, where the deck was passing over it -- 习 is 習 with 白 and 羽 gone,
         丝 is 絲 through the variant 𢇁, 专 is 專 in cursive.
+
+        This account comes whole as any other does: opening on both forms 采 is found
+        in and stopping before "The current glyph is of composition 2" said nothing
+        about the one being written.
         """
         if trad.get(ch, ch) == ch:
-            return ""
+            return "", []
         for x in etym.get(ch) or []:
             if about_the_glyph(x.get("text", ""), x.get("type", "")):
                 ps = split_up(x["text"])
-                return lead_of(ps)[0] if ps else ""
-        return ""
+                if not ps:
+                    break
+                head, i = lead_of(ps)
+                return head, [p for _, p in ps[i:]]
+        return "", []
 
     def one(ch: str, full: bool) -> str:
         ps = paragraphs(ch)
@@ -749,9 +757,13 @@ def load_etymology():
         # Two accounts of two shapes, so each is left whole and the simplified one comes
         # last: putting it between the lead and the rest cut 禮's account in two and
         # left "Originally written 豊, see there for more" hanging after 礼's.
-        later = simplification(ch)
+        later, after = simplification(ch)
         block = (f'<div class="later"><b><a href="https://en.wiktionary.org/wiki/'
-                 f'{ch}#Chinese">{ch}</a></b> {tidy(later)}</div>'
+                 f'{ch}#Chinese">{ch}</a></b> {tidy(later)}'
+                 + (f'<div class="more">'
+                    f'{" ".join(tidy(p) for p in after)}</div>' if full and after
+                    else "")
+                 + '</div>'
                  if later and later not in head else "")
         # The section is chosen for being an account of the glyph, and then it comes
         # whole. Judging its paragraphs one by one cannot be done well from here --
@@ -2223,7 +2235,11 @@ def read_glossary(words, wiki, readings) -> Glossary:
         so both places are read.
         """
         parts = re.split(r'<div class="later">', etym_char(ch, full=True) or "")
-        return parts[1] if len(parts) > 1 else parts[0]
+        # The opening paragraph is where the shape is named -- "Simplified from 訝
+        # (訁 → 讠)" -- and the paragraphs under it carry the history in prose, where
+        # a shape is mentioned rather than put in place.
+        return (parts[1].split('<div class="more">')[0] if len(parts) > 1
+                else parts[0])
 
     def lead(ch: str) -> str:
         return account(ch).split(". ")[0]
