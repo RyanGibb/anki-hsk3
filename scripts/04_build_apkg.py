@@ -410,6 +410,33 @@ def spoken(pinyin: str) -> str:
     return parts[0] + (f" (also {', '.join(parts[1:])})" if len(parts) > 1 else "")
 
 
+def mend(text: str) -> str:
+    """An account with what the dump could not carry over taken back out of it.
+
+    Three kinds of damage, none of them anything Wiktionary shows a reader. A glyph
+    wiktextract cannot reproduce is dropped where it stood, leaving the sentence
+    pointing at nothing -- "recorded in Shuowen as ." -- or a reconstruction with a
+    hole in it, *bo()k. A script it has no font for is announced instead of written,
+    so 牙 compares "Mru [script needed] (hngou, “tooth”)". And a citation's link comes
+    through as the address itself, so 鬼 cites "(Shuowen Jiezi
+    https://ctext.org/shuo-wen-jie-zi/gui-bu?searchu=%E6%AD%B8&searchmode=showall#result;
+    Liezi https://ctext.org/liezi/tian-rui...)" where the names alone are the citation.
+
+    Only the damage: what is left is every word the dump did carry over.
+    """
+    # An address ends where its sentence resumes, so the punctuation after it is the
+    # sentence's and stays: "(Shuowen Jiezi; Liezi)." keeps both marks.
+    text = re.sub(r"\[script needed\]|\(\s*\)"
+                  r"|https?://[^\s]+?(?=[.,;:)\]]*(?:\s|$))", "", text)
+    text = re.sub(r"\s{2,}", " ", text)
+    # Then what the hole leaves behind: a sentence closing on the reference that is
+    # no longer there, and a space held open before the punctuation that followed it.
+    text = re.sub(r"(?:,| as| like| to)?\s+\.(?=\s|$)", ".", text)
+    text = re.sub(r"\s+([,;.)])", r"\1", text)
+    text = re.sub(r"\(\s+", "(", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
+
+
 def short_gloss(meaning: str) -> str:
     """Enough of a word's meaning to identify it, for citing it on another card.
 
@@ -747,11 +774,9 @@ def load_etymology():
         if not ps:
             return ""
         head, i = lead_of(ps)
-        # wiktextract drops a glyph it cannot reproduce, leaving the sentence pointing
-        # at nothing: "recorded in Shuowen as ." Close it up rather than show the hole.
+
         def tidy(text: str) -> str:
-            return html.escape(re.sub(r"(?:,| as| like| to)?\s+\.(?=\s|$)", ".", text),
-                               quote=False)
+            return html.escape(mend(text), quote=False)
 
         head = tidy(head)
         # Two accounts of two shapes, so each is left whole and the simplified one comes
@@ -775,7 +800,7 @@ def load_etymology():
         tail = [p for _, p in ps[i:]]
         if not full or not tail:
             return head + block
-        rest = " ".join(html.escape(p, quote=False) for p in tail)
+        rest = " ".join(tidy(p) for p in tail)
         return f'{head}<div class="more">{rest}</div>{block}'
 
     return one
