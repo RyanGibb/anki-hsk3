@@ -701,9 +701,9 @@ def load_etymology():
                 out.append((mark, p))
         return out
 
-    def lead_of(ps: list) -> tuple[str, int]:
-        """The opening paragraph with the list under it pulled up, and where that list
-        ends.
+    def joined(ps: list, k: int) -> tuple[str, int]:
+        """The paragraph starting at k with the list under it pulled up, and where
+        that list ends.
 
         "Two theories:" and "a standing man with four head variants:" head the items
         below them and say nothing alone. A term in a definition list is marked and its
@@ -711,7 +711,7 @@ def load_etymology():
         read "Two kinds of glyph are found in Warring States era:" and stopped, with
         the Sanjin glyph and the Chu glyph each described a line below its own term.
         """
-        head, i, items = ps[0][1], 1, []
+        head, i, items = ps[k][1], k + 1, []
         # Only where the head asks for them. A colon promises a list and says nothing
         # without it -- "Two kinds of glyph are found in Warring States era:" -- while
         # a head that closes itself is complete, and the bullets under it belong to
@@ -732,6 +732,24 @@ def load_etymology():
             head = f"{head} {ps[i][1]}"
             i += 1
         return head, i
+
+    def lead_of(ps: list) -> tuple[str, int]:
+        return joined(ps, 0)
+
+    def rest_of(ps: list, i: int) -> list[str]:
+        """The paragraphs after the lead, each still a paragraph.
+
+        Run together into one block they read as a single argument that keeps
+        changing its mind: 人 goes from what 亼 is, to what 亻 is, to Sagart's
+        cognate, to the two etymologies Schuessler proposes, without a break
+        anywhere. Each one is read the way the lead is, so a list arrives as a list
+        rather than as prose with its markers taken off.
+        """
+        out = []
+        while i < len(ps):
+            text, i = joined(ps, i)
+            out.append(text)
+        return out
 
     def paragraphs(ch: str) -> list[tuple[str, str]]:
         e = choose(ch)
@@ -770,7 +788,7 @@ def load_etymology():
                 if not ps:
                     break
                 head, i = lead_of(ps)
-                return head, [p for _, p in ps[i:]]
+                return head, rest_of(ps, i)
         return "", []
 
     def one(ch: str, full: bool) -> str:
@@ -786,12 +804,13 @@ def load_etymology():
         # Two accounts of two shapes, so each is left whole and the simplified one comes
         # last: putting it between the lead and the rest cut 禮's account in two and
         # left "Originally written 豊, see there for more" hanging after 礼's.
+        def quietly(paras: list) -> str:
+            return "".join(f'<div class="more">{tidy(p)}</div>' for p in paras)
+
         later, after = simplification(ch)
         block = (f'<div class="later"><b><a href="https://en.wiktionary.org/wiki/'
                  f'{ch}#Chinese">{ch}</a></b> {tidy(later)}'
-                 + (f'<div class="more">'
-                    f'{" ".join(tidy(p) for p in after)}</div>' if full and after
-                    else "")
+                 + (quietly(after) if full else "")
                  + '</div>'
                  if later and later not in head else "")
         # The section is chosen for being an account of the glyph, and then it comes
@@ -801,11 +820,10 @@ def load_etymology():
         # cognate while losing what the account was building towards. Completeness
         # is the better policy: a paragraph the reader skims costs less than an
         # account that stops without finishing.
-        tail = [p for _, p in ps[i:]]
+        tail = rest_of(ps, i)
         if not full or not tail:
             return head + block
-        rest = " ".join(tidy(p) for p in tail)
-        return f'{head}<div class="more">{rest}</div>{block}'
+        return f'{head}{quietly(tail)}{block}'
 
     return one
 

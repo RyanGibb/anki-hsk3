@@ -219,6 +219,10 @@ img.stroke {
   margin-top: 4px;
 }
 
+/* One of these per paragraph of an account, so a point that is made and finished
+   ends where the next begins rather than running into it. */
+.more + .more { margin-top: 0.5em; }
+
 .glosses {
   font-family: "Rare CJK", "Rare CJK 2", Georgia;
   font-size: 24px;
