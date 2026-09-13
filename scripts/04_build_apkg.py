@@ -472,6 +472,12 @@ def lvl_of(exam_level_id: str) -> str:
 # Wiktionary writes a list two ways: bulleted, and as a definition list whose term is
 # marked and whose description is the plain paragraph after it.
 BULLET = re.compile(r"^([*#;]+)\s*")
+# How long an item of a list can be and still be read as part of the sentence that
+# promises it. "Square or round block" is one of 天's four head variants and belongs
+# in the line naming them; each of 水's eight proposals for where the word comes from
+# runs to several sentences of its own, and semicolons between those read as breaks
+# in the middle of a sentence.
+AS_A_PHRASE = 120
 
 
 # Words that appear in any gloss and so distinguish nothing.
@@ -717,12 +723,20 @@ def load_etymology():
         # a head that closes itself is complete, and the bullets under it belong to
         # something else: 洛 is a phono-semantic compound, and what follows is a note
         # on clipping 洛必達法則 for l'Hôpital's rule.
-        while re.search(r"[:：]$", head) and i < len(ps) \
-                and (ps[i][0] or ps[i - 1][0] == ";"):
-            items.append(ps[i][1].rstrip("."))
-            i += 1
+        j = i
+        while re.search(r"[:：]$", head) and j < len(ps) \
+                and (ps[j][0] or ps[j - 1][0] == ";"):
+            items.append(ps[j][1].rstrip("."))
+            j += 1
+        # Short ones are phrases and belong in the sentence promising them. Ones that
+        # are paragraphs stay paragraphs: 水 lists eight proposals for where the word
+        # comes from, several sentences each, and strung together on semicolons they
+        # ran into one another. The colon is left standing and they follow it.
+        if items and max(len(x) for x in items) > AS_A_PHRASE:
+            return head, i
         if items:
             head = head.rstrip(":") + ": " + "; ".join(items) + "."
+            i = j
         # A head still ending on a colon promises something that is neither a list nor
         # the rest of its own sentence, and a card showing only the lead never keeps
         # that promise: 竟 read "Uncertain. At least three theories exist:" and stopped
