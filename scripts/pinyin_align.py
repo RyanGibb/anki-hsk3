@@ -49,6 +49,38 @@ def syllabify(word: str) -> list:
 
 ALIGNABLE = re.compile(r"[㐀-鿿0-9A-Za-z]")
 
+# Where a syllable may begin without a mark saying so. Everything else is a letter the
+# syllable before it could have ended on.
+OPENS = "aoe"
+
+
+def apostrophes(marked: str, numbered: str) -> str:
+    """The reading with the apostrophes pinyin needs written back into it.
+
+    An apostrophe is written before a syllable beginning with a, o or e so that the
+    letter before it is not read into it. The word list writes 感恩 as gǎnēn, which
+    syllabifies as gǎ-nēn, and that is the reading the writing card gave 恩. The
+    numbered reading beside it says where the syllables fall, so nothing is decided
+    here, only marked: gǎn'ēn.
+
+    The numbered reading is the authority and the marked one is checked against it
+    letter by letter; anything that does not line up is left exactly as it came.
+    """
+    out, i = [], 0
+    for syl in numbered.split():
+        want = re.sub(r"[0-9]$", "", syl).replace("u:", "v").replace("ü", "v")
+        while i < len(marked) and not marked[i].isalpha():
+            out.append(marked[i])
+            i += 1
+        if want[:1] and want[0] in OPENS and out and out[-1].isalpha():
+            out.append("’")
+        flat = marked[i:i + len(want)].translate(FLAT).replace("ü", "v").lower()
+        if flat != want:
+            return marked
+        out.append(marked[i:i + len(want)])
+        i += len(want)
+    return "".join(out) if i == len(marked) else marked
+
 
 def align(hanzi: str, pinyin: str):
     """[(character, syllable, starts_a_word)], or None if the two cannot be matched.

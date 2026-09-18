@@ -10,6 +10,9 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from pinyin_align import apostrophes  # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RAW = ROOT / "data/raw"
 BUILD = ROOT / "build"
@@ -214,6 +217,15 @@ def main() -> int:
             if fix and r["pinyin_numbered"] == fix["was"]:
                 r["pinyin_numbered"] = fix["pinyin_numbered"]
                 r["pinyin"] = fix["pinyin"]
+    # 感恩 is written gǎnēn and 疼爱 téngài, without the apostrophe that says where the
+    # second syllable starts. Read as they stand they are gǎ-nēn and tén-gài, and
+    # everything a syllable decides follows: 恩 headed its writing card with nēn.
+    marked = 0
+    for r in punpuf:
+        with_marks = apostrophes(r["pinyin"], r["pinyin_numbered"])
+        marked += with_marks != r["pinyin"]
+        r["pinyin"] = with_marks
+    print(f"apostrophes restored: {marked}")
     chelsea = read_tsv(RAW / "chelsea_vocabulary.tsv")
 
     p_words = {r["word"] for r in punpuf}
