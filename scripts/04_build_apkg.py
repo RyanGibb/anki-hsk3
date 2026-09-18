@@ -1638,11 +1638,20 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         一, 不 and 儿 are left alone: yí in 一半 and the r of 一点儿 are the sandhi and
         erhua the convention writes, not other readings. So is a header reading said
         neutral inside a word, as the zi of 电子 is zǐ.
+
+        Where the syllabus teaches the character as no word at all the dictionary's
+        reading is a guess at the header rather than the header itself, and holds only
+        while the words citing the character agree with it. 相 is xiāng to the
+        dictionary, xiàng in 相机 and 照相 and xiāng in 相信 -- and taking the guess for
+        a header left the card headed xiàng alone, with the reading of nine of the
+        deck's words nowhere on it. So once a word gives a reading the guess did not,
+        the guess is one reading among several and is named with them.
         """
         if ch in "一不儿":
             return []
-        ways = ({syllable(num) for _, num, _ in readings.by_char.get(ch, [])}
-                or {syllable(numbered(m)) for m in marks})
+        said = {syllable(num) for _, num, _ in readings.by_char.get(ch, [])}
+        guessed = set() if said else {syllable(numbered(m)) for m in marks}
+        ways = said or guessed
         if not ways:
             return []
         bases = {w[:-1] for w in ways}
@@ -1652,7 +1661,7 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
                     for c2, sy, _ in align(word, mark) or [] if c2 == ch]
 
         def header_says(num):
-            return num in ways or (num.endswith("5") and num[:-1] in bases)
+            return num in said or (num.endswith("5") and num[:-1] in bases)
 
         cited = gloss.examples(ch, level)
         out = []
@@ -1660,9 +1669,12 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
                                  for n in read_in(word, mark)):
             if header_says(num):
                 continue
-            where = next(word for word, mark, _ in cited if num in read_in(word, mark))
+            # A reading the dictionary already gives is not met in one word rather than
+            # another, so it is not named after one.
+            where = "" if num in guessed else next(
+                word for word, mark, _ in cited if num in read_in(word, mark))
             out.append((toned(num), num, where))
-        return out
+        return out if any(w for _, _, w in out) else []
 
     writing = {r["word"]: lvl_of(r["examLevelId"])
                for r in read_tsv(RAW / "chelsea_hanzi_writing.tsv")}
