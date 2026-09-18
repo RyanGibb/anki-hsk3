@@ -2132,6 +2132,40 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
         return (f'<div class=origin>{first}</div>'
                 + (LATER + later if sep else ""))
 
+    # A character is written one way on its own and another inside another character.
+    # The dump says so from the form's end -- 氵 is "radical form of 水" -- so the map
+    # arrives the other way round and is turned over here. data/radical-forms.csv
+    # carries the pairs it words differently, or does not word at all.
+    radical_forms: dict[str, list] = collections.defaultdict(list)
+    for form, parent in (
+            json.loads((BUILD / "radical-of.json").read_text(encoding="utf-8"))
+            if (BUILD / "radical-of.json").exists() else {}).items():
+        radical_forms[parent].append((form, ""))
+    named_forms = ROOT / "data/radical-forms.csv"
+    if named_forms.exists():
+        for r in csv.DictReader(named_forms.open(encoding="utf-8")):
+            here = radical_forms[r["character"]]
+            if r["form"] not in [f for f, _ in here]:
+                here.append((r["form"], r["where"]))
+
+    def as_a_part(ch: str) -> str:
+        """The shape the character takes when it stands inside another one.
+
+        水 is written 氵 in 洗 and 言 is 讠 in 说, and the card said so from one end
+        only: 氵's own row calls itself the radical form of 水, while a reader who
+        looked up 水 was told nothing. Both where there are two -- 金 is 釒 inside a
+        traditional character and 钅 inside a simplified one -- and where two characters
+        share a shape it says which is which: 阝 is 阜 on the left of 阳 and 邑 on the
+        right of 都.
+        """
+        forms = radical_forms.get(ch) or []
+        if not forms:
+            return ""
+        return ('<div class=asPart>written '
+                + " or ".join(f"<b>{wiki.label(f, f)}</b>{f' {side}' if side else ''}"
+                              for f, side in forms)
+                + " inside another character</div>")
+
     def under_pos(ch: str, reading: str, senses: str) -> str:
         """The row's senses set out under the parts of speech the syllabus divides them
         into, or nothing where it divides them into one.
@@ -2259,7 +2293,8 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
                     f'{f" <span class=charRead>{said}</span>" if said else ""} '
                     f'{under_pos(ch, reading_of.get(ch, ""), senses)
                        or wiki.markup(html.escape(senses, quote=False))}'
-                    f'{also_read(ch, shown or spoken_numbers(ch, heard))}')
+                    f'{also_read(ch, shown or spoken_numbers(ch, heard))}'
+                    f'{as_a_part(ch)}')
             if origin:
                 body += origin_block(origin)
             out.append(f'<div class="gloss">{body}</div>')
@@ -2657,7 +2692,7 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
                 continue
             if senses:
                 body += wiki.markup(html.escape(senses, quote=False))
-            body += also_read(ch, set(here))
+            body += also_read(ch, set(here)) + as_a_part(ch)
             out.append(f'<div class="gloss">{body}'
                        f'{origin_block(origin) if origin else ""}</div>')
         return "".join(out)

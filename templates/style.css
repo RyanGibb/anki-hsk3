@@ -371,6 +371,13 @@ img.stroke {
   margin: 1px 0 0 1.2em;
 }
 
+/* The shape the character takes inside another one: 水 is written 氵 in 洗. Its own
+   line under the row, with the indent the row's other asides take. */
+.asPart {
+  margin: 1px 0 0 1.2em;
+  opacity: 0.75;
+}
+
 /* The word above a row changed the character's tone, and the row says which: 一起 is
    yìqǐ and the 一 beneath it is yī. Set inside the reading it qualifies. */
 .sandhi { opacity: 0.75; font-size: 0.85em; }

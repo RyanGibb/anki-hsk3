@@ -1,0 +1,18 @@
+character,form,where,why
+人,亻,,"the dump glosses 亻 ""Side form of the person (人) radical"", which is not the ""radical form of"" wording 01_wiktionary_index.py reads"
+八,丷,,data/glyph-links.csv explains 丷 under 八; 关 is ⿱丷天 where the traditional form is ⿱八天
+心,㣺,,"恭 is ⿱共㣺, and 心's own entry lists 㣺 among its forms"
+攴,攵,,"the dump redirects 攵 to 攴 and to 文, and it is 攴 that it is a form of; 敌 is ⿰舌攵"
+玉,王,,"玩 is ⿰王元 and its account names 玉. The shape does duty for both, and Wiktionary gives 玉's radical form no entry of its own"
+火,灬,,the dump redirects 灬 to 火; 热 is ⿱执灬
+网,罒,,"the dump glosses 罒 ""Component variant of 网"", again not the wording 01 reads"
+肉,月,,"data/glyph-links.csv explains 月 under 肉; 胞 is ⿰月包 to four regions and ⿰⺼包 to Taiwan and Vietnam, which is the same part drawn apart"
+艸,艹,,data/glyph-links.csv explains 艹 under 艸; 花 is ⿱艹化
+言,讠,,"讠 is entered as ""From cursive script of 訁"", and 訁 is the form 言 takes in a character"
+足,𧾷,,data/glyph-links.csv explains 𧾷 under 足; 跑 is ⿰𧾷包
+金,钅,,"钅 is entered as ""Simplified from 釒"", and 釒 is the radical form of 金 the dump does record"
+阜,阝,on the left,"the dump glosses 阝 ""阜 (fù) as left radical""; 阳 is ⿰阝日"
+邑,阝,on the right,"the same shape written on the right: 都 is ⿰者阝, where the part is 邑"
+食,飠,,"飠 is the form 食 takes in a character, which the dump says nowhere in words; 餓 is ⿰飠我"
+食,饣,,"饣 is entered as ""From cursive script of 飠"", which is 食's own radical form above"
+糸,纟,,"the dump redirects 纟 to 糹, which it does record as the radical form of 糸; 红 is ⿰纟工"
