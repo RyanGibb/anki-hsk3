@@ -308,6 +308,14 @@ img.stroke {
   text-align: left;
 }
 
+/* Inside a row naming a character, the blocks belong to that character: set under it
+   with the indent its glyph origin and its other readings take, rather than centred on
+   the card the way the word's own headline is. */
+.gloss .charSense {
+  max-width: none;
+  margin: 1px 0 0 1.2em;
+}
+
 /* A meaning the dictionary gives under a part of speech the syllabus does not teach
    the word as. Worth knowing, not what is being asked. */
 .beyond { font-size: 16px; opacity: 0.7; }

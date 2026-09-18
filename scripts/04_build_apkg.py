@@ -403,6 +403,18 @@ def clean_xrefs(text: str) -> str:
     return out.strip(" /")
 
 
+def sense_key(text: str) -> str:
+    """A sense reduced to what it says, so the same sense written two ways is one.
+
+    The syllabus's division of a meaning is written in the dictionary's own notation --
+    "(bound form) branch of (an organization); sub- (as in 分局[fen1 ju2])" -- and a card
+    carries the same sense rendered, as "分局 fēnjú". Punctuation and spacing go too: a
+    row that reached the card through one cleaning and a division that reached it
+    through another differ by a bracket as readily as by anything else.
+    """
+    return re.sub(r"[^a-z0-9一-鿿]", "", clean_xrefs(text).lower())
+
+
 def spoken(pinyin: str) -> str:
     """谁 is shéi, also shuí -- one word with a second pronunciation, not two words.
     A slash reads as though they were alternatives of equal standing."""
@@ -1521,15 +1533,7 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         down, and the writing card can say it. Where a reading is taught once there is
         nothing to divide and the dictionary's own entry stands.
         """
-        blocks = []
-        for w in readings.entries.get(ch, []):
-            if syllable(w["pinyin_numbered"]) != numbered:
-                continue
-            if not w["pos"]:
-                continue
-            split = w.get("meaning_by_pos") or [("、".join(w["pos"]), w["meaning"])]
-            taught = pos.taught(w["pos"], split)
-            blocks += [(p, m, p in taught) for p, m in split]
+        blocks = pos.divided(readings.entries.get(ch, []), numbered)
         # The dictionary's own glosses arrive cleaned and spaced about their slashes;
         # these come from the word list, where 之 still reads "literary equivalent of
         # 的[de5]" and 会 reads "to know how to/to be likely to".
@@ -1853,6 +1857,25 @@ class PartsOfSpeech:
         named = set(cls.named(pos))
         return named if any(p in named for p, *_ in split) else {p for p, *_ in split}
 
+    def divided(self, entries: list, numbered: str) -> list:
+        """[(part of speech, senses, taught)] for the entries reading a character the
+        way the card reads it.
+
+        會 is one entry of six senses to the dictionary and two words to the syllabus,
+        會1 a verb and 會2 a noun, so the division is already written down and a card
+        showing the character can say it. Every entry at that reading, since two of
+        them are two words written alike and both are the character in front of you.
+        """
+        blocks = []
+        for w in entries:
+            ways = [syllable(x) for x in w["pinyin_numbered"].split("/") if x.strip()]
+            if numbered not in ways or not w["pos"]:
+                continue
+            split = w.get("meaning_by_pos") or [("、".join(w["pos"]), w["meaning"])]
+            taught = self.taught(w["pos"], split)
+            blocks += [(p, m, p in taught) for p, m in split]
+        return blocks
+
     def senses(self, m: str) -> str:
         """One part of speech's worth of meaning, as CC-CEDICT divides it."""
         return self.wiki.markup(" / ".join(
@@ -1985,7 +2008,7 @@ Glossary = collections.namedtuple(
     " etym_block examples example_of example_word")
 
 
-def read_glossary(words, wiki, readings) -> Glossary:
+def read_glossary(words, wiki, readings, pos) -> Glossary:
     """What a character means, what it is made of, and the words it is met in.
 
     A vocabulary card glosses the characters inside its word and a writing card
@@ -2109,6 +2132,50 @@ def read_glossary(words, wiki, readings) -> Glossary:
         return (f'<div class=origin>{first}</div>'
                 + (LATER + later if sep else ""))
 
+    def under_pos(ch: str, reading: str, senses: str) -> str:
+        """The row's senses set out under the parts of speech the syllabus divides them
+        into, or nothing where it divides them into one.
+
+        比 is a verb, a preposition and a noun, and which of "to compare / more {adj.}
+        than {noun} / ratio / to gesture" is which is already written down -- the same
+        division the word's own card is headed by. The row ran all four together, so
+        the character read on its own card and the character read inside a word were
+        two different-looking things.
+
+        The senses are the row's own, relabelled and no more: a division naming a sense
+        the row does not carry names nothing, and a sense the division does not reach
+        keeps a block at the end. The dictionary reads 点 in more ways than the
+        syllabus teaches it, and none of them is dropped for going unlabelled.
+        """
+        blocks = pos.divided(readings.entries.get(ch, []), reading)
+        if len(blocks) < 2:
+            return ""
+        here = [x.strip() for x in senses.split("/") if x.strip()]
+        at = collections.defaultdict(list)
+        for i, s in enumerate(here):
+            at[sense_key(s)].append(i)
+        out, used = [], set()
+        for p, m, taught in blocks:
+            mine = []
+            for s in m.split("/"):
+                if at.get(sense_key(s)):
+                    i = at[sense_key(s)].pop(0)
+                    used.add(i)
+                    mine.append(here[i])
+            if mine:
+                out.append((p, mine, taught))
+        if not out:
+            return ""
+        rest = [s for i, s in enumerate(here) if i not in used]
+        return "".join(
+            f'<div class="charSense{"" if taught else " beyond"}">'
+            f'{"" if taught else "also "}{pos.label(p)} '
+            f'{wiki.markup(html.escape(" / ".join(mine), quote=False))}</div>'
+            for p, mine, taught in out) + (
+            f'<div class=charSense>'
+            f'{wiki.markup(html.escape(" / ".join(rest), quote=False))}</div>'
+            if rest else "")
+
     def components(simplified: str, numbered: str = "",
                    traditional: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
@@ -2190,7 +2257,8 @@ def read_glossary(words, wiki, readings) -> Glossary:
                 said += (' <span class=sandhi>(' + " / ".join(worn) + " here)</span>")
             body = (f'<b>{wiki.label(label, trad)}</b>'
                     f'{f" <span class=charRead>{said}</span>" if said else ""} '
-                    f'{wiki.markup(html.escape(senses, quote=False))}'
+                    f'{under_pos(ch, reading_of.get(ch, ""), senses)
+                       or wiki.markup(html.escape(senses, quote=False))}'
                     f'{also_read(ch, shown or spoken_numbers(ch, heard))}')
             if origin:
                 body += origin_block(origin)
@@ -2744,7 +2812,7 @@ def main() -> int:
     tone_hint.__defaults__ = (groups, pos.en)
     also_read.__defaults__ = (by_entry_all, pos)
     readings = readings_taught(words)
-    gloss = read_glossary(words, wiki, readings)
+    gloss = read_glossary(words, wiki, readings, pos)
 
     vocabulary = build_vocabulary(words, wiki, media, number, gloss, pos,
                                   groups, by_entry_all)
