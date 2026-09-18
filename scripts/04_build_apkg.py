@@ -2256,14 +2256,17 @@ def read_glossary(words, wiki, readings) -> Glossary:
                         re.I)
     IS_PART = re.compile(PART)
     REGION = re.compile(r"\[[A-Z]*\]")
-    breaks_into: dict[str, set] = collections.defaultdict(set)
+    # Kept in the order the breakdown writes them, not as a set: these become rows on a
+    # card, and a set of characters is ordered by a hash Python seeds afresh each run,
+    # so the same source built twice put 环节's parts in two different orders.
+    breaks_into: dict[str, dict] = collections.defaultdict(dict)
     for line in (RAW / "ids.txt").read_text(encoding="utf-8").splitlines():
         row = line.split("\t")
         if line.startswith("#") or len(row) < 3:
             continue
-        breaks_into[row[1]].update(
+        breaks_into[row[1]].update(dict.fromkeys(
             c for alt in row[2:] for c in REGION.sub("", alt)
-            if IS_PART.match(c) and c != row[1])
+            if IS_PART.match(c) and c != row[1]))
 
     # A radical is written one way and named another: makemeahanzi breaks 焦 into 隹 and
     # 灬, and the sentence saying 小 corrupted into 火 is talking about that 灬. So a
