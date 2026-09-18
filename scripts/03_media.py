@@ -246,9 +246,10 @@ def main() -> int:
         if not all(c in cmn and c in swac for c in cs):
             continue
         syl = [swac[c] for c in cs]
-        # An apostrophe is where the syllables divide and not a sound: 可爱 is kě’ài,
-        # and the two recordings joined are keai, which is the same word said.
-        if "".join(syl) != w["pinyin"].replace("’", ""):
+        # What was said, not how it is written. 可爱 is kě’ài and 成千上万 is
+        # chéngqiān-shàngwàn, and the mark dividing the syllables is the thing the
+        # recordings joined are already divided by.
+        if norm("".join(syl)) != norm(w["pinyin"]):
             continue
         if any(x in w["simplified"] for x in "一不"):
             continue
