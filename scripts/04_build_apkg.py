@@ -1537,8 +1537,8 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         # The dictionary's own glosses arrive cleaned and spaced about their slashes;
         # these come from the word list, where 之 still reads "literary equivalent of
         # 的[de5]" and 会 reads "to know how to/to be likely to".
-        return [(p, " / ".join(x.strip() for x in clean_xrefs(m).split("/") if x.strip()), d)
-                for p, m, d in blocks] if len(blocks) > 1 else []
+        return [(p, " / ".join(x.strip() for x in clean_xrefs(m).split("/") if x.strip()),
+                 d, lv) for p, m, d, lv in blocks] if len(blocks) > 1 else []
 
     def char_reading_senses(ch: str):
         """[(label, senses, bold, declared)] for a character, one block per way it is
@@ -1549,6 +1549,18 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         A reading heard inside a word says so: 子 zi cannot be recorded alone, so the
         card plays 包子 and tells you that is what it is playing.
         """
+        def taught_at(numbered: str) -> str:
+            """The level the syllabus first lists the character at, read this way.
+
+            A card split by reading asks the same question a card split by part of
+            speech does: 长 is cháng at HSK 2 and zhǎng at HSK 3, and saying so on one
+            block and not the other would leave the two looking like one level's work.
+            """
+            lv = [w["level"] for w in readings.entries.get(ch, [])
+                  if numbered in [syllable(x)
+                                  for x in w["pinyin_numbered"].split("/") if x.strip()]]
+            return min(lv, key=LEVELS.index) if lv else ""
+
         out = []
         ways = readings.by_char.get(ch, [])
         for marked, numbered, trad in ways:
@@ -1556,8 +1568,11 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
             said = marked + (f" (in {heard})" if heard else "")
             split = by_part_of_speech(ch, numbered)
             if split:
-                out += [(f"{said} {pos.glossed([p])}" if len(ways) > 1
-                         else pos.glossed([p]), m, False, d) for p, m, d in split]
+                # The level follows the part of speech it belongs to, not the reading:
+                # 会 is one reading, a verb at HSK 1 and a noun at HSK 3.
+                out += [((f"{said} {pos.glossed([p])}" if len(ways) > 1
+                          else pos.glossed([p])) + pos.at_level(lv, d), m, False, d)
+                        for p, m, d, lv in split]
                 continue
             entry = gloss.pick_char(ch, numbered, trad)
             if entry and not entry[2]:
@@ -1566,7 +1581,9 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
                 if elsewhere:
                     entry = max(elsewhere, key=char_rank)
             if entry:
-                out.append((said, entry[1], True, True))
+                out.append((said + (pos.at_level(taught_at(numbered), True)
+                                    if len(ways) > 1 else ""),
+                            entry[1], True, True))
         return out
 
     def reading_meaning(ch: str, info: dict) -> str:
@@ -1858,13 +1875,17 @@ class PartsOfSpeech:
         return named if any(p in named for p, *_ in split) else {p for p, *_ in split}
 
     def divided(self, entries: list, numbered: str) -> list:
-        """[(part of speech, senses, taught)] for the entries reading a character the
-        way the card reads it.
+        """[(part of speech, senses, taught, level)] for the entries reading a character
+        the way the card reads it.
 
         會 is one entry of six senses to the dictionary and two words to the syllabus,
         會1 a verb and 會2 a noun, so the division is already written down and a card
         showing the character can say it. Every entry at that reading, since two of
         them are two words written alike and both are the character in front of you.
+
+        The level is the entry's, and is the answer to when each part of speech is
+        asked of you: 会 is a verb at HSK 1 and a noun at HSK 3. Nothing for a part of
+        speech the syllabus does not give the word, since it never introduces one.
         """
         blocks = []
         for w in entries:
@@ -1873,8 +1894,13 @@ class PartsOfSpeech:
                 continue
             split = w.get("meaning_by_pos") or [("、".join(w["pos"]), w["meaning"])]
             taught = self.taught(w["pos"], split)
-            blocks += [(p, m, p in taught) for p, m in split]
+            blocks += [(p, m, p in taught, w["level"]) for p, m in split]
         return blocks
+
+    @staticmethod
+    def at_level(level: str, taught: bool) -> str:
+        """The level tag that follows a part of speech on a card showing several."""
+        return f' <span class=atLevel>HSK {level}</span>' if taught and level else ""
 
     def senses(self, m: str) -> str:
         """One part of speech's worth of meaning, as CC-CEDICT divides it."""
@@ -2189,7 +2215,7 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
         for i, s in enumerate(here):
             at[sense_key(s)].append(i)
         out, used = [], set()
-        for p, m, taught in blocks:
+        for p, m, taught, lv in blocks:
             mine = []
             for s in m.split("/"):
                 if at.get(sense_key(s)):
@@ -2197,15 +2223,15 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
                     used.add(i)
                     mine.append(here[i])
             if mine:
-                out.append((p, mine, taught))
+                out.append((p, mine, taught, lv))
         if not out:
             return ""
         rest = [s for i, s in enumerate(here) if i not in used]
         return "".join(
             f'<div class="charSense{"" if taught else " beyond"}">'
-            f'{"" if taught else "also "}{pos.label(p)} '
+            f'{"" if taught else "also "}{pos.label(p)}{pos.at_level(lv, taught)} '
             f'{wiki.markup(html.escape(" / ".join(mine), quote=False))}</div>'
-            for p, mine, taught in out) + (
+            for p, mine, taught, lv in out) + (
             f'<div class=charSense>'
             f'{wiki.markup(html.escape(" / ".join(rest), quote=False))}</div>'
             if rest else "")
