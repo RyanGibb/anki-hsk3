@@ -1632,7 +1632,7 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
         # sense between them. Only where the syllabus lists the character on its own,
         # and only once -- where it lists it twice the blocks above say it instead.
         entries = readings.entries.get(ch, [])
-        head = pos.glossed(entries[0]["pos"]) if len(entries) == 1 else ""
+        head = pos.glossed(entries[0]["pos"], entries[0]) if len(entries) == 1 else ""
         if ch in head:
             head = ""
         body = (render_senses(blocks[0][1]) if blocks else
@@ -1846,15 +1846,23 @@ class PartsOfSpeech:
         en = self.en.get(p, "")
         return f'{p}{f" <span class=en>{en}</span>" if en else ""}'
 
-    def glossed(self, parts: list[str]) -> str:
-        out = []
-        for p in parts:
-            out.append(re.sub(
-                r"[^、,／/（）()]+",
-                lambda m: (f"{m.group(0)} <span class=en>{self.en[m.group(0).strip()]}"
-                           "</span>") if m.group(0).strip() in self.en else m.group(0),
-                p))
-        return "、".join(out)
+    def glossed(self, parts: list[str], w: dict | None = None) -> str:
+        """The labels with their English, and given the word they belong to, the level
+        each arrives at."""
+        def one(m):
+            p = m.group(0).strip()
+            if p not in self.en:
+                return m.group(0)
+            return (f"{m.group(0)} <span class=en>{self.en[p]}</span>"
+                    + (self.at_level(self.level_of(w, p), True) if w else ""))
+        return "、".join(re.sub(r"[^、,／/（）()]+", one, p) for p in parts)
+
+    @staticmethod
+    def level_of(w: dict, p: str) -> str:
+        """The level the syllabus teaches the word as this part of speech: 半 is one
+        entry, a numeral at HSK 1 and an adverb at HSK 4. A part of speech the word list
+        does not give it takes the entry's own level."""
+        return (w.get("pos_levels") or {}).get(p) or w["level"]
 
     @staticmethod
     def named(pos: list[str]) -> list:
@@ -1883,9 +1891,10 @@ class PartsOfSpeech:
         showing the character can say it. Every entry at that reading, since two of
         them are two words written alike and both are the character in front of you.
 
-        The level is the entry's, and is the answer to when each part of speech is
-        asked of you: 会 is a verb at HSK 1 and a noun at HSK 3. Nothing for a part of
-        speech the syllabus does not give the word, since it never introduces one.
+        The level is when each part of speech is asked of you: 会 is a verb at HSK 1
+        and a noun at HSK 3, two entries, and 半 a numeral at HSK 1 and an adverb at
+        HSK 4, one. Nothing for a part of speech the syllabus does not give the word,
+        since it never introduces one.
         """
         blocks = []
         for w in entries:
@@ -1894,7 +1903,7 @@ class PartsOfSpeech:
                 continue
             split = w.get("meaning_by_pos") or [("、".join(w["pos"]), w["meaning"])]
             taught = self.taught(w["pos"], split)
-            blocks += [(p, m, p in taught, w["level"]) for p, m in split]
+            blocks += [(p, m, p in taught, self.level_of(w, p)) for p, m in split]
         return blocks
 
     @staticmethod
@@ -1919,7 +1928,7 @@ class PartsOfSpeech:
         """
         split = w.get("meaning_by_pos") or []
         if not split:
-            head = self.glossed(w["pos"])
+            head = self.glossed(w["pos"], w)
             body = self.wiki.markup(render_senses(w["meaning"]))
             return f'<div class=charSense>{head} {body}</div>' if head else body
         taught = self.taught(w["pos"], split)
@@ -1929,10 +1938,12 @@ class PartsOfSpeech:
         # seven senses under 副 alone, and a card is not a dictionary page.
         return "".join(
             f'<div class="charSense{"" if p in taught else " beyond"}">'
-            f'{"" if p in taught else "also "}{self.label(p)} '
+            f'{"" if p in taught else "also "}{self.label(p)}'
+            f'{self.at_level(self.level_of(w, p), p in taught)} '
             f'{self.wiki.markup(render_senses(m))}</div>'
             for p, m in split) + "".join(
-            f'<div class=charSense>{self.label(p)}</div>' for p in bare)
+            f'<div class=charSense>{self.label(p)}'
+            f'{self.at_level(self.level_of(w, p), True)}</div>' for p in bare)
 
 
 Vocabulary = collections.namedtuple("Vocabulary", "decks notes")

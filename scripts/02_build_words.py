@@ -265,6 +265,17 @@ def main() -> int:
     def pos_tokens(s: str) -> frozenset:
         return frozenset(t for t in POS_SPLIT.split(s) if t.strip())
 
+    # The syllabus lists 半 as a numeral at HSK 1 and again as an adverb at HSK 4, a row
+    # each. One entry keeps both levels, and this keeps which part of speech each row
+    # brought: the first level the word is listed at as that part of speech.
+    pos_levels: dict[str, dict] = collections.defaultdict(dict)
+    for r in punpuf:
+        here = pos_levels[entry_of(r)]
+        for p in pos_tokens(r.get("part_of_speech") or ""):
+            p = p.strip()
+            if p not in here or LEVEL_ORDER[r["level"]] < LEVEL_ORDER[here[p]]:
+                here[p] = r["level"]
+
     # Keyed on the entry, not the word: 本 is a classifier in one entry and a pronoun
     # in the other, and merging them loses the only thing telling the two cards apart.
     raw_pos: dict[str, list[str]] = collections.defaultdict(list)
@@ -369,6 +380,7 @@ def main() -> int:
                 "homograph_index": homograph_idx,
                 "level": lv[0],
                 "also_levels": lv[1:],
+                "pos_levels": pos_levels.get(entry, {}),
                 "pinyin": r["pinyin"],
                 "pinyin_numbered": r["pinyin_numbered"],
                 "traditional": traditional,
