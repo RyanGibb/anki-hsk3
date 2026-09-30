@@ -188,7 +188,7 @@ entry,pos,meaning
 号,名,"day of the month (e.g. 七號|七号[qi1 hao4] ""the 7th"")/(after a numeral) number designation (e.g. 237號房間|237号房间[er4 san1 qi1 hao4 fang2 jian1] ""Room 237"")/(bound form) size; type; category (e.g. 五號電池|五号电池[wu3 hao4 dian4 chi2])/(bound form) name; appellation (e.g. 國號|国号[guo2 hao4], 年號|年号[nian2 hao4], 遼寧號|辽宁号[Liao2 ning2 Hao4])/(bound form) mark; sign/(bound form) signal; bugle call (e.g. 起床號|起床号[qi3 chuang2 hao4])/(bound form) bugle; trumpet"
 号,量,classifier for numbered people or items
 号,动,(literary) to call out; to command/to mark; to label; to assign a number/(TCM) to feel (the pulse) (used in 號脈|号脉[hao4 mai4])
-回,动,to go back; to return; to turn back; to turn around/to reply; to answer
+回,动,to go back; to return; to turn back; to turn around/to reply; to answer/to return/to revolve/to curve
 回,量,"classifier for literary divisions (acts of a play, sections or chapters of a classic book)/classifier for occurrences or times"
 日,量,day
 日,名,(bound form) sun/day of the month/(bound form) Japan (abbr. for 日本[Ri4 ben3])
@@ -261,9 +261,9 @@ entry,pos,meaning
 挺,动,to stick out (a part of the body)/to (physically) straighten up/to support/to withstand
 挺,形,straight/erect/outstanding
 挺,量,classifier for machine guns
-向,动,to face/to turn towards/to support/to side with
-向,介,towards
-向,名,direction
+向,动,to face/to turn towards/to support/to side with/to turn toward/to tend toward/to guide
+向,介,towards/to
+向,名,direction/orientation
 向,副,shortly before/formerly/always/all along
 向,后缀,(suffix) suitable for .../oriented to ...
 小心,动,to be careful/to take care
@@ -291,7 +291,7 @@ entry,pos,meaning
 标准,形,(adjective) standard/good; correct; conforming to a standard
 表,名,exterior surface/family relationship via females/a model/a table (listing information)/a form/a meter (measuring sth)
 表,动,to show (one's opinion)
-并,动,to combine/to join/to merge
+并,动,to combine/to join/to merge/to amalgamate
 并,副,furthermore/also/(not) at all/simultaneously
 并,连,and/together with
 不便,形,inconvenient/inappropriate/unsuitable/short of cash
@@ -418,7 +418,7 @@ entry,pos,meaning
 肯定,副,assuredly; definitely
 恐怕,动,fear/to dread
 恐怕,副,I'm afraid that.../perhaps/maybe
-困,形,hard-pressed/stranded/destitute
+困,形,sleepy/tired/hard-pressed/stranded/destitute
 困,动,to trap/to surround
 困难,形,difficult/challenging
 困难,名,straitened circumstances/difficult situation
@@ -509,7 +509,7 @@ entry,pos,meaning
 所有,形,all
 所有,动,to have; to possess; to own
 台,量,classifier for vehicles or machines
-台,名,platform/stage/terrace/stand/support/station/broadcasting station
+台,名,platform/stage/terrace/stand/support/station/broadcasting station/desk; table; counter
 讨厌,形,disagreeable/troublesome/annoying
 讨厌,动,to dislike/to loathe
 通,动,to go through/to know well/to connect/to communicate/to clear
@@ -2030,7 +2030,7 @@ entry,pos,meaning
 投机,动,to speculate; to profiteer
 推论,动,to infer
 推论,名,inference/corollary/reasoned conclusion
-托,动,to hold up in one's hand; to support with one's palm/to ask; to beg; to entrust (variant of 託|托[tuo1])
+托,动,to hold up in one's hand; to support with one's palm/to ask; to beg; to entrust (variant of 託|托[tuo1])/to trust/to entrust/to be entrusted with/to act as trustee
 托,名,"sth serving as a support: a prop, a rest (e.g. arm rest)/(bound form) a shill/torr (unit of pressure)"
 外行,形,amateur
 外行,名,layman
@@ -2197,7 +2197,7 @@ entry,pos,meaning
 贼,形,(bound form) evil; wicked/sly; shifty; devious
 贼,动,(literary) to harm; to injure
 贼,副,(coll.) extremely; insanely; damn (common in NE China and Taiwan)
-闸,名,sluice; sluice gate/(coll.) brake/(coll.) electric switch
+闸,名,sluice; sluice gate/(coll.) brake/(coll.) electric switch/sluice/lock (on waterway)
 闸,动,to dam up water
 摘要,名,summary/abstract
 胀,动,to swell; to distend; to expand
@@ -2242,8 +2242,8 @@ entry,pos,meaning
 皱,形,wrinkled
 主宰,动,to dominate/to rule/to dictate
 主宰,名,master
-注,动,"(bound form) to pour into; to flow into; to inject/(bound form) to focus (one's spirit, gaze etc) on a single point; to concentrate"
-注,名,(bound form) stake (in gambling)
+注,动,"(bound form) to pour into; to flow into; to inject/(bound form) to focus (one's spirit, gaze etc) on a single point; to concentrate/to annotate; to provide explanatory notes on a written text/(bound form) to put on record; to register"
+注,名,(bound form) stake (in gambling)/an annotation; an explanatory note
 注,量,"classifier for stakes, sums of money, transactions or beams of light"
 助力,动,to help; to aid
 助力,名,assistance
@@ -2361,7 +2361,7 @@ entry,pos,meaning
 服,名,clothes/dress/garment/mourning clothes
 属,动,to belong to/subordinate to/affiliated with/to be/to prove to be/to constitute/be born in the year of (one of the 12 animals)
 属,名,category/genus (taxonomy)/family members/dependents
-制,动,to control/to regulate
+制,动,to manufacture/to make/to control/to regulate
 制,名,system
 误,动,to delay/to miss/to harm/to neglect
 误,名,mistake/error
@@ -2376,7 +2376,7 @@ entry,pos,meaning
 饶,动,to spare/to forgive/to add for free/to throw in as bonus
 饶,形,rich/abundant/exuberant
 饶,连,despite/although
-熏,动,to smoke/to fumigate/to educate
+熏,动,to smoke/to fumigate/to educate/to assail the nostrils/to perfume
 熏,名,fragrance
 熏,形,warm
 陷,动,to get stuck/to sink/to cave in/to frame (false charge)/to capture (a city in battle)/to fall (to the enemy)
@@ -2556,7 +2556,7 @@ entry,pos,meaning
 书,动,to write
 说,动,to speak; to talk; to say/to explain; to comment/to scold; to tell off
 说,名,(bound form) theory; doctrine
-岁,量,classifier for years (of age)
+岁,量,classifier for years (of age)/years old
 岁,名,year/year (of crop harvests)
 太,副,too (much)/very/extremely
 太,形,highest/greatest
@@ -2800,7 +2800,7 @@ entry,pos,meaning
 秒,量,second (unit of time)/arc second (angular measurement unit)
 秒,副,(coll.) instantly
 期,量,"classifier for issues of a periodical, courses of study"
-期,名,a period of time/phase/stage/time/term/period
+期,名,a period of time/phase/stage/time/term/period/cycle
 期,动,to hope
 巧,形,skillful/timely
 巧,副,opportunely/coincidentally/as it happens
@@ -2942,7 +2942,7 @@ entry,pos,meaning
 黑,动,to hide (sth) away/to vilify/(loanword) to hack (computing)
 红,形,red/popular/revolutionary
 红,名,bonus
-划1,动,to row/to paddle/worth (the effort)/it pays (to do sth)
+划1,动,to row/to paddle/worth (the effort)/it pays (to do sth)/to cut/to slash/to scratch (cut into the surface of sth)/to strike (a match)
 划1,形,profitable
 伙,量,classifier for groups of people
 伙,名,companion/partner/group
@@ -3044,7 +3044,7 @@ entry,pos,meaning
 族,名,race/nationality/ethnicity/clan
 摆,动,to arrange/to exhibit/to move to and fro
 摆,名,a pendulum
-逼,动,to force (sb to do sth)/to compel/to press for/to extort/to press on towards/to press up to/to close in on
+逼,动,to force (sb to do sth)/to compel/to press for/to extort/to press on towards/to press up to/to close in on/to pressure
 逼,名,euphemistic variant of 屄[bi1]
 兵,名,soldiers/a force/an army/weapons/arms
 兵,形,military/warlike
@@ -3095,9 +3095,9 @@ entry,pos,meaning
 尽1,副,all/entirely
 井,名,a well
 井,形,neat/orderly
-卷1,动,to roll up/(fig.) to sweep up; to engulf; to drag into (a situation)/(slang) to compete to an unhealthy degree; hypercompetitive
+卷1,动,to roll up/(fig.) to sweep up; to engulf; to drag into (a situation)/(slang) to compete to an unhealthy degree; hypercompetitive/to sweep up; to carry along
 卷1,名,a roll
-卷1,量,"classifier for small rolled-up things (wad of paper money, movie reel etc)"
+卷1,量,"classifier for small rolled-up things (wad of paper money, movie reel etc)/classifier for rolls, spools etc"
 卷2,量,"classifier for books, paintings: volume, scroll"
 卷2,名,scroll/book/volume/chapter/examination paper
 科,名,branch of study/administrative section/division/field/branch/stage directions/family (taxonomy)/rules/laws
@@ -3166,7 +3166,7 @@ entry,pos,meaning
 引,量,"old unit of distance equal to 10 丈[zhang4], one-thirtieth of a km or 33.33 meters"
 杂,形,mixed/miscellaneous/various
 杂,动,to mix
-扎,动,to prick/to run or stick (a needle etc) into
+扎,动,to prick/to run or stick (a needle etc) into/(of troops) to be stationed (at)
 扎,名,"mug or jug used for serving beer (loanword from ""jar"")"
 章,量,chapter/section/clause/movement (of symphony)
 章,名,seal/badge/regulation/order
@@ -3311,7 +3311,7 @@ entry,pos,meaning
 乃,副,thus/so/then/only/thereupon
 乃,连,therefore
 乃,动,to be
-拟,动,to plan to/to draft (a plan)/to imitate/to assess/to compare
+拟,动,to plan to/to draft (a plan)/to imitate/to assess/to compare/to emulate
 拟,前缀,pseudo-
 黏,形,sticky; glutinous
 黏,动,(Tw) to adhere; to stick on; to glue
@@ -3386,7 +3386,7 @@ entry,pos,meaning
 邪,名,unhealthy influences that cause disease (Chinese medicine)
 泻,动,to flow out swiftly/to flood
 泻,名,a torrent/diarrhea/laxative
-凶,形,vicious/fierce/ominous/inauspicious
+凶,形,vicious/fierce/ominous/inauspicious/terrible/fearful
 凶,名,famine
 悬,动,to hang or suspend/to worry
 悬,形,unresolved/baseless/without foundation
@@ -3416,8 +3416,8 @@ entry,pos,meaning
 枕,名,(bound form) pillow
 震,动,to shake/to vibrate/to jolt/to quake/excited/shocked
 震,名,"one of the Eight Trigrams 八卦[ba1 gua4], symbolizing thunder/☳"
-征,动,to invite/to recruit/to levy (taxes)/to draft (troops)
-征,名,phenomenon/symptom/characteristic sign (used as proof)/evidence
+征,动,to invite/to recruit/to levy (taxes)/to draft (troops)/to go on long campaign/to attack
+征,名,phenomenon/symptom/characteristic sign (used as proof)/evidence/journey/trip/expedition
 蒸,动,to evaporate/(of cooking) to steam
 蒸,名,torch made from hemp stalks or bamboo (old)/finely chopped firewood (old)
 幢,量,classifier for buildings (Taiwan pr. [chuang2])
@@ -4047,3 +4047,6 @@ entry,pos,meaning
 走向,名,direction/strike (i.e. angle of inclination in geology)/inclination/trend
 走向,动,to move towards/to head for
 作战,动,to fight/combat
+拟,形,doubtful/suspicious
+精练,形,refined/polished/succinct/skilled/capable
+精练,动,"to refine (a substance)/to purify/to refine (one's skills, writing etc)/(textiles) to scour/to degum (silk)"

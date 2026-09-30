@@ -108,17 +108,24 @@ def main() -> int:
               if len(g) > 1 and len({x["meaning"] for x in g}) == 1]
     check(f"{len(groups) - len(shared)}/{len(groups)} groups distinct", not shared,
           ", ".join(shared) if shared else "")
+    # A hand-set gloss is chosen from the dictionary, never written: data/homograph-
+    # glosses.csv holds CC-CEDICT's exact wording and not a tidied version of it. The
+    # sense may come from another of its entries -- 回复 is taught as "to reply", which
+    # CC-CEDICT enters under 回覆 -- but it has to be there, word for word.
+    dictionary = set()
+    for path in (ROOT / "data/raw/cedict_ts.u8", ROOT / "data/raw/cedict_patch.u8"):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.startswith("#") and "/" in line:
+                dictionary.update(s for s in line.split("/")[1:-1] if s)
+    invented = [f"{w['entry']}: {s[:32]}" for w in words
+                if w["meaning_source"] == "curated"
+                for s in w["meaning"].split("/") if s and s not in dictionary]
     # A hand-split gloss divides its dictionary entry between the cards rather than
     # choosing from it: every sense the dictionary gives 本 is taught by 本1 or by 本2,
-    # and by only one of them. Senses are matched verbatim, so data/homograph-glosses.csv
-    # has to hold CC-CEDICT's exact wording and not a tidied version of it.
-    invented, lost = [], []
+    # and by only one of them.
+    lost = []
     for simp, g in groups.items():
         curated = [w for w in g if w["meaning_source"] == "curated"]
-        for w in curated:
-            full = [s for s in w["meaning_full"].split("/") if s]
-            invented += [f"{w['entry']}: {s[:32]}"
-                         for s in w["meaning"].split("/") if s and s not in full]
         # Entries the adjudicator gave separate dictionary entries (面 against 麵) have
         # no single sense list to divide, so only words sharing one can be checked.
         shared_entry = len({w["meaning_full"] for w in g}) == 1
