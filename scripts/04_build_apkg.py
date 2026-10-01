@@ -727,7 +727,12 @@ def load_etymology():
                 out[-1] = (out[-1][0], f"{out[-1][1]} {p}")
             else:
                 out.append((mark, p))
-        return out
+        # A term in a definition list names what the paragraph under it describes. With
+        # nothing under it -- the account ends, or the next line is another term -- it
+        # names nothing: 商 ended on "dynasty's name" and "“to trade” → “trader,
+        # merchant”", the description of each lost from the dump.
+        return [(m, p) for k, (m, p) in enumerate(out)
+                if m != ";" or (k + 1 < len(out) and out[k + 1][0] != ";")]
 
     def joined(ps: list, k: int) -> tuple[str, int]:
         """The paragraph starting at k with the list under it pulled up, and where
