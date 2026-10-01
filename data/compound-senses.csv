@@ -135,7 +135,7 @@ word,character,sense
 过年,过,to celebrate (a holiday)
 过去,过,to go over
 过去,去,(after a verb of motion indicates movement away from the speaker)
-后面,面,side
+后面,面,suffix used to form a noun of locality
 回来,来,"hither (directional complement for motion toward the speaker, as in 回来 huílai)"
 回去,去,(after a verb of motion indicates movement away from the speaker)
 机场,机,(bound form) aircraft
@@ -157,18 +157,18 @@ word,character,sense
 快要,要,will; shall; about to
 篮球,篮,basket (in basketball)
 里面,里,inside
-里面,面,side
+里面,面,suffix used to form a noun of locality
 路上,上,(noun suffix) on; above
 旅游,旅,to travel
 旅游,游,to tour
 奶茶,奶,milk
 起来,起,to get up
 起来,来,"hither (directional complement for motion toward the speaker, as in 回来 huílai)"
-前面,面,side
+前面,面,suffix used to form a noun of locality
 商场,场,large place used for a specific purpose
 上来,上,to climb; to get onto; to go up
 上来,来,"hither (directional complement for motion toward the speaker, as in 回来 huílai)"
-上面,面,side
+上面,面,suffix used to form a noun of locality
 上去,上,to climb; to get onto; to go up
 上去,去,(after a verb of motion indicates movement away from the speaker)
 上网,上,to climb; to get onto; to go up
@@ -177,7 +177,7 @@ word,character,sense
 舒服,舒,to relax
 虽然,然,-ly
 外国,外,foreign
-外面,面,side
+外面,面,suffix used to form a noun of locality
 网上,网,network
 网上,上,(noun suffix) on; above
 为什么,为,for
@@ -185,7 +185,7 @@ word,character,sense
 下来,下,to go down
 下来,来,"hither (directional complement for motion toward the speaker, as in 回来 huílai)"
 下面,下,below
-下面,面,side
+下面,面,suffix used to form a noun of locality
 下去,下,to go down
 下去,去,(after a verb of motion indicates movement away from the speaker)
 小孩儿,小,young
@@ -627,7 +627,7 @@ word,character,sense
 对方,对,(bound form) opposite; facing; matching
 对方,方,"party (to a contract, dispute etc)"
 对面,对,(bound form) opposite; facing; matching
-对面,面,side
+对面,面,suffix used to form a noun of locality
 对于,对,concerning; regarding
 队员,队,team
 队员,员,(bound form) member
@@ -1442,7 +1442,7 @@ word,character,sense
 到期,期,term
 登记,登,to enter (e.g. in a register)
 登录,登,to enter (e.g. in a register)
-登录,录,record
+登录,录,to record; to write down
 低头,低,to lower (one's head)
 的确,确,real
 地面,地,ground
@@ -1673,7 +1673,7 @@ word,character,sense
 急忙,忙,hurriedly
 集体,集,to gather
 集中,集,to gather
-记录,录,record
+记录,录,to record; to write down
 纪录,纪,to chronicle
 纪录,录,record
 纪录片,纪,to chronicle
@@ -1815,10 +1815,10 @@ word,character,sense
 流传,传,to spread
 流感,流,to disseminate
 陆地,地,land
-录取,录,record
+录取,录,to record; to write down
 路线,路,route
 路线,线,line
-录音,录,record
+录音,录,to record (using instruments)
 旅行社,旅,to travel
 论文,论,to discuss
 论文,文,writing
@@ -3128,10 +3128,10 @@ word,character,sense
 路程,程,journey
 路况,况,situation
 路面,面,surface
-录像,录,record
+录像,录,to record (using instruments)
 录像,像,image
-录用,录,record
-录制,录,record
+录用,录,to record; to write down
+录制,录,to record (using instruments)
 旅程,程,journey
 履行,履,to tread on
 履行,行,(bound form) to do; to perform
@@ -3159,7 +3159,7 @@ word,character,sense
 免税,免,to exempt
 免疫,免,to exempt
 面部,部,part
-面子,面,surface
+面子,面,face
 描绘,绘,to depict; to portray
 民间,间,among
 民俗,俗,custom
@@ -3487,7 +3487,7 @@ word,character,sense
 投资,资,capital
 透露,透,to tell secretly; to leak
 透露,露,to reveal
-透明,透,(bound form) to penetrate; to seep through
+透明,透,clear and thorough
 透明,明,bright
 突破,突,to break through
 图案,图,picture
@@ -4486,7 +4486,7 @@ word,character,sense
 单薄,薄,weak
 担当,当,to act as
 单方面,方,side
-单方面,面,aspect
+单方面,面,side
 耽搁,耽,to delay
 耽搁,搁,to put aside; to shelve; to postpone
 单身,身,oneself
@@ -8496,3 +8496,27 @@ word,character,sense
 做证,证,proof
 做主,做,"(of a person) to be (an intermediary, a good student etc); to become (husband and wife, friends etc)"
 做主,主,master
+现在,在,in; at
+可惜,可,(prefix) can; may; able to; -able
+态度,度,degree of intensity
+体重,重,weight
+重量,重,weight
+比重,重,weight
+重心,重,weight
+季度,度,measure
+年度,度,measure
+版本,版,edition
+交往,交,to make friends
+面积,面,surface
+在场,在,(of sb or sth) to be (located) at
+在乎,在,(of sb or sth) to be (located) at
+在意,在,(of sb or sth) to be (located) at
+可行,可,(prefix) can; may; able to; -able
+总算,算,finally; eventually
+交响乐,交,(of lines) to intersect
+精度,度,degree of intensity
+举重,重,weight
+可不是,可,(particle used for emphasis) certainly; very
+宁可,可,(prefix) can; may; able to; -able
+随处可见,可,(prefix) can; may; able to; -able
+重量级,重,weight
