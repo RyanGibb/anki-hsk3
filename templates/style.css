@@ -329,7 +329,9 @@ img.stroke {
 /* A gloss that quotes the character being written would give the answer away, so the
    question side blanks it. The answer side leaves it alone. */
 .question .mask {
-  color: transparent;
+  /* the fill, not the colour: a transparent colour would take a currentColor
+     background with it and leave a gap where the pill should be */
+  -webkit-text-fill-color: transparent;
   background: currentColor;
   opacity: 0.25;
   border-radius: 3px;
@@ -344,8 +346,6 @@ img.stroke {
 .later { margin-top: 0.7em; }
 /* Set beside the account of the traditional form, it keeps that account's indent. */
 .origin + .later { margin-left: 1.2em; }
-/* The other words the character is met in, after the one the card leads with. */
-.alsoIn { margin-top: 0.3em; opacity: 0.75; }
 /* One rule for each step away from the character itself: its strokes, then what it is
    made of, then what those are. */
 .partStep {

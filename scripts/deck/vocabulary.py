@@ -249,8 +249,8 @@ def build_vocabulary(words: list[Word], wiki, media, number, gloss, pos,
                 + (f' (in {heard})' if (heard := w.get("heard_in")) else ""),
                 w["pinyin_numbered"],
                 pos.blocks(w),
-                # Every meaning is headed by its part of speech, so a line naming
-                # them all again under the senses would say it twice.
+                # Every meaning is headed by its part of speech, so this field stays
+                # empty; it is kept so the note type keeps its shape on import.
                 "、".join(w["pos"]), "",
                 wiki.markup(w.get("classifier", "")), w["audio"],
                 wiki.markup(" ".join(w["homophone"][:12])), also_read(w, by_entry_all, pos),

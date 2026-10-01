@@ -18,6 +18,11 @@ BULLET = re.compile(r"^([*#;]+)\s*")
 # runs to several sentences of its own, and semicolons between those read as breaks
 # in the middle of a sentence.
 AS_A_PHRASE = 120
+# The simplified form's own account, set after the account of the shape it came
+# from, and the paragraphs that follow a lead. Named here because glossary.py
+# takes a block apart at them.
+LATER = '<div class="later">'
+MORE = '<div class="more">'
 
 
 # How Wiktionary writes an account of a character's shape, as opposed to the history
@@ -89,9 +94,16 @@ def load_etymology():
                     return dict(x, text=lead + x["text"])
             return {}
 
-        sections = etym.get(trad.get(ch, ch)) or etym.get(ch) or []
-        if not any(about_the_glyph(x.get("text", ""), x.get("type", ""))
-                   for x in sections):
+        # The traditional page first, then the simplified one -- but only a page with
+        # an account of the glyph counts as found: 轟's page is all word history, and
+        # 轰's own says what became of its two 車.
+        def glyphed(sections) -> list:
+            return [x for x in sections or []
+                    if about_the_glyph(x.get("text", ""), x.get("type", ""))]
+
+        sections = (glyphed(etym.get(trad.get(ch, ch))) or glyphed(etym.get(ch))
+                    or etym.get(trad.get(ch, ch)) or etym.get(ch) or [])
+        if not glyphed(sections):
             taken = {}
             parent = radical_of.get(ch)
             if parent:
@@ -111,8 +123,7 @@ def load_etymology():
         # word: 答 is "cognate with 對 … compare Tibetan", true and about the word,
         # while the graph's own account sits under 荅. Drop those outright rather
         # than ranking them last, so the fetched Glyph origin can take their place.
-        sections = [x for x in sections
-                    if about_the_glyph(x.get("text", ""), x.get("type", ""))]
+        sections = glyphed(sections)
         if len(sections) < 2:
             return sections[0] if sections else {}
         want = gloss_words((info.get(ch) or {}).get("meaning") or "")
@@ -256,24 +267,26 @@ def load_etymology():
         ps = paragraphs(ch)
         if not ps:
             return ""
-        head, i = lead_of(ps)
+        lead, i = lead_of(ps)
 
         def tidy(text: str) -> str:
             return html.escape(mend(text), quote=False)
 
-        head = tidy(head)
+        head = tidy(lead)
         # Two accounts of two shapes, so each is left whole and the simplified one comes
-        # last: putting it between the lead and the rest cut 禮's account in two and
-        # left "Originally written 豊, see there for more" hanging after 礼's.
+        # last: set between the lead and the rest it would cut 禮's account in two and
+        # leave "Originally written 豊, see there for more" hanging after 礼's. Not at
+        # all where the simplified page's account is the one already chosen, which is
+        # compared before tidying so that an ampersand in it cannot hide the repeat.
         def quietly(paras: list) -> str:
-            return "".join(f'<div class="more">{tidy(p)}</div>' for p in paras)
+            return "".join(f'{MORE}{tidy(p)}</div>' for p in paras)
 
         later, after = simplification(ch)
-        block = (f'<div class="later"><b><a href="https://en.wiktionary.org/wiki/'
+        block = (f'{LATER}<b><a href="https://en.wiktionary.org/wiki/'
                  f'{ch}#Chinese">{ch}</a></b> {tidy(later)}'
                  + (quietly(after) if full else "")
                  + '</div>'
-                 if later and later not in head else "")
+                 if later and later not in lead else "")
         # The section is chosen for being an account of the glyph, and then it comes
         # whole. Judging its paragraphs one by one cannot be done well from here --
         # 於 kept "Schuessler (2007) sees this pronunciation" and dropped the two

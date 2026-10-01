@@ -115,7 +115,12 @@ setTimeout(function () {
     if (currentStroke.length) strokes.push(currentStroke);
   });
 
-  canvas.addEventListener("pointerleave", () => drawing = false);
+  // A stroke that runs off the box is still a stroke: kept, or Undo would take
+  // it and the one before it away together.
+  canvas.addEventListener("pointerleave", () => {
+    if (drawing && currentStroke.length) strokes.push(currentStroke);
+    drawing = false;
+  });
 
   function clearCanvas() {
     strokes = [];

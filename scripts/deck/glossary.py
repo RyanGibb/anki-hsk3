@@ -1,14 +1,17 @@
 """What a card says about the characters a word is made of."""
 import collections
 import csv
+import functools
 import html
 import json
 import re
 
 from syllabus import LEVELS
 from deck.paths import BUILD, RAW, ROOT
-from deck.notation import CJK, POINTER, SANDHI, cedict_lines, char_rank, citation_readings, clean_xrefs, sense_key, short_gloss, syllable, toned
-from deck.etymology import load_etymology
+from deck.notation import (CJK, POINTER, SANDHI, TARGET, cedict_lines, char_rank,
+                           citation_readings, clean_xrefs, sense_key, short_gloss,
+                           syllable, toned)
+from deck.etymology import LATER, MORE, load_etymology
 from word import Word
 
 
@@ -36,27 +39,28 @@ class Glossary:
                 continue
             trad, simp, reading, body = m.groups()
             # Every sense, since the deck does not work out which one a sentence draws on
-            # and cutting the list decides it by accident: 别浪费时间了 is "don't waste time"
-            # and the first three senses of 别 are to leave, to differentiate and to turn
-            # aside, so the card said everything except what the sentence meant. Likewise
-            # 若 without "if" and 跟 without "compared with".
-            all_senses = [d for d in body.split("/") if not d.startswith("CL:")]
-            senses = all_senses
-            if senses:
-                # Candidates keyed by reading, the way the vocabulary path chooses, with
-                # the case left alone: CC-CEDICT capitalises a proper noun's reading, so
-                # 那 [Na4] "surname Na" cannot match a sentence reading nà written [na4].
-                entry = (trad, clean_xrefs(" / ".join(senses)),
-                         reading.replace(" ", "").replace("u:", "v"), len(senses), False)
-                self.cedict_defs.setdefault((simp, entry[2].lower()), []).append(entry)
-                self.cedict_defs.setdefault(simp, []).append(entry)
-            if senses and len(simp) == 1:
+            # and cutting the list would decide it by accident: 别浪费时间了 is "don't
+            # waste time", and the first three senses of 别 are to leave, to differentiate
+            # and to turn aside. Likewise 若 without "if" and 跟 without "compared with".
+            senses = [d for d in body.split("/") if not d.startswith("CL:")]
+            if not senses:
+                continue
+            # Keyed by reading, the way the vocabulary path chooses, with the case left
+            # alone: CC-CEDICT capitalises a proper noun's reading, so 那 [Na4] "surname
+            # Na" cannot match a sentence reading nà written [na4]. The syllabus writes
+            # nü3 where the dictionary writes nu:3, so every key goes through syllable().
+            spelled = syllable(reading)
+            entry = (trad, clean_xrefs(" / ".join(senses)),
+                     reading.replace(" ", "").replace("u:", "v"), len(senses), False)
+            self.cedict_defs.setdefault((simp, spelled), []).append(entry)
+            self.cedict_defs.setdefault(simp, []).append(entry)
+            if len(simp) == 1:
                 # several entries can share a reading, and the surname is often first:
                 # 还 huán is "surname Huan" before it is "to give back". Take the fullest.
-                key = (simp, reading.replace(" ", "").lower())
-                defining = [d for d in all_senses if not POINTER.match(d)]
-                entry = (trad, clean_xrefs(" / ".join(defining or all_senses)),
-                         len(defining), len(all_senses), reading)
+                key = (simp, spelled)
+                defining = [d for d in senses if not POINTER.match(d)]
+                entry = (trad, clean_xrefs(" / ".join(defining or senses)),
+                         len(defining), len(senses), reading)
                 self.char_by_reading.setdefault(key, []).append(entry)
                 self.char_any.setdefault(simp, []).append(entry)
                 # An entry can define the character a little and hand the rest over: 台 at
@@ -64,19 +68,15 @@ class Glossary:
                 # else, which is where "broadcasting station" lives and so where the 台 of
                 # 电视台 is answered. Noted while the pointer is still readable, since only
                 # the defining senses are kept above.
-                for d in all_senses:
-                    if (p := re.match(r"^(?:old )?variant of ([㐀-鿿豈-﫿]+)", d)):
+                for d in senses:
+                    if (p := TARGET.match(d)) and p.group(0).startswith(("variant", "old")):
                         self.points_at[key + (trad,)] = p.group(1)
         # "see 苏州市" is a direction to look elsewhere, not a meaning, and on a sentence
         # card there is nowhere to look. Where every sense of an entry points at another
         # word, say what that word says instead.
-        target_of = re.compile(r"^(?:see(?: also)?|(?:old |erhua )?variant of|abbr\. for"
-                               r"|erhua form of|used in)\s+([㐀-鿿豈-﫿]+)")
         for k, entries in self.cedict_defs.items():
             for i, (trad, gloss, reading, n, _borrowed) in enumerate(entries):
-                if not POINTER.match(gloss):
-                    continue
-                m = target_of.match(gloss)
+                m = TARGET.match(gloss)
                 if not m:
                     continue
                 # At the reading that was pointed from, before anything else. 着 is entered
@@ -94,7 +94,8 @@ class Glossary:
                         # begun to ripen", the entry that happens to come first.
                         entries[i] = (trad, other[1], reading, other[3], True)
                         break
-        self.etym_char = load_etymology()
+        # Memoised: part_origins asks after one character dozens of times over.
+        self.etym_char = functools.lru_cache(maxsize=None)(load_etymology())
 
         self.char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
         # Wiktionary names a character's parts in their traditional forms while the deck's
@@ -103,12 +104,6 @@ class Glossary:
         # the 闲 the deck teaches is 閑, a different character that merely looks like it.
         self.deck_form = {v["traditional"]: c for c, v in self.char_meta.items()
                           if v.get("traditional") and v["traditional"] != c}
-
-        # The simplified form's account stands beside the traditional one rather than
-        # inside it. Opacity composites a whole subtree, so a block nested in the origin
-        # is dimmed by the origin as well as by the glosses around it, and 脑's link would
-        # read a shade darker than every other link on the card.
-        self.LATER = '<div class="later">'
 
         # A character is written one way on its own and another inside another character.
         # The dump says so from the form's end -- 氵 is "radical form of 水" -- so the map
@@ -186,9 +181,9 @@ class Glossary:
                                  re.I)
         IS_PART = re.compile(self.PART)
         REGION = re.compile(r"\[[A-Z]*\]")
-        # Kept in the order the breakdown writes them, not as a set: these become rows on a
-        # card, and a set of characters is ordered by a hash Python seeds afresh each run,
-        # so the same source built twice put 环节's parts in two different orders.
+        # Kept in the order the breakdown writes them, not as a set: these become rows on
+        # a card, and a set of characters is ordered by a hash Python seeds afresh each
+        # run.
         self.breaks_into: dict[str, dict] = collections.defaultdict(dict)
         for line in (RAW / "ids.txt").read_text(encoding="utf-8").splitlines():
             row = line.split("\t")
@@ -225,12 +220,6 @@ class Glossary:
             if len(chars) == len(sylls):
                 for c, s in zip(chars, sylls):
                     self.in_words[(c, syllable(s))] += 1
-
-        # Which traditional character the deck means by a simplified one at a given
-        # reading. 只 is two characters: 隻 read zhī and 只 read zhǐ.
-        self.taught_trad = {(c, num): trad
-                            for c, ways in readings.by_char.items()
-                            for _, num, trad in ways}
 
         # The earliest word in which a character is read a given way. 地 is 地铁 as dì and
         # 慢慢地 as de, and a card teaching both readings needs an example of each.
@@ -305,19 +294,22 @@ class Glossary:
         return (chosen[0], borrow[1], borrow[2], borrow[3], chosen[4])
 
     def origin_block(self, origin: str) -> str:
-        first, sep, later = origin.partition(self.LATER)
+        """The simplified form's account stands beside the traditional one rather than
+        inside it. Opacity composites a whole subtree, so a block nested in the origin
+        would be dimmed by the origin as well as by the glosses around it, and 脑's
+        link would read a shade darker than every other link on the card."""
+        first, sep, later = origin.partition(LATER)
         return (f'<div class=origin>{first}</div>'
-                + (self.LATER + later if sep else ""))
+                + (LATER + later if sep else ""))
 
     def as_a_part(self, ch: str) -> str:
         """The shape the character takes when it stands inside another one.
 
-        水 is written 氵 in 洗 and 言 is 讠 in 说, and the card said so from one end
-        only: 氵's own row calls itself the radical form of 水, while a reader who
-        looked up 水 was told nothing. Both where there are two -- 金 is 釒 inside a
-        traditional character and 钅 inside a simplified one -- and where two characters
-        share a shape it says which is which: 阝 is 阜 on the left of 阳 and 邑 on the
-        right of 都.
+        水 is written 氵 in 洗 and 言 is 讠 in 说. 氵's own row calls itself the radical
+        form of 水, and this tells a reader who looked up 水 the same thing from the
+        other end. Both where there are two -- 金 is 釒 inside a traditional character
+        and 钅 inside a simplified one -- and where two characters share a shape it
+        says which is which: 阝 is 阜 on the left of 阳 and 邑 on the right of 都.
         """
         forms = self.radical_forms.get(ch) or []
         if not forms:
@@ -342,9 +334,8 @@ class Glossary:
 
         比 is a verb, a preposition and a noun, and which of "to compare / more {adj.}
         than {noun} / ratio / to gesture" is which is already written down -- the same
-        division the word's own card is headed by. The row ran all four together, so
-        the character read on its own card and the character read inside a word were
-        two different-looking things.
+        division the word's own card is headed by, so the character read on its own
+        card and the character read inside a word look the same.
 
         The senses are the row's own, relabelled and no more: a division naming a sense
         the row does not carry names nothing, and a sense the division does not reach
@@ -393,8 +384,8 @@ class Glossary:
                    traditional: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
         The whole account, wherever the row stands -- 较 under 比较 is the same
-        character as 较 on its own card, and cutting its account to the lead there
-        dropped the paragraph saying the phonetic was 爻 before it was 交.
+        character as 较 on its own card, and the paragraph saying its phonetic was 爻
+        before it was 交 belongs to both.
 
         The reading decides the senses: 长 is "long" in 长处 and "chief" in 校长, and a
         card showing one while saying the other is simply wrong. Where the syllables do
@@ -439,9 +430,9 @@ class Glossary:
             # yǒu. A compound flattens a tone and the row beneath it restores one.
             #
             # The senses are one reading's, so the heading is one reading's too. A
-            # writing card is handed every reading the syllabus teaches, and heading
-            # 还 with "hái / huán" above hái's senses left huán's -- to pay back, to
-            # return -- nowhere on the card. The rest drop to the rows beneath, which
+            # writing card is handed every reading the syllabus teaches, and 还 headed
+            # "hái / huán" above hái's senses alone would leave huán's -- to pay back,
+            # to return -- nowhere on the card. The rest drop to the rows beneath, which
             # gloss each reading they name. Two spellings of one reading stay together:
             # 谁 is entered as one word said two ways, shei2/shui2, and both are the
             # reading of the character in front of you.
@@ -477,7 +468,7 @@ class Glossary:
                     f'{f" <span class=charRead>{said}</span>" if said else ""} '
                     f'{self.under_pos(ch, reading_of.get(ch, ""), senses, lead)
                        or self.wiki.markup(html.escape(senses, quote=False))}'
-                    f'{self.also_read(ch, shown or self.spoken_numbers(ch, heard))}'
+                    f'{self.also_read(ch, shown)}'
                     f'{self.as_a_part(ch)}')
             if origin:
                 body += self.origin_block(origin)
@@ -506,22 +497,21 @@ class Glossary:
         """The character's own account of its shape, without the prose that wanders off
         it and without the separate account of the simplified form."""
         text = self.etym_char(ch, full=True) or ""
-        return re.split(r'<div class="(?:more|later)">', text)[0]
+        return re.split(f"{re.escape(MORE)}|{re.escape(LATER)}", text)[0]
 
     def simplification(self, ch: str) -> str:
         """How the simplified character came to be written that way.
 
         Usually an account of its own, set apart from the account of the shape it was
-        simplified from. Where there is nothing else to say it is the whole account:
-        訝's shape is explained and 讶's entry reads only "Simplified from 訝 (訁 → 讠)",
-        so both places are read.
+        simplified from, and read only as far as its opening paragraph: that is where
+        the shape is named -- "Simplified from 訝 (訁 → 讠)" -- and the paragraphs under
+        it carry the history in prose, where a shape is mentioned rather than put in
+        place. Where there is no separate account the character's whole account is
+        read, later paragraphs included, since the breakdown guards what they name:
+        that is where 何 gets 可 from, and 告 its 口 and 牛.
         """
-        parts = re.split(r'<div class="later">', self.etym_char(ch, full=True) or "")
-        # The opening paragraph is where the shape is named -- "Simplified from 訝
-        # (訁 → 讠)" -- and the paragraphs under it carry the history in prose, where
-        # a shape is mentioned rather than put in place.
-        return (parts[1].split('<div class="more">')[0] if len(parts) > 1
-                else parts[0])
+        parts = (self.etym_char(ch, full=True) or "").split(LATER)
+        return parts[1].split(MORE)[0] if len(parts) > 1 else parts[0]
 
     def lead(self, ch: str) -> str:
         return self.account(ch).split(". ")[0]
@@ -613,10 +603,7 @@ class Glossary:
         most, because a part read four ways is telling you about 夹 and not about the
         character in front of you.
         """
-        taught = list(dict.fromkeys(m for m, _, _ in self.readings.by_char.get(ch, [])))
-        if taught:
-            return " / ".join(taught)
-        return " / ".join(toned(r) for r in self.dictionary_readings(ch))
+        return " / ".join(toned(r) for r in self.part_numbers(ch))
 
     def entry_reading(self, ch: str, spoken: str) -> str:
         """The reading whose entry answers for a syllable the dictionary does not list.
@@ -636,16 +623,6 @@ class Glossary:
                 return r
         return spoken
 
-    def spoken_numbers(self, ch: str, heard) -> set:
-        """The readings a word gives a character, as the dictionary numbers them."""
-        out = set()
-        for syll in heard.get(ch, []):
-            for part in syll.split("/"):
-                if part:
-                    part = syllable(part)
-                    out.add(self.entry_reading(ch, self.neutralised.get((ch, part), part)))
-        return out
-
     def gloss_at(self, ch: str, reading: str, depth: int = 0) -> str:
         """What the character means when it is read that way.
 
@@ -656,19 +633,23 @@ class Glossary:
         is followed rather than shown -- 甚 read shén is "variant of 什", and what a
         reader wants there is what 什 means.
         """
-        want = self.taught_trad.get((ch, reading))
+        # Which traditional character the deck means by a simplified one at this
+        # reading: 只 is two characters, 隻 read zhī and 只 read zhǐ. Looked up live,
+        # since build_characters adds readings met only inside example words.
+        want = next((t for _, n, t in self.readings.by_char.get(ch, []) if n == reading),
+                    None)
         best = None
         for e in self.char_any.get(ch, []):
             if syllable(e[4]) != reading:
                 continue
-            rank = (e[0] == want,) + tuple(char_rank(e))
+            rank = (e[0] == want,) + char_rank(e)
             if best is None or rank > best[0]:
                 best = (rank, e)
         if not best:
             return ""
         gloss = best[1][1]
-        if depth < 2 and POINTER.match(gloss):
-            aimed = re.search(r"(?:variant of|see|abbr\. for)\s+([㐀-鿿豈-﫿]+)", gloss)
+        if depth < 2:
+            aimed = TARGET.match(gloss)
             if aimed and aimed.group(1) != ch:
                 return self.gloss_at(aimed.group(1), reading, depth + 1) or gloss
         return gloss
@@ -721,16 +702,15 @@ class Glossary:
             seen.add(ch)
             self.shown_chars.add(ch)
             queue += [(c, step + 1) for c in self.made_of(ch)]
-            # The whole account, as the card teaching that character gives it. Cut to
-            # its lead, 退 under 腿 read only as its oracle bone form and stopped before
-            # the two paragraphs saying the vessel 皀 became 艮 and what Shuowen made of
-            # it -- which is the part of it about the shape on the page.
+            # The whole account, as the card teaching that character gives it: 退's
+            # lead takes it apart as its oracle bone form, and the paragraphs after say
+            # the vessel 皀 became 艮, which is the part about the shape on the page.
             origin = self.etym_char(ch, full=True)
             if not origin:
                 continue
             # Once. A radical form borrows its parent's whole account and names it as
-            # the parent's -- "Radical form of 手. Pictogram ..." -- and the parent's
-            # own row then said it all again. The first telling stands, whichever
+            # the parent's -- "Radical form of 手. Pictogram ..." -- so the parent's
+            # own row would say it all again. The first telling stands, whichever
             # shape brought it; the later row keeps its gloss line, which is the one
             # thing the borrowing row does not carry.
             key = re.sub(r"^(?:Radical form of|Also written|Explained under)"
@@ -787,9 +767,8 @@ class Glossary:
 
     def examples_of(self, ch: str) -> list:
         """[(word, pinyin, meaning)], one per reading the card teaches that needs one."""
-        ways = self.readings.by_char.get(ch, []) or []
+        ways = self.readings.by_char.get(ch, [])
         out = []
-        needed = False
         for _, num, _ in ways:
             got = self.example_by_reading.get((ch, num))
             if not got:
@@ -797,13 +776,11 @@ class Glossary:
             alone = self.alone_level.get((ch, num))
             if alone is not None and alone <= LEVELS.index(self.example_level.get(got[0], "7-9")):
                 continue                       # met on its own first
-            needed = True
             if got not in out:
                 out.append(got)
         # The fallback is for a character the syllabus never lists on its own, so it
         # must not undo the rule above by supplying an example for one that it does.
-        if not out and not needed and not any((ch, num) in self.alone_level
-                                              for _, num, _ in ways):
+        if not out and not any((ch, num) in self.alone_level for _, num, _ in ways):
             e = (self.char_meta.get(ch) or {}).get("example") or {}
             if e:
                 out.append((e["word"], e["pinyin"], short_gloss(e["meaning"])))

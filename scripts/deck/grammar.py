@@ -181,17 +181,29 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                 if starts:
                     flush()
                 # 一下（儿） is one syllable over two characters that are not adjacent,
-                # so follow the characters rather than counting them
+                # so follow the characters rather than counting them. The syllable
+                # stays with the first of them; what stood between is set down where
+                # it was, and the characters after it follow unread.
+                at, held = len(word), []
                 for want in text:
                     while i < len(sentence) and sentence[i] != want:
-                        flush()
-                        out.append((html.escape(sentence[i], quote=False), []))
+                        mark = (html.escape(sentence[i], quote=False), [])
+                        if len(word) == at:        # before the syllable: a plain break
+                            flush()
+                            out.append(mark)
+                            at = 0
+                        else:
+                            held.append(mark)
                         i += 1
                     if i < len(sentence):
                         word += sentence[i]
                         i += 1
                 read.append(syl)
                 n += 1
+                if held:
+                    tail, word = word[at + 1:], word[:at + 1]
+                    flush()
+                    out += held + [(html.escape(c, quote=False), []) for c in tail]
             else:
                 flush()
                 out.append((html.escape(sentence[i], quote=False), []))
@@ -411,13 +423,13 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
             return [gloss_word(sentence, w, read) for w, read in
                     dict.fromkeys(words)]
         words, word, reading = [], "", []
-        for text, syllable, starts in pairs:
+        for text, syl, starts in pairs:
             if starts and word:
                 words.append((word, tuple(reading)))
                 word, reading = "", []
             word += text
-            if syllable:
-                reading.append(syllable)
+            if syl:
+                reading.append(syl)
         if word:
             words.append((word, tuple(reading)))
         out = []
@@ -440,13 +452,13 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
             # A card can hold more than one sentence, and the word after a full stop
             # or an opening quote is capitalised for the same reason the first one is.
             prev = sentence[:here].rstrip()
-            here = 0 if not prev or prev[-1] in "。！？!?：:；;“”\"'‘’（）()《》【】" else here
+            opens = not prev or prev[-1] in "。！？!?：:；;“”\"'‘’（）()《》【】"
             # The checked reading capitalises a name wherever it stands -- Zhāng lǎoshī,
             # Lǎo Zhāng -- so the capital settles it, except at the start of a sentence
             # where every word is capitalised anyway. There, a following title is what
             # distinguishes 王老师 from 别忘了.
-            proper = (key0[:1].isupper() if here else
-                      bool(TITLE.match(sentence[here + len(w):])))
+            proper = (bool(TITLE.match(sentence[here + len(w):])) if opens
+                      else key0[:1].isupper())
             # 读了 and 人们 are one word to the reading and no word to the dictionary.
             # Glossing the longest piece it knows and stopping would leave 了 and 们
             # unexplained, and those are usually the point of the sentence, so what is

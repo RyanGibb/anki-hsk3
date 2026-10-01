@@ -33,7 +33,8 @@ def build_characters(words: list[Word], wiki, media, number, gloss, pos,
         (BUILD / "char-meanings.json").read_text(encoding="utf-8"))
 
     def by_part_of_speech(ch: str, numbered: str) -> list:
-        """[(part of speech, senses)] where a reading is taught as more than one.
+        """[(part of speech, senses, divided, level)] where a reading is taught as
+        more than one.
 
         The dictionary gives 會 one entry of six senses. The syllabus gives it two,
         會1 a verb at level 1 and 會2 a noun at level 3, and data/homograph-glosses.csv
@@ -107,10 +108,7 @@ def build_characters(words: list[Word], wiki, media, number, gloss, pos,
             return ""
         trad = char_info.get(ch, {}).get("traditional") or ch
         for mark in info.get("pinyin") or []:
-            try:
-                entry = gloss.pick_char(ch, syllable(numbered(mark)), trad)
-            except Exception:
-                continue
+            entry = gloss.pick_char(ch, syllable(numbered(mark)), trad)
             if entry and entry[1]:
                 return entry[1]
         return ""
@@ -316,10 +314,8 @@ def readings_taught(words: list[Word]) -> Readings:
     for w in words:
         if len(w["simplified"]) != 1:
             continue
-        # 熟 is entered as "shú/shóu", which is two readings; and the syllabus writes
-        # nü3 where the recordings are filed under nv3
-        # one entry with two readings is one word said two ways -- 熟 shú, also shóu --
-        # where two entries are two words that happen to be written alike
+        # One entry with two readings is one word said two ways -- 熟 is entered as
+        # "shú/shóu" -- where two entries are two words that happen to be written alike.
         marks = [x for x in w["pinyin"].split("/") if x.strip()]
         if len(marks) > 1:
             variant.add(w["simplified"])

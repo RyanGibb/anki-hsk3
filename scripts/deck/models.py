@@ -7,8 +7,9 @@ from syllabus import LEVELS
 from deck.paths import TPL
 
 
-MID_VOCAB, MID_GRAMMAR, MID_CHAR = 1758100001, 1758100002, 1758100003
-MID_SENTENCE = 1758100004
+# 1758100002 was a grammar-point note type the sentence cards replaced; it stays
+# unused so no new type can collide with the one old collections still hold.
+MID_VOCAB, MID_CHAR, MID_SENTENCE = 1758100001, 1758100003, 1758100004
 DID_ROOT = 1758100100
 
 
@@ -30,19 +31,6 @@ vocab_model = genanki.Model(
         "name": "Recognition",
         "qfmt": tpl("vocab-recognition-front.html"),
         "afmt": tpl("vocab-recognition-back.html"),
-    }],
-)
-
-grammar_model = genanki.Model(
-    MID_GRAMMAR, "HSK 3.0 Grammar",
-    fields=[{"name": f} for f in
-            ["Key", "Level", "Point", "Type", "Category", "Detail", "Examples",
-             "ExamplesPinyin", "TypeEn", "CategoryEn", "DetailEn", "PointEn"]],
-    css=tpl("style.css"),
-    templates=[{
-        "name": "Grammar",
-        "qfmt": tpl("grammar-front.html"),
-        "afmt": tpl("grammar-back.html"),
     }],
 )
 

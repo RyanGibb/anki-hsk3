@@ -20,14 +20,16 @@ def read_tsv(path):
 TONE_MARK = {"1": "ˉ", "2": "ˊ", "3": "ˇ", "4": "ˋ", "5": "·"}
 
 
-# The syllabus writes a word's parts of speech as one string, and marks the ones
-# taught at a later level in brackets: 对 is 形、介、（动、量）.
 # a word that is only ever the end or the start of another
 AFFIX = re.compile(r"前缀|后缀")
 WORDS = re.compile(r"[A-Za-z\u3400-\u9fff]")
 # "erhua variant of 好玩" is a direction elsewhere like any other: the deck follows
 # it rather than printing it, so 一点儿 says "a bit; a little bit" and not where to look.
 POINTER = re.compile(r"^((?:old |erhua )?variant of|see|abbr\. for)\b", re.I)
+# ...and what it points at. "See you later!" is a sense, not a pointer, so the
+# target has to be Chinese.
+TARGET = re.compile(r"^(?:(?:old |erhua )?variant of|see(?: also)?|abbr\. for)\s+"
+                    r"([㐀-鿿豈-﫿]+)")
 # "abbr. for 超級市場|超级市场[chao1 ji2 shi4 chang3]"
 XREF = re.compile(r"(?:([㐀-鿿]+)\|)?([㐀-鿿]+)\[([A-Za-z0-9:, ]+)\]")
 # "also pr. [di4]", "Taiwan pr. [zhi1dao5]" -- not reliably spaced, so split on digits
