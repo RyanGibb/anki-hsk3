@@ -11,7 +11,6 @@ so the rest is there to copy in by hand.
 import collections
 import csv
 import json
-import os
 import pathlib
 import re
 import shutil
@@ -20,19 +19,15 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import norm, numbered, same_sound   # noqa: E402
 from deck.notation import CJK, syllable, ways_read   # noqa: E402
+from deck.paths import BUILD, MEDIA, MMAH_DICT, ROOT   # noqa: E402
 from syllabus import LEVELS   # noqa: E402
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-BUILD = ROOT / "build"
-MEDIA = BUILD / "media"
 CMN = ROOT / ".cache/audio-cmn/96k/hsk"
 # A second speaker: whole recordings, not concatenation, since a one-syllable word is
 # a syllable.
 SYLLABS = ROOT / ".cache/audio-cmn/64k/syllabs"
 # not svgs/, which set no fill and render solid black
-MMAH = (pathlib.Path(os.environ.get("MAKEMEAHANZI", "~/projects/makemeahanzi"))
-        .expanduser() / "svgs-still")
-MMAH_DICT = MMAH.parent / "dictionary.txt"
+MMAH = MMAH_DICT.parent / "svgs-still"
 SWAC = ROOT / "data/swac-index.csv"
 # Clips with the silence cut off their ends, by scripts/trim-silence.py. Every clip
 # the deck ships passes through stage(), so preferring them here covers all of it.

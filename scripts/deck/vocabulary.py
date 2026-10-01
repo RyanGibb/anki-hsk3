@@ -11,7 +11,7 @@ import genanki
 from syllabus import LEVELS, POS_SPLIT
 from deck.paths import BUILD, ROOT
 from deck.notation import TONE_MARK, clean_xrefs, render_senses, spoken, ways_read
-from deck.models import deck, vocab_model
+from deck.models import SECTIONS, deck, vocab_model
 from word import Word
 
 
@@ -289,7 +289,8 @@ class Numbering:
     scheduler deals are different questions.
     """
 
-    SECTION = {"vocab": 0, "writing": 1, "grammar": 2}
+    # the order the decks are listed in, which is the order the keys count in
+    SECTION = {name: i for i, name in enumerate(SECTIONS)}
 
     def __init__(self):
         self.keyed = []

@@ -130,6 +130,8 @@ is a line in a diff rather than a rule buried in code.
 - `sentence-word-glosses.csv` says which sense a word carries in a particular
   sentence, where nothing else can: 游 in 游游泳 is the swimming, not the
   touring.
+- `compound-senses.csv` says which of a character's senses a word is built
+  from, so that 要 under 重要 leads with "important" rather than "to want".
 - `grammar-pinyin.csv` is the reading of every example sentence, written to the
   convention in `grammar-pinyin-convention.md`, since reading a sentence
   character by character gets every homograph wrong.
@@ -149,8 +151,9 @@ is a line in a diff rather than a rule buried in code.
 counts against the official syllabus, the traditional forms against the gold
 set, every sense of a divided entry claimed exactly once and matched verbatim,
 every recording saying the reading its card teaches, every media file
-referenced and every reference resolving, and the tone marks where the rules
-put them.
+referenced and every reference resolving, the tone marks where the rules
+put them, and the hand-written tables themselves -- a row for a sentence no
+card shows, a key written twice, a row of the wrong width.
 
 ## Sources
 
