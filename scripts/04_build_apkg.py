@@ -19,7 +19,7 @@ from deck.wiktionary import Wiktionary   # noqa: E402
 from deck.grammar import build_grammar   # noqa: E402
 from deck.characters import build_characters, readings_taught   # noqa: E402
 from deck.vocabulary import Numbering, PartsOfSpeech, build_vocabulary   # noqa: E402
-from deck.glossary import read_glossary   # noqa: E402
+from deck.glossary import Glossary   # noqa: E402
 
 
 def main() -> int:
@@ -41,7 +41,7 @@ def main() -> int:
     number = Numbering()
     pos = PartsOfSpeech(wiki)
     readings = readings_taught(words)
-    gloss = read_glossary(words, wiki, readings, pos)
+    gloss = Glossary(words, wiki, readings, pos)
 
     vocabulary = build_vocabulary(words, wiki, media, number, gloss, pos,
                                   groups, by_entry_all)
