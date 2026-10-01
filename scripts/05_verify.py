@@ -266,11 +266,11 @@ def main() -> int:
     tts_index = ROOT / ".cache/tts/index.json"
     if tts_index.exists() and APKG.exists():
         index = json.loads(tts_index.read_text(encoding="utf-8"))
-        said = {r["chinese"]: r["spoken"] for r in csv.DictReader(
+        spoken_as = {r["chinese"]: r["spoken"] for r in csv.DictReader(
             (ROOT / "data/sentence-speech.csv").open(encoding="utf-8"))}
 
         def as_said(text):
-            return said.get(text) or text.replace("（", "").replace("）", "")
+            return spoken_as.get(text) or text.replace("（", "").replace("）", "")
 
         wrong = []
         with zipfile.ZipFile(APKG) as z:
@@ -635,17 +635,17 @@ def main() -> int:
               and "Chen Wang" not in w["audio_source"])
     other_voice = sum(1 for w in words if "Chen Wang" in w["audio_source"])
     stacked = sum(1 for w in words if "per-character" in w["audio_source"])
-    said = sum(1 for w in words if "azure" in w["audio_source"])
+    synthesised = sum(1 for w in words if "azure" in w["audio_source"])
     # Not everything: a word listed twice with two readings can only use a recording
     # of its own, and nothing says 过 guo where 过 guò is what was recorded.
     check(f"audio {audio}/{len(words)} ({100*audio/len(words):.1f}%)",
           len(words) - audio <= 8)
     check(f"  of which per-character stacks: {stacked}", stacked > 1700)
-    check(f"  of which synthesised: {said} ({100*said/max(audio,1):.1f}%)",
-          1900 < said < 2400)
+    check(f"  of which synthesised: {synthesised} ({100*synthesised/max(audio,1):.1f}%)",
+          1900 < synthesised < 2400)
     # a recorded voice still says four words in five; the rest had no recording
-    check(f"Yue Tan {100*cmn/max(audio - said, 1):.1f}% of what was recorded",
-          cmn / max(audio - said, 1) > 0.99)
+    check(f"Yue Tan {100*cmn/max(audio - synthesised, 1):.1f}% of what was recorded",
+          cmn / max(audio - synthesised, 1) > 0.99)
     # zero means the syllabs checkout is missing
     check(f"second speaker on {other_voice} single characters", 0 < other_voice < 60)
     char_audio = json.loads((BUILD / "char-audio.json").read_text(encoding="utf-8"))

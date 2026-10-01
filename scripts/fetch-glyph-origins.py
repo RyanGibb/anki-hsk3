@@ -85,6 +85,7 @@ def get(params: dict) -> dict:
                 raise
             wait = int(e.headers.get("Retry-After") or 0) or 5 * 2 ** attempt
             time.sleep(wait)
+    raise RuntimeError("gave up after five attempts")
 
 
 def prose(fragment: str) -> str:

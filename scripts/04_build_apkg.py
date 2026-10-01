@@ -120,7 +120,7 @@ def read_tsv(path):
 TONE_MARK = {"1": "ˉ", "2": "ˊ", "3": "ˇ", "4": "ˋ", "5": "·"}
 
 
-def also_read(w, by_entry={}, pos=None) -> str:
+def also_read(w, by_entry: dict, pos: "PartsOfSpeech") -> str:
     """The other word written this way, named by whatever tells it apart, and what it
     means.
 
@@ -156,7 +156,7 @@ def also_read(w, by_entry={}, pos=None) -> str:
     return "".join(rows)
 
 
-def tone_hint(w, siblings={}, gloss={}) -> str:
+def tone_hint(w, siblings: dict, gloss: dict) -> str:
     """Which of the words written this way is being asked for.
 
     The part of speech first, because it says nothing about the pronunciation: the
@@ -1992,7 +1992,7 @@ def build_vocabulary(words, wiki, media, number, gloss, pos,
             due=int(w["key"]),
             guid=genanki.guid_for("hsk3-vocab", w["entry"]),
             fields=[
-                w["key"], w["level"], w["simplified"], tone_hint(w),
+                w["key"], w["level"], w["simplified"], tone_hint(w, groups, pos.en),
                 w["traditional"],
                 # A syllable said light is said inside a word, and the card says which
                 # word, since what plays is not the word written above it.
@@ -2004,7 +2004,7 @@ def build_vocabulary(words, wiki, media, number, gloss, pos,
                 # used to carry it below said it a second time.
                 "、".join(w["pos"]), "",
                 wiki.markup(w.get("classifier", "")), w["audio"],
-                wiki.markup(" ".join(w["homophone"][:12])), also_read(w),
+                wiki.markup(" ".join(w["homophone"][:12])), also_read(w, by_entry_all, pos),
                 w["stroke_order"],
                 gloss.components(w["simplified"], w["pinyin_numbered"], w["traditional"]),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
@@ -2929,8 +2929,6 @@ def main() -> int:
     wiki = Wiktionary(words)
     number = Numbering()
     pos = PartsOfSpeech(wiki)
-    tone_hint.__defaults__ = (groups, pos.en)
-    also_read.__defaults__ = (by_entry_all, pos)
     readings = readings_taught(words)
     gloss = read_glossary(words, wiki, readings, pos)
 
