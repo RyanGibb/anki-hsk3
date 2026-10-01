@@ -42,6 +42,12 @@ def syllable(s: str) -> str:
     return s.replace(" ", "").replace("u:", "v").replace("ü", "v").lower()
 
 
+def ways_read(w: dict) -> list:
+    """Every way the syllabus reads a word, each spelled as syllable() spells it: 谁 is
+    one word read shei2/shui2."""
+    return [syllable(x) for x in w["pinyin_numbered"].split("/") if x.strip()]
+
+
 def toned(numbered: str) -> str:
     """you3 as yǒu. A syllable the converter does not know comes back as it went in."""
     from pypinyin.contrib.tone_convert import to_tone

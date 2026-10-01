@@ -9,7 +9,7 @@ import genanki
 from pinyin_align import align, numbered
 from syllabus import LEVELS
 from deck.paths import BUILD, MEDIA, MMAH_DICT, RAW
-from deck.notation import CJK, char_rank, clean_xrefs, lvl_of, mask_answer, read_tsv, render_senses, syllable, toned
+from deck.notation import CJK, char_rank, clean_xrefs, lvl_of, mask_answer, read_tsv, render_senses, syllable, toned, ways_read
 from deck.models import char_model, deck
 
 
@@ -63,8 +63,7 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
             block and not the other would leave the two looking like one level's work.
             """
             lv = [w["level"] for w in readings.entries.get(ch, [])
-                  if numbered in [syllable(x)
-                                  for x in w["pinyin_numbered"].split("/") if x.strip()]]
+                  if numbered in ways_read(w)]
             return min(lv, key=LEVELS.index) if lv else ""
 
         out = []
@@ -325,7 +324,7 @@ def readings_taught(words) -> Readings:
         marks = [x for x in w["pinyin"].split("/") if x.strip()]
         if len(marks) > 1:
             variant.add(w["simplified"])
-        nums = [syllable(x) for x in w["pinyin_numbered"].split("/") if x.strip()]
+        nums = ways_read(w)
         for mark, num in zip(marks, nums):
             entry = (mark, num, w["traditional"])
             if entry not in by_char.setdefault(w["simplified"], []):

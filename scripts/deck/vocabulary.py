@@ -10,7 +10,7 @@ import genanki
 
 from syllabus import LEVELS, POS_SPLIT
 from deck.paths import BUILD, ROOT
-from deck.notation import TONE_MARK, clean_xrefs, render_senses, spoken, syllable
+from deck.notation import TONE_MARK, clean_xrefs, render_senses, spoken, ways_read
 from deck.models import deck, vocab_model
 
 
@@ -156,7 +156,7 @@ class PartsOfSpeech:
         """
         blocks = []
         for w in entries:
-            ways = [syllable(x) for x in w["pinyin_numbered"].split("/") if x.strip()]
+            ways = ways_read(w)
             if numbered not in ways or not w["pos"]:
                 continue
             split = w.get("meaning_by_pos") or [("、".join(w["pos"]), w["meaning"])]
