@@ -364,8 +364,8 @@ word,character,sense
 平时,平,(bound form) average; ordinary
 平时,时,time
 其他,他,(bound form) other; another; some other (as in 他日 tārì and 他人 tārén)
-前年,前,ago
-前天,前,ago
+前年,前,before
+前天,前,before
 前天,天,day
 清楚,清,clear; distinct
 请假,请,to request
@@ -457,7 +457,7 @@ word,character,sense
 游戏,戏,play
 邮箱,邮,mail
 有关,关,to concern; to involve
-有名,名,famous
+有名,名,name
 有用,用,usefulness; utility
 羽毛球,毛,feather
 语言,语,language
@@ -589,8 +589,8 @@ word,character,sense
 大量,量,quantity
 大赛,赛,competition
 大约,约,approximately
-大自然,自,naturally; as a matter of course
-大自然,然,-ly
+大自然,自,(bound form) self; oneself
+大自然,然,so
 袋子,袋,bag
 单位,位,place
 当时,当,just at (a time or place)
@@ -599,7 +599,7 @@ word,character,sense
 导游,游,to tour
 到底,到,to (a place); until (a time); up to (a point)
 道歉,道,(bound form) to express; to extend (polite words)
-得意,得,proud
+得意,得,to obtain
 得意,意,(bound form) intention; feeling; inclination; state of mind
 登机,登,to mount
 登机,机,(bound form) aircraft
@@ -611,7 +611,7 @@ word,character,sense
 地球,球,globe
 地址,地,place
 点名,点,to mark with a dot; to check off (on a list)
-点头,点,to touch briefly; to tap
+点头,点,to nod (one's head) in agreement; to beckon by moving (one's hand) up and down
 电动车,电,electric (bound form)
 电动车,车,vehicle
 电视剧,电,electric (bound form)
@@ -713,7 +713,7 @@ word,character,sense
 广告,广,to spread
 广告,告,to announce; to report
 规定,规,a rule
-国籍,籍,(bound form) place of one's family or ancestral records
+国籍,籍,(bound form) membership
 国际,际,inter-
 过程,过,to pass (time)
 过程,程,procedure
@@ -723,7 +723,7 @@ word,character,sense
 好笑,好,(before a verb) good to
 合格,合,to fit
 合格,格,(bound form) standard; norm; specification
-红包,红,bonus
+红包,红,red
 红包,包,package
 后悔,后,later
 忽然,忽,suddenly
@@ -744,7 +744,7 @@ word,character,sense
 获奖,获,(literary) to get; to obtain; to win
 获取,获,(literary) to get; to obtain; to win
 获取,取,to get
-基本,本,(bound form) inherent
+基本,本,(bound form) root; stem
 基本上,上,(noun suffix) on; above
 激动,激,to excite
 激动,动,to stir (emotions)
@@ -780,7 +780,7 @@ word,character,sense
 将要,要,will; shall; about to
 奖金,金,money
 奖学金,金,money
-降低,低,to lower (one's head)
+降低,低,low
 降落,降,to descend
 降温,温,(bound form) temperature
 交警,警,police
@@ -844,7 +844,7 @@ word,character,sense
 老家,老,of long standing
 老是,老,always
 冷静,静,calm
-理发,理,to manage
+理发,理,to tidy up
 理解,解,to solve
 礼貌,礼,courtesy
 理想,理,reason
@@ -1093,7 +1093,7 @@ word,character,sense
 性格,性,nature
 性格,格,(bound form) character; disposition; moral quality; style; aesthetic tone
 修理,修,to repair
-修理,理,to manage
+修理,理,to put in order
 许多,许,somewhat
 学院,院,institution
 压力,压,pressure
@@ -1161,7 +1161,7 @@ word,character,sense
 真正,真,genuine
 真正,正,proper
 整理,整,(bound form) to put in order; to straighten
-整理,理,to manage
+整理,理,to put in order
 正常,正,proper
 正常,常,common
 正好,好,appropriate; proper
@@ -1187,7 +1187,7 @@ word,character,sense
 只好,好,appropriate; proper
 质量,质,quality
 质量,量,quantity
-至少,至,to
+至少,至,most
 重点,重,to attach importance to
 重点,点,point; dot; spot; speck
 重视,重,to attach importance to
@@ -1257,7 +1257,7 @@ word,character,sense
 保质期,保,to guarantee; to ensure
 保质期,质,quality
 保质期,期,a period of time
-报到,报,to sign up for; to register for (abbr. for 报名 bàomíng)
+报到,报,to report; to inform; to announce
 报道,道,"to say (introducing a direct quotation, as in a novel)"
 报告,告,to announce; to report
 暴雨,暴,violent
@@ -1372,7 +1372,7 @@ word,character,sense
 初期,初,(bound form) first; early
 初期,期,stage
 出色,出,to go beyond; to exceed
-出席,席,place in a democratic assembly
+出席,席,seat
 除夕,夕,(bound form) evening; night
 处理,处,to deal with
 处理,理,to manage
@@ -1526,7 +1526,7 @@ word,character,sense
 分析,析,to analyze
 分享,分,to distribute; to allocate
 丰富多彩,富,abundant
-丰富多彩,彩,variety
+丰富多彩,彩,(bright) color
 风格,风,style
 风格,格,(bound form) character; disposition; moral quality; style; aesthetic tone
 风俗,风,custom
@@ -1557,7 +1557,7 @@ word,character,sense
 歌词,词,statement; speech; lyrics
 歌曲,曲,song
 格外,格,(bound form) standard; norm; specification
-格外,外,in addition
+格外,外,outside
 个别,个,(bound form) individual
 个别,别,(bound form) other; another; different
 各行各业,行,(bound form) line of business; trade; profession
@@ -1639,7 +1639,7 @@ word,character,sense
 后果,果,result
 呼吸,呼,to breath out
 户外,户,door
-花费,花,fancy pattern
+花费,花,"to spend (money, time)"
 话费,话,spoken words
 画面,画,picture; painting
 画面,面,surface
@@ -1727,7 +1727,7 @@ word,character,sense
 节省,省,to save; to economize; to be frugal
 今日,今,"this (day, year etc)"
 紧急,紧,urgent
-进步,步,stages in a process
+进步,步,a step
 近代,代,generation; dynasty; age; period; (historical) era; (geological) eon
 近年来,来,for the past (amount of time)
 近期,期,a period of time
@@ -1768,7 +1768,7 @@ word,character,sense
 克服,克,to overcome
 客服,服,"to serve (in the military, a prison sentence etc)"
 客观,观,point of view
-空间,空,air
+空间,空,empty
 空间,间,between
 空中,空,air
 空中,中,within; among; in
@@ -1961,7 +1961,7 @@ word,character,sense
 日用品,品,(bound form) article; commodity; product; goods
 如何,何,how
 如今,今,the present time
-如下,下,next (week etc)
+如下,下,below
 软件,件,item
 赛场,赛,competition
 赛场,场,large place used for a specific purpose
@@ -2170,7 +2170,7 @@ word,character,sense
 细节,细,trifling
 细节,节,(bound form) section; segment
 戏剧,戏,drama
-先后,先,(prefix) my late (in referring to deceased relatives older than oneself)
+先后,先,beforehand; first; earlier
 先后,后,after
 先进,进,to advance
 显得,显,to reveal
@@ -2225,7 +2225,7 @@ word,character,sense
 新型,型,type
 信封,信,letter
 信封,封,to seal
-行程,行,(bound form) temporary; makeshift
+行程,行,(bound form) to walk; to go; to travel
 形成,形,form
 形成,成,to become
 行动,行,(bound form) to do; to perform
@@ -2331,7 +2331,7 @@ word,character,sense
 有助于,于,(indicating any indirect relation) to; toward; vis-à-vis; with regard to; for
 语气,语,speech
 语文,文,writing
-预报,报,to respond; to reply
+预报,报,to report; to inform; to announce
 预测,测,to measure
 预订,预,in advance
 预订,订,to order
@@ -2748,7 +2748,7 @@ word,character,sense
 动听,动,to touch
 都市,都,metropolis
 都市,市,city
-短缺,短,brief
+短缺,短,to lack
 对称,对,(bound form) opposite; facing; matching
 对接,对,to match together; to adjust
 对接,接,to join
@@ -2766,7 +2766,7 @@ word,character,sense
 多元,多,(bound form) multi-; poly-
 多元,元,(bound form) constituent; part
 发病,发,to develop
-发愁,发,to develop
+发愁,发,to show (one's feeling)
 发动,动,to set in movement
 发放,发,to issue
 发放,放,to release
@@ -2826,7 +2826,7 @@ word,character,sense
 感染,感,to affect
 感染,染,to catch (a disease)
 感想,感,feeling
-岗位,岗,sentry post; policeman's beat
+岗位,岗,(bound form) job; post
 岗位,位,position
 高层,层,layer; stratum
 高超,超,to surpass
@@ -3186,7 +3186,7 @@ word,character,sense
 难点,难,difficulty
 难点,点,point; dot; spot; speck
 南极洲,极,"pole (geography, physics)"
-难免,难,problem
+难免,难,difficult (to...)
 脑袋,脑,head
 内涵,内,inner
 内科,内,internal
@@ -3279,7 +3279,7 @@ word,character,sense
 青春期,春,youthful
 青春期,期,a period of time
 清理,清,to clear; to settle (accounts)
-清理,理,to manage
+清理,理,to put in order
 清扫,清,to clear; to settle (accounts)
 倾听,倾,to lean
 清晰,清,clear; distinct
@@ -3320,7 +3320,7 @@ word,character,sense
 日后,后,later
 日前,前,ago
 日益,益,all the more
-融合,合,to fit
+融合,合,to join
 融化,融,to thaw
 融化,化,to change into
 融入,融,to blend
@@ -3364,7 +3364,7 @@ word,character,sense
 识别,别,(literary) to differentiate; to distinguish
 时光,时,time
 实话,话,words
-实惠,实,solid
+实惠,实,real
 时机,时,time
 时机,机,(bound form) an opportunity
 时尚,时,time
@@ -3487,8 +3487,8 @@ word,character,sense
 投资,资,capital
 透露,透,to tell secretly; to leak
 透露,露,to reveal
-透明,透,thoroughly; through and through
-透明,明,(of meaning) clear
+透明,透,(bound form) to penetrate; to seep through
+透明,明,bright
 突破,突,to break through
 图案,图,picture
 图表,图,chart
@@ -3622,7 +3622,7 @@ word,character,sense
 性价比,比,ratio
 性能,性,property
 性能,能,ability
-修订,修,to write
+修订,修,to repair
 修订,订,to draw up
 修复,修,to repair
 修复,复,to restore
@@ -3662,14 +3662,14 @@ word,character,sense
 要素,素,element
 野外,野,open space
 液体,体,substance
-依旧,依,to comply with or listen to sb
+依旧,依,according to
 依赖,赖,to depend on
 一流,流,"class, rate or grade"
 衣食住行,食,food
 医药,医,medicine
 一辈子,一,entire; whole; all; throughout
 遗产,产,estate
-一带,带,band
+一带,带,region
 一贯,一,entire; whole; all; throughout
 一贯,贯,to pass through
 疑惑,惑,to be puzzled
@@ -3706,12 +3706,12 @@ word,character,sense
 影子,影,shadow
 拥挤,拥,to throng; to swarm
 用餐,用,(courteous) to eat; to drink
-用餐,餐,to eat
+用餐,餐,meal
 用处,处,(bound form) part; aspect
 用心,心,mind
 优化,化,to ... -ize
 优异,异,unusual
-由来,来,ever since (as in 自古以来 zìgǔyǐlái)
+由来,来,to come
 游人,游,to tour
 有机,机,(bound form) organic
 余额,余,surplus
@@ -3728,7 +3728,7 @@ word,character,sense
 原理,理,reason
 原料,原,raw
 圆满,圆,round
-圆满,满,satisfied
+圆满,满,full
 元素,元,(bound form) constituent; part
 元素,素,element
 源于,源,source
@@ -3849,7 +3849,7 @@ word,character,sense
 资产,资,capital
 资产,产,property
 自豪,自,(bound form) self; oneself
-自来水,来,"hither (directional complement for motion toward the speaker, as in 回来 huílai)"
+自来水,来,to come
 自律,自,(bound form) self; oneself
 字幕,幕,curtain or screen
 自杀,自,(bound form) self; oneself
@@ -3897,7 +3897,7 @@ word,character,sense
 把关,关,mountain pass
 把手,把,to hold; to grasp
 霸道,霸,to rule by force
-霸道,道,(Daoism) the Way; the Dao
+霸道,道,(bound form) way; reason; principle
 罢了,了,"(modal particle indicating change of state, situation now)"
 罢免,罢,to dismiss
 罢免,免,to remove or dismiss from office
@@ -3957,7 +3957,7 @@ word,character,sense
 保姆,姆,used in 保姆 bǎomǔ
 宝石,宝,gem
 宝石,石,stone
-保卫,保,(old) civil administration unit in the baojia 保甲 bǎojiǎ system
+保卫,保,to defend; to protect; to keep
 保卫,卫,to defend
 保养,养,to support
 宝藏,宝,treasure
@@ -3999,7 +3999,7 @@ word,character,sense
 本性,性,nature
 本意,本,(bound form) original
 本意,意,(bound form) intention; feeling; inclination; state of mind
-笨蛋,蛋,oval-shaped thing
+笨蛋,蛋,egg
 笨重,笨,clumsy
 笨拙,笨,clumsy
 笨拙,拙,clumsy
@@ -4383,7 +4383,7 @@ word,character,sense
 吹捧,吹,to boast
 吹捧,捧,to sing the praises of
 炊烟,烟,smoke
-垂头丧气,丧,disappointed
+垂头丧气,丧,"to lose sth abstract but important (courage, authority, one's life etc)"
 醇厚,醇,rich
 醇厚,厚,rich or strong in flavor
 纯朴,纯,simple
@@ -4522,7 +4522,7 @@ word,character,sense
 导航,导,to guide
 导航,航,to navigate
 导火索,导,to conduct
-导火索,火,ammunition
+导火索,火,fire
 导火索,索,large rope
 捣乱,捣,to disturb
 捣乱,乱,to throw into disorder
@@ -4557,7 +4557,7 @@ word,character,sense
 得天独厚,独,only
 得天独厚,厚,to favor
 得心应手,心,mind
-得心应手,应,to deal or cope with
+得心应手,应,to respond
 得益,得,to gain
 得意扬扬,得,contented
 得意扬扬,意,(bound form) intention; feeling; inclination; state of mind
@@ -4713,9 +4713,9 @@ word,character,sense
 哆嗦,嗦,used in 哆嗦 duōsuo
 多心,多,too many; in excess
 多心,心,mind
-夺冠,夺,to compete or strive for
+夺冠,夺,to seize
 夺冠,冠,to be first
-夺魁,夺,to compete or strive for
+夺魁,夺,to seize
 堕落,堕,(fig.) to degenerate
 堕落,落,to decline or sink
 额度,额,specified number or amount
@@ -4824,7 +4824,7 @@ word,character,sense
 放映,放,to release
 放置,置,to put
 放纵,放,to let go
-放纵,纵,(bound form) to release (a captive)
+放纵,纵,to indulge
 非但,但,merely; only; just
 非得,非,(coll.) to insist on; simply must
 绯闻,闻,news
@@ -5029,7 +5029,7 @@ word,character,sense
 攻关,关,mountain pass
 工会,工,worker
 工会,会,(suffix) union; group; association
-工匠,工,profession
+工匠,工,worker
 攻克,克,to subdue
 公款,款,funds
 功劳,劳,(bound form) meritorious deed
@@ -5177,7 +5177,7 @@ word,character,sense
 骇人听闻,闻,to hear
 憨厚,憨,simple-minded
 憨厚,厚,kind
-寒带,带,band
+寒带,带,zone
 涵盖,涵,to include
 涵盖,盖,to cover
 含糊,糊,blurry; unclear; muddled
@@ -5335,7 +5335,7 @@ word,character,sense
 荒谬,荒,absurd
 荒唐,荒,absurd
 黄昏,昏,twilight
-皇上,上,(noun suffix) on; above
+皇上,上,(bound form) up; upper; above; previous
 皇室,室,family or clan
 谎话,话,spoken words
 恍然大悟,恍,(bound form) to snap out of that state
@@ -5383,7 +5383,7 @@ word,character,sense
 货运,运,to transport
 基本功,本,(bound form) root; stem
 机舱,机,(bound form) aircraft
-基层,基,(bound form) radical (chemistry)
+基层,基,(bound form) base; foundation
 激荡,激,fierce
 激荡,荡,to move
 激光,激,to stimulate
@@ -5513,7 +5513,7 @@ word,character,sense
 间断,间,to separate
 见解,见,opinion
 见利忘义,利,profit
-见仁见智,见,opinion
+见仁见智,见,to see
 鉴赏,鉴,to examine
 见识,识,knowledge
 建树,树,to set up
@@ -5553,7 +5553,7 @@ word,character,sense
 交情,交,to make friends
 交涉,涉,to be involved
 交替,替,to replace
-交头接耳,头,a stub
+交头接耳,头,head
 交响乐,响,sound
 郊游,游,to tour
 焦躁,焦,worried
@@ -5700,7 +5700,7 @@ word,character,sense
 境界,境,boundary
 境界,界,(bound form) realm
 敬礼,礼,courtesy
-敬请,敬,to offer politely
+敬请,敬,(bound form) respectful; to respect
 敬请,请,please (do sth)
 境外,境,boundary
 竞选,选,to elect
@@ -5723,7 +5723,7 @@ word,character,sense
 就任,就,to undertake; to engage in
 就任,任,to take up a post
 救死扶伤,扶,to help
-就绪,就,to undertake; to engage in
+就绪,就,(bound form) to reach; to attain (as in 一蹴而就 yīcùérjiù)
 就医,就,to approach; to move towards
 就医,医,medicine
 就诊,就,to approach; to move towards
@@ -5777,9 +5777,9 @@ word,character,sense
 卡车,卡,"truck (from ""car"")"
 卡车,车,vehicle
 开办,办,to establish; to set up; to manage; to run (an enterprise)
-开场,开,"(of ships, vehicles, troops etc) to start"
+开场,开,to open (transitive or intransitive)
 开场,场,stage
-开场白,开,"(of ships, vehicles, troops etc) to start"
+开场白,开,to open (transitive or intransitive)
 开场白,场,stage
 开场白,白,(bound form) spoken lines in opera (e.g. 念白 niànbái)
 开除,开,(directional complement) away; off
@@ -6034,10 +6034,10 @@ word,character,sense
 列举,举,to enumerate
 烈日,烈,intense
 烈日,日,(bound form) sun
-劣势,势,trend
+劣势,势,situation
 烈士,烈,to give one's life for a noble cause
 劣质,质,quality
-临床,临,to arrive
+临床,临,to face
 临近,临,to arrive
 灵感,灵,spirit
 灵魂,灵,spirit
@@ -6096,7 +6096,7 @@ word,character,sense
 论证,论,to discuss
 论证,证,to prove
 裸露,露,to expose
-落差,落,to lower
+落差,落,to fall or drop
 落成,成,to complete
 落户,落,settlement
 落实,实,solid
@@ -6175,7 +6175,7 @@ word,character,sense
 面面俱到,到,considerate; thoughtful; thorough
 苗条,条,strip
 渺小,渺,tiny or insignificant
-庙会,庙,temple fair
+庙会,庙,temple
 庙会,会,meeting; gathering
 灭绝,灭,to exterminate or wipe out
 灭绝,绝,extinct
@@ -6258,7 +6258,7 @@ word,character,sense
 难处,难,difficulty
 难处,处,(bound form) part; aspect
 男方,方,"party (to a contract, dispute etc)"
-难怪,怪,to blame
+难怪,怪,to find strange; to regard as odd
 难关,关,mountain pass
 难堪,堪,(bound form) to endure; to bear
 难能可贵,难,difficult
@@ -6774,7 +6774,7 @@ word,character,sense
 申领,领,to receive
 深切,切,(bound form) eager
 深情厚谊,厚,deep or profound
-申诉,诉,to sue
+申诉,诉,to complain
 伸缩,缩,to contract
 呻吟,吟,(literary) to lament; to groan
 身影,影,shadow
@@ -6785,7 +6785,7 @@ word,character,sense
 神圣,圣,(bound form) holy; sacred
 神态,神,look; expression
 神态,态,appearance
-神仙,神,supernatural; magical; mysterious
+神仙,神,god; deity
 审查,查,to examine
 审核,核,to check
 审理,理,to manage
@@ -6948,7 +6948,7 @@ word,character,sense
 疏导,导,to guide
 疏忽,疏,to neglect
 书记,书,to write
-梳理,理,to manage
+梳理,理,to put in order
 枢纽,纽,button
 疏通,通,to clear
 输血,输,(bound form) to transport
@@ -6956,7 +6956,7 @@ word,character,sense
 疏远,疏,distant (relation)
 梳子,梳,(bound form) a comb
 属相,属,be born in the year of (one of the 12 animals)
-属性,属,category
+属性,属,to belong to
 属性,性,property
 数一数二,数,to count as; to regard as
 数额,额,specified number or amount
@@ -7402,7 +7402,7 @@ word,character,sense
 卫星,星,satellite
 位子,位,seat
 温差,温,(bound form) temperature
-温带,带,band
+温带,带,zone
 温度计,温,(bound form) temperature
 温度计,计,meter
 温习,温,to review (a lesson etc)
@@ -7644,7 +7644,7 @@ word,character,sense
 心意,意,(bound form) intention; feeling; inclination; state of mind
 信贷,信,trust
 信贷,贷,a loan
-信仰,仰,to rely on
+信仰,仰,to admire
 信誉,信,trust
 信誉,誉,reputation
 兴奋剂,兴,to encourage
@@ -7662,7 +7662,7 @@ word,character,sense
 星座,座,(bound form) constellation
 行使,行,(bound form) to do; to perform
 行使,使,to use
-行星,行,(bound form) to do; to perform
+行星,行,(bound form) to walk; to go; to travel
 形形色色,形,form
 形影不离,影,shadow
 形影不离,不,(bound form) not; un-
@@ -7801,7 +7801,7 @@ word,character,sense
 业绩,业,deed
 业绩,绩,accomplishment
 夜以继日,继,to succeed
-夜以继日,日,day of the month
+夜以继日,日,day
 依次,次,order
 依法,依,according to
 依附,依,to comply with or listen to sb
@@ -7918,7 +7918,7 @@ word,character,sense
 迎合,合,to fit
 赢家,赢,to win
 赢家,家,"noun suffix for a specialist in some activity, such as a musician or revolutionary, corresponding to English -ist, -er, -ary or -ian"
-营救,营,to manage
+营救,营,to strive for
 盈利,盈,surplus
 盈利,利,profit
 营利,营,to strive for
@@ -7955,7 +7955,7 @@ word,character,sense
 尤为,尤,"particularly, especially"
 尤为,为,to be
 邮政,政,government
-有的放矢,放,to set off (fireworks)
+有的放矢,放,to release
 友善,善,well-disposed
 有条不紊,紊,disorderly
 有意,有,(bound form) having; with; -ful; -ed; -al (as in 有意 yǒuyì intentional)
@@ -7969,7 +7969,7 @@ word,character,sense
 愚昧,昧,dark
 逾期,期,term
 与否,与,"(formal) and; together with (linking parallel nouns, verbs, or phrases)"
-与日俱增,日,(bound form) sun
+与日俱增,日,day
 与日俱增,俱,(literary) to be together
 与时俱进,俱,(literary) to be together
 与时俱进,进,to advance
@@ -8048,7 +8048,7 @@ word,character,sense
 栽赃,栽,to impose sth on sb
 再度,度,classifier for events and occurrences
 再接再厉,接,to connect
-在所难免,难,difficulty
+在所难免,难,difficult (to...)
 在所难免,免,to avoid
 在职,在,(of sb or sth) to be (located) at
 暂且,且,for the time being
@@ -8240,16 +8240,16 @@ word,character,sense
 指控,指,to indicate or refer to
 指令,令,an order
 纸上谈兵,兵,military
-指数,数,several; a few
+指数,数,number; figure
 指望,指,to count on
 指纹,指,finger
-指引,指,to depend on
+指引,指,to point at or to
 旨在,旨,purpose
 治安,治,to govern
 制裁,裁,judgment
 至此,至,to
 质地,质,quality
-制服,服,to convince
+制服,服,clothes
 致富,致,(bound form) to cause; to lead to; consequently
 滞后,后,behind
 滞留,留,to stay
@@ -8380,7 +8380,7 @@ word,character,sense
 资讯,讯,(bound form) news; information
 资质,质,nature
 资助,资,to support
-子弹,弹,ball
+子弹,弹,bullet
 子弟,子,child
 子弟,弟,junior male
 子孙,子,child
@@ -8489,7 +8489,7 @@ word,character,sense
 作风,风,style
 作客,作,to be; to act the part of
 作料,料,stuff
-作为,为,to do
+作为,为,to act as
 作息,息,to rest
 座右铭,铭,inscribed motto
 做证,做,(of a thing) to serve as; to be used for
