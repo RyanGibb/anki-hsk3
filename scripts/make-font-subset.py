@@ -23,9 +23,6 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "data/fonts"
 BUILD = ROOT / "build"
-# The characters are read from the built cards rather than from the sources, because
-# what needs a glyph is what a card shows.
-CARDS = BUILD / "words.json"
 
 
 def source_fonts(given: list) -> list:

@@ -12,20 +12,14 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import apostrophes  # noqa: E402
+from deck.notation import CJK, read_tsv, syllable  # noqa: E402
 from syllabus import LEVEL_ORDER, LEVELS, POS_SPLIT  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RAW = ROOT / "data/raw"
 BUILD = ROOT / "build"
 
-CJK = re.compile(r"[㐀-鿿豈-﫿]")
-
 HOMOGRAPH = re.compile(r"^(.+?)(\d+)$")
-
-
-def read_tsv(path):
-    with path.open(encoding="utf-8") as fh:
-        return list(csv.DictReader(fh, delimiter="\t"))
 
 
 def split_homograph(entry: str) -> tuple[str, str]:
@@ -133,21 +127,17 @@ def load_cedict(*paths) -> dict[str, list[dict]]:
     return out
 
 
-def norm_pinyin(p: str) -> str:
-    return p.lower().replace(" ", "").replace("u:", "v").replace("ü", "v")
-
-
 def pick_entry(pinyin_numbered, entries, wikt):
     """Choose ONE entry, so traditional and meaning stay consistent: 台风 is either
     臺風 "poise" or 颱風 "typhoon"."""
     if not entries:
         return None, "none"
     cands = entries
-    want = norm_pinyin(pinyin_numbered)
+    want = syllable(pinyin_numbered)
     def substantive_defs(e):
         return [d for d in e["defs"] if not META.match(d)]
 
-    same_pinyin = [e for e in cands if norm_pinyin(e["pinyin"]) == want]
+    same_pinyin = [e for e in cands if syllable(e["pinyin"]) == want]
     if same_pinyin and any(substantive_defs(e) for e in same_pinyin):
         cands = same_pinyin
 
@@ -265,12 +255,13 @@ def main() -> int:
     # The syllabus lists 半 as a numeral at HSK 1 and again as an adverb at HSK 4, a row
     # each. One entry keeps both levels, and this keeps which part of speech each row
     # brought: the first level the word is listed at as that part of speech.
+    # Kept in the order the list writes them, so the file comes out the same each build.
     pos_levels: dict[str, dict] = collections.defaultdict(dict)
     for r in punpuf:
         here = pos_levels[entry_of(r)]
-        for p in pos_tokens(r.get("part_of_speech") or ""):
+        for p in POS_SPLIT.split(r.get("part_of_speech") or ""):
             p = p.strip()
-            if p not in here or LEVEL_ORDER[r["level"]] < LEVEL_ORDER[here[p]]:
+            if p and (p not in here or LEVEL_ORDER[r["level"]] < LEVEL_ORDER[here[p]]):
                 here[p] = r["level"]
 
     # Keyed on the entry, not the word: 本 is a classifier in one entry and a pronoun
@@ -363,7 +354,7 @@ def main() -> int:
                 if match:
                     defs, classifier = split_classifiers(
                         list(dict.fromkeys(d for e in match for d in e["defs"])))
-                    # the same rule the chosen entry gets
+                    # a pointer sense gives way to a defining one, as in merge()
                     if any(not VARIANT.match(d) for d in defs):
                         defs = [d for d in defs if not VARIANT.match(d)]
                     meaning = "/".join(defs)
@@ -447,7 +438,7 @@ def main() -> int:
                                   re.I)
     promoted = 0
     for w in words:
-        if {p for group in (w["pos"] or []) for p in group} != {"量"}:
+        if set(pos_tokens("、".join(w["pos"] or []))) != {"量"}:
             continue
         senses = [x for x in w["meaning"].split("/") if x.strip()]
         at = next((i for i, x in enumerate(senses) if CLASSIFIER_SENSE.match(x)), 0)
@@ -491,10 +482,10 @@ def main() -> int:
         syllables = w["pinyin_numbered"].split()
         if len(syllables) != len(w["simplified"]):
             continue
-        for ch, syllable in zip(w["simplified"], syllables):
+        for ch, syl in zip(w["simplified"], syllables):
             char_example.setdefault(ch, {
                 "word": w["simplified"], "pinyin": w["pinyin"],
-                "meaning": w["meaning"].split("/")[0], "reading": syllable.lower()})
+                "meaning": w["meaning"].split("/")[0], "reading": syl.lower()})
 
     def settle(ch: str, entries: list[dict]) -> str:
         """The reading to narrow on, as CC-CEDICT spells it.
@@ -503,12 +494,12 @@ def main() -> int:
         all -- so fall back to the toneless match when it is unambiguous, then to the
         character's own entry in the syllabus.
         """
-        have = {norm_pinyin(e["pinyin"]) for e in entries}
+        have = {syllable(e["pinyin"]) for e in entries}
         want = char_example.get(ch, {}).get("reading", "")
-        if want and norm_pinyin(want) in have:
+        if want and syllable(want) in have:
             return want
         if want.endswith("5"):
-            bare = norm_pinyin(want)[:-1]
+            bare = syllable(want)[:-1]
             same = [p for p in have if p[:-1] == bare]
             if len(same) == 1:
                 return same[0]
@@ -553,7 +544,6 @@ def main() -> int:
     got = sum(1 for v in char_info.values() if v["meaning"])
     print(f"  character glosses      : {got}/{len(chars)}")
 
-    BUILD.mkdir(parents=True, exist_ok=True)
     (BUILD / "words.json").write_text(
         json.dumps(words, ensure_ascii=False, indent=1), encoding="utf-8"
     )

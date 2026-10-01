@@ -13,6 +13,7 @@ build: a checkout without a key still produces a deck, just a quieter one.
 Needs an Azure Speech resource: set AZURE_SPEECH_KEY and AZURE_SPEECH_REGION, or write
 them to ~/azure-key1 and ~/azure-region.
 """
+import collections
 import csv
 import hashlib
 import json
@@ -81,10 +82,10 @@ def main() -> int:
     # A word written the same as another but read differently cannot be voiced from
     # the characters alone: 结果 asked for on its own comes back jiéguǒ "result", which
     # is the wrong word for the card teaching jiēguǒ "to bear fruit".
-    ambiguous = {w["simplified"] for w in words
-                 if any(o["simplified"] == w["simplified"]
-                        and o["pinyin_numbered"] != w["pinyin_numbered"]
-                        for o in words)}
+    readings = collections.defaultdict(set)
+    for w in words:
+        readings[w["simplified"]].add(w["pinyin_numbered"])
+    ambiguous = {s for s, r in readings.items() if len(r) > 1}
     want = {w["simplified"] for w in words
             if not w["audio"] and w["simplified"] not in ambiguous}
     # The sentences as the cards show them, listed by the build. Reading them from

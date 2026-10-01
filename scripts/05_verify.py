@@ -11,7 +11,7 @@ import zipfile
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from pinyin_align import align, syllabify   # noqa: E402
+from pinyin_align import FLAT, TONED, align, norm, numbered, same_sound, syllabify   # noqa: E402
 from word import load_words   # noqa: E402
 from syllabus import LEVELS   # noqa: E402
 
@@ -19,8 +19,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
 APKG = BUILD / "HSK-3.0-2025.apkg"
 
+# The syllabus's own totals, cumulative: the 11,000 it advertises is 10,999 words.
 OFFICIAL_CUMULATIVE = {"1": 300, "2": 500, "3": 1000, "4": 2000,
-                       "5": 3600, "6": 5400, "7-9": 11000}
+                       "5": 3600, "6": 5400, "7-9": 10999}
 
 fails: list[str] = []
 
@@ -39,8 +40,8 @@ def main() -> int:
     for lv in LEVELS:
         running += sum(1 for w in words if w["level"] == lv)
         want = OFFICIAL_CUMULATIVE[lv]
-        check(f"L{lv} cumulative {running} (official {want})",
-              abs(running - want) <= 110, f"delta {running - want}")
+        check(f"L{lv} cumulative {running} (official {want})", running == want,
+              f"delta {running - want}" if running != want else "")
 
     print("\ntraditional characters vs the known-correct set")
     print("  (scoring `traditional_auto`, before the adjudicated overrides are")
@@ -187,7 +188,6 @@ def main() -> int:
     # punctuation is not one.
     checked_pinyin = ROOT / "data/grammar-pinyin.csv"
     if checked_pinyin.exists():
-        from pinyin_align import numbered
         wrong = []
         for row in csv.DictReader(checked_pinyin.open(encoding="utf-8")):
             zh, py = row["chinese"], row["pinyin"]
@@ -301,13 +301,17 @@ def main() -> int:
     reading_fixes = ROOT / "data/reading-fixes.csv"
     if reading_fixes.exists():
         rows = list(csv.DictReader(reading_fixes.open(encoding="utf-8")))
-        source = {r["word"]: r["pinyin_numbered"] for r in csv.DictReader(
-            (ROOT / "data/raw/punpuf_hsk_word_list.tsv").open(encoding="utf-8"),
-            delimiter="\t")}
-        built = {w["simplified"]: w["pinyin_numbered"] for w in words}
-        wrong = [f'{r["word"]}: {built.get(r["word"])}' for r in rows
-                 if built.get(r["word"]) != r["pinyin_numbered"]]
-        spent = [r["word"] for r in rows if source.get(r["word"]) != r["was"]]
+        # By sets: a homograph is listed twice, and the row corrects one of its readings
+        source, built = collections.defaultdict(set), collections.defaultdict(set)
+        for r in csv.DictReader(
+                (ROOT / "data/raw/punpuf_hsk_word_list.tsv").open(encoding="utf-8"),
+                delimiter="\t"):
+            source[r["word"]].add(r["pinyin_numbered"])
+        for w in words:
+            built[w["simplified"]].add(w["pinyin_numbered"])
+        wrong = [f'{r["word"]}: {sorted(built[r["word"]])}' for r in rows
+                 if r["pinyin_numbered"] not in built[r["word"]]]
+        spent = [r["word"] for r in rows if r["was"] not in source[r["word"]]]
         check(f"{len(rows)} corrected readings all applied", not wrong,
               ", ".join(wrong) if wrong else "")
         check("no corrected reading is redundant", not spent,
@@ -355,50 +359,26 @@ def main() -> int:
     print("\nrecordings match the reading on the card")
     swac = {r["word"]: r["pinyin"] for r in csv.DictReader(
         (ROOT / "data/swac-index.csv").open(encoding="utf-8"))}
-    V = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
-    TONED = re.compile(f"[{V}]")
-    T = str.maketrans(V, "aaaaeeeeiiiioooouuuuüüüü")
-    def nm(x):
-        """A reading with the deck's own notation taken back out: it hyphenates the
-        halves of a four-character idiom and writes ü, the index does neither."""
-        x = x.split("/")[0].lower()
-        for mark in (" ", "\u2019", "'", "-"):
-            x = x.replace(mark, "")
-        return x.replace("u:", "ü").replace("v", "ü")
+    # The same rule 03_media.py matched them by, asserted on the result: a word
+    # listed twice with two readings is held to its own reading exactly.
+    listed = collections.defaultdict(set)
+    for w in words:
+        listed[w["simplified"]].add(w["pinyin_numbered"])
     wrong = []
     for w in words:
         m = re.findall(r"cmn-(.+?)\.mp3", w["audio"] or "")
         if len(m) != 1 or m[0] != w["simplified"] or m[0] not in swac:
             continue
-        c, r = nm(w["pinyin"]), nm(swac[m[0]])
-        if c == r:
-            continue
-        if c.translate(T) != r.translate(T):
+        if not same_sound(w["pinyin"], swac[m[0]], w["simplified"],
+                          strict=len(listed[w["simplified"]]) > 1):
             wrong.append((w["simplified"], w["pinyin"], swac[m[0]]))
-            continue
-        # 谁 is indexed sheí against the card's shéi: one syllable, one tone, the mark
-        # typed on the other vowel
-        if [V.index(x) % 4 for x in TONED.findall(c)] == \
-                [V.index(x) % 4 for x in TONED.findall(r)]:
-            continue
-        # What is left is a tone written two ways. That is the same sound where one
-        # source writes a syllable unstressed and the other does not, and where 一 or
-        # 不 takes its sandhi, which the word may put anywhere -- 进一步, 从容不迫 --
-        # so the tones are read against the characters that carry them.
-        def toneof(syl):
-            mark = TONED.search(syl)
-            return str(V.index(mark.group()) % 4 + 1) if mark else "5"
-        ours, theirs = align(w["simplified"], c), align(w["simplified"], r)
-        if ours and theirs and len(ours) == len(theirs) and all(
-                toneof(x) == toneof(y) or "5" in (toneof(x), toneof(y))
-                or ch[:1] in "一不"
-                for (ch, x, _s), (_c, y, _t) in zip(ours, theirs)):
-            continue
-        wrong.append((w["simplified"], w["pinyin"], swac[m[0]]))
     check(f"{len(wrong)} recordings with a mismatched reading", not wrong,
           str(wrong[:4]) if wrong else "")
-    shared = [(a["entry"], b["entry"], a["audio"]) for a in words for b in words
-              if a["simplified"] == b["simplified"] and a["entry"] < b["entry"]
+    alike = collections.defaultdict(list)
+    for w in words:
+        alike[w["simplified"]].append(w)
+    shared = [(a["entry"], b["entry"], a["audio"]) for g in alike.values()
+              for a in g for b in g if a["entry"] < b["entry"]
               and a["audio"] and a["audio"] == b["audio"]
               and a["pinyin_numbered"] != b["pinyin_numbered"]]
     check("no two readings share one recording", not shared,
@@ -408,13 +388,13 @@ def main() -> int:
     # naming different syllables means one of them is wrong -- 高大 is indexed gāodù.
     readings = collections.defaultdict(set)
     for w in words:
-        readings[w["simplified"]].add(nm(w["pinyin"]).translate(T))
+        readings[w["simplified"]].add(norm(w["pinyin"]).translate(FLAT))
     borrowed = []
     for w in words:
         m = re.findall(r"cmn-(.+?)\.mp3", w["audio"] or "")
         if len(m) != 1 or m[0] == w["simplified"] or m[0] not in readings:
             continue
-        if nm(swac[m[0]]).translate(T) not in readings[m[0]]:
+        if norm(swac[m[0]]).translate(FLAT) not in readings[m[0]]:
             borrowed.append((w["simplified"], w["pinyin"], m[0], swac[m[0]]))
     check(f"{len(borrowed)} recordings borrowed on a label the deck contradicts",
           not borrowed, str(borrowed[:4]) if borrowed else "")
@@ -434,9 +414,9 @@ def main() -> int:
 
     def one(syl: str) -> str:
         """A syllable as CC-CEDICT writes it: letters, then its tone, 5 for none."""
-        syl = nm(syl)
-        tone = [str(V.index(c) % 4 + 1) for c in syl if c in V]
-        return (re.sub(r"[^a-zü]", "", syl.translate(T)).replace("ü", "v")
+        syl = norm(syl)
+        tone = [str(TONED.index(c) % 4 + 1) for c in syl if c in TONED]
+        return (re.sub(r"[^a-zü]", "", syl.translate(FLAT)).replace("ü", "v")
                 + (tone[0] if tone else "5"))
 
     def sayable(char: str, syl: str) -> bool:
@@ -494,10 +474,8 @@ def main() -> int:
             con = sqlite3.connect(pathlib.Path(td) / db)
             n_notes = con.execute("select count(*) from notes").fetchone()[0]
             n_cards = con.execute("select count(*) from cards").fetchone()[0]
-            # 10999 vocabulary + 1200 writing + one per sentence. Seven sentences the
-            # source wrapped onto its separator were two cards each and are now one,
-            # and the piece one of them was joined to held two more examples run
-            # together, so 2043 became 2038.
+            # 10999 vocabulary + 1200 writing + one per sentence, after deck/grammar.py
+            # has mended the examples the source wrapped onto its separator.
             check(f"{n_notes} notes in db", n_notes == 10999 + 1200 + 2038)
             # forgetting HSK_DECK_ROOT silently leaves an empty deck tree on import
             decks = json.loads(con.execute("select decks from col").fetchone()[0])
@@ -569,8 +547,7 @@ def main() -> int:
             styled = sorted(bundled - refs - extra)
             check("no unreferenced media bundled", not extra,
                   f"{len(extra)} extra" if extra else "")
-            check(f"{len(styled)} files the templates name", True,
-                  ", ".join(styled) if styled else "")
+            print(f"  {len(styled)} files the templates name: {', '.join(styled)}")
             if missing:
                 print("        e.g.", sorted(missing)[:5])
             con.close()
@@ -592,14 +569,11 @@ def main() -> int:
 
     print("\ntone marks sit where the rules put them")
     # a or e takes it; failing that the o of ou; failing that the last vowel
-    TONE = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
-    flat = str.maketrans(TONE, "aaaaeeeeiiiioooouuuuüüüü")
-
     def misplaced(syllable: str):
-        marked = [i for i, ch in enumerate(syllable.lower()) if ch in TONE]
+        marked = [i for i, ch in enumerate(syllable.lower()) if ch in TONED]
         if len(marked) != 1:
             return None
-        plain = syllable.lower().translate(flat)
+        plain = syllable.lower().translate(FLAT)
         vowels = [i for i, ch in enumerate(plain) if ch in "aeiouü"]
         if not vowels:
             return None
@@ -611,7 +585,7 @@ def main() -> int:
     def scan(pairs):
         out = []
         for label, text in pairs:
-            for word in re.split(r"[^a-zü" + TONE + TONE.upper() + r"]+", text or ""):
+            for word in re.split(r"[^a-zü" + TONED + TONED.upper() + r"]+", text or ""):
                 for syllable in (syllabify(word) if word else []):
                     if misplaced(syllable):
                         out.append((label, syllable))

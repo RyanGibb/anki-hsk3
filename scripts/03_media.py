@@ -18,7 +18,8 @@ import shutil
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from pinyin_align import TONE_VOWELS, align, numbered   # noqa: E402
+from pinyin_align import norm, numbered, same_sound   # noqa: E402
+from deck.notation import CJK, syllable, ways_read   # noqa: E402
 from syllabus import LEVELS   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -37,89 +38,11 @@ SWAC = ROOT / "data/swac-index.csv"
 # the deck ships passes through stage(), so preferring them here covers all of it.
 TRIMMED = ROOT / ".cache/trimmed"
 
-CJK = re.compile(r"[㐀-鿿豈-﫿]")
-
-
-
-
-def norm(p: str) -> str:
-    """A reading reduced to what was said.
-
-    The deck's notation is not the corpus's: it divides the halves of a four-character
-    idiom with a hyphen (ch\u00e9ngqi\u0101n-sh\u00e0ngw\u00e0n) and writes \u00fc, where the index runs the
-    syllables together and types \u00fc as v. None of that is audible.
-    """
-    p = p.split("/")[0].lower()
-    for mark in (" ", "\u2019", "'", "-"):
-        p = p.replace(mark, "")
-    return p.replace("u:", "\u00fc").replace("v", "\u00fc")
-
-
-# Two notation differences, worth ~130 recordings: sandhi (一半 yíbàn vs yībàn) and
-# neutral tones (cōngmíng/cōngming). Those two only: ignoring tones wholesale would put
-# 被子 bèizi on 杯子 bēizi's card, and a quilt is not a cup.
-TONE_MARKS = str.maketrans("āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ", "aaaaeeeeiiiioooouuuuüüüü")
-TONED = re.compile(r"[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]")
-
-
-TONE_VALUE = {c: str(i % 4 + 1) for i, c in enumerate(TONE_VOWELS)}
-
-
-def toneless(p: str) -> str:
-    return norm(p).translate(TONE_MARKS)
-
-
-def tones(word: str, reading: str):
-    """[(character, tone)] for a reading, or None if it will not divide into syllables.
-
-    5 for a syllable written without a mark, as the dictionaries number a neutral tone.
-    """
-    pairs = align(word, norm(reading))
-    if not pairs:
-        return None
-    out = []
-    for char, syl, _starts in pairs:
-        mark = TONED.search(syl)
-        out.append((char, TONE_VALUE[mark.group()] if mark else "5"))
-    return out
-
-
-def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> bool:
-    """Whether a recording says what the card says.
-
-    Loosely by default, because 聪明 is recorded both as cōngmíng and cōngming and
-    they are the same word. Strictly where the deck teaches two words written alike:
-    过 guò and 过 guo are not one word said casually, and a recording of the first
-    teaches the wrong sound on the second's card.
-
-    A word of one syllable is read strictly whatever is asked. An unstressed syllable
-    is one that gave its tone to the syllable before it, and a word of one syllable has
-    no syllable before it: 子 the suffix is zi and 子 the noun is zǐ, and a card
-    teaching the first is not taught by a recording of the second.
-    """
-    if norm(card) == norm(recorded):
-        return True
-    if strict or toneless(card) != toneless(recorded):
-        return False
-    alone = len(toneless(card).split()) == 1 and len(word) == 1
-    # The syllables now differ only in their tone marks. Two differences are the
-    # notation and not the speaker: a syllable written unstressed by one source and
-    # not the other, and the sandhi of 一 and 不, which sit wherever the word puts
-    # them -- 进一步, 从容不迫 -- so the tones are read against the characters.
-    ours, theirs = tones(word, card), tones(word, recorded)
-    if ours and theirs and len(ours) == len(theirs):
-        return all(x == y or ("5" in (x, y) and not alone) or char[:1] in "一不"
-                   for (char, x), (_, y) in zip(ours, theirs))
-    a, b = TONED.findall(norm(card)), TONED.findall(norm(recorded))
-    # sheí and shéi are the same syllable with the mark typed on a different vowel
-    if [TONE_VALUE[x] for x in a] == [TONE_VALUE[x] for x in b]:
-        return True
-    return len(a) != len(b) and not alone   # neutral tone
-
 
 def stage(src: pathlib.Path, name: str) -> None:
-    """Replaces a stale file of a different size: plain skip-if-exists kept every
-    diagram black after the switch to svgs-still/."""
+    """A file already staged under this name is kept only if it is the same size:
+    the name says nothing about which corpus it came from, and a diagram from the
+    wrong one renders solid black."""
     cut = TRIMMED / src.name
     if cut.is_file():
         src = cut
@@ -169,14 +92,12 @@ def main() -> int:
 
     # Where the syllabus lists a word twice with two readings, a recording has to say
     # this entry's reading exactly: 过 guò must not be played on 过 guo's card.
-    ambiguous = {x["simplified"] for x in words
-                 if any(o["simplified"] == x["simplified"]
-                        and o["pinyin_numbered"] != x["pinyin_numbered"]
-                        for o in words)}
-
     deck_readings: dict[str, list[str]] = collections.defaultdict(list)
+    numbered_readings: dict[str, set[str]] = collections.defaultdict(set)
     for w in words:
         deck_readings[w["simplified"]].append(w["pinyin"])
+        numbered_readings[w["simplified"]].add(w["pinyin_numbered"])
+    ambiguous = {s for s, r in numbered_readings.items() if len(r) > 1}
 
     for w in words:
         simp = w["simplified"]
@@ -205,7 +126,8 @@ def main() -> int:
                     substitutions.append((w, alt))
                     break
         if not source and len(simp) == 1:
-            syl = syllabs.get(w["pinyin_numbered"].replace(" ", "").lower())
+            # the syllable files spell ü as v: cmn-lv3.mp3, never cmn-lü3.mp3
+            syl = syllabs.get(syllable(w["pinyin_numbered"]))
             if syl:
                 name = syl.name
                 stage(syl, name)
@@ -218,8 +140,6 @@ def main() -> int:
             w["audio"] = f"[sound:{name}]"
             w["audio_source"] = kind
             stats["exact reading" if source == simp else "homophone"] += 1
-        else:
-            stats["blank"] += 1
 
         chars = [c for c in simp if CJK.match(c)]
         imgs = []
@@ -273,23 +193,13 @@ def main() -> int:
     # because it teaches 地 twice. A recording is only right if it says something this
     # deck teaches: 血 is taught as xuè alone, so a xiě recording stays refused.
     # 熟 is entered as one reading, "shú/shóu", which is two. And ü is written both
-    # ways: the syllabus has nü3 where everything else here says nv3.
-    def readings_of(field: str) -> list:
-        return [x.replace(" ", "").replace("ü", "v").lower()
-                for x in field.split("/") if x.strip()]
-
-    taught, taught_marked = {}, {}
+    # ways: the syllabus has nü3 where everything else here says nv3. The readings
+    # keep the order the syllabus lists them in, which is the order the card gives.
+    taught: dict[str, dict[str, None]] = {}
     for w in words:
         if len(w["simplified"]) == 1:
-            taught.setdefault(w["simplified"], set()).update(
-                readings_of(w["pinyin_numbered"]))
-            taught_marked.setdefault(w["simplified"], []).extend(
-                x for x in w["pinyin"].split("/") if x.strip())
-    known = {ch: set(reads) for ch, reads in taught.items()}
-    for ch, reads in char_readings.items():
-        known.setdefault(ch, set()).update(numbered(r) for r in reads)
-    (BUILD / "char-readings.json").write_text(
-        json.dumps(taught_marked, ensure_ascii=False), encoding="utf-8")
+            taught.setdefault(w["simplified"], {}).update(
+                dict.fromkeys(ways_read(w)))
 
     char_audio = {}
     skipped_chars = []
@@ -333,7 +243,7 @@ def main() -> int:
     for r in csv.DictReader((ROOT / "data/raw/chelsea_hanzi_writing.tsv")
                             .open(encoding="utf-8"), delimiter="\t"):
         c = r["word"]
-        readings = list(dict.fromkeys(taught.get(c, [])))
+        readings = list(taught.get(c, []))
         if not readings:
             readings = [numbered(x) for x in (char_readings.get(c) or [])][:1]
         got = {}
@@ -355,8 +265,7 @@ def main() -> int:
     for w in words:
         if w["audio"] or len(w["simplified"]) != 1:
             continue
-        reading = w["pinyin_numbered"].replace(" ", "").lower()
-        word = in_word.get((w["simplified"], reading))
+        word = in_word.get((w["simplified"], syllable(w["pinyin_numbered"])))
         if not word:
             continue
         src = cmn[word]
@@ -460,7 +369,7 @@ def main() -> int:
         by_level[w["level"]][1] += 1
         if w["audio"]:
             by_level[w["level"]][0] += 1
-    for lv in ["1", "2", "3", "4", "5", "6", "7-9"]:
+    for lv in LEVELS:
         hit, tot = by_level[lv]
         print(f"  L{lv:4s} {hit:5d}/{tot:5d}  {100*hit/tot:5.1f}%")
 

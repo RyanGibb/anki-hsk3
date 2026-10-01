@@ -11,7 +11,6 @@ import sys
 import genanki
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from pinyin_align import numbered   # noqa: E402
 from word import load_words   # noqa: E402
 from deck.paths import BUILD, MEDIA, ROOT   # noqa: E402
 from deck.notation import AFFIX, syllable   # noqa: E402
@@ -53,14 +52,14 @@ def main() -> int:
 
     at = VOCAB_FIELDS.index("ExampleSentence")
 
-    def worn_light(numbered: str):
+    def worn_light(reading: str):
         """The readings a sentence gives the word when it speaks a later syllable
         neutral: 关系 is guānxì to the word list and guānxi in every sentence that
         uses it, the citation tone worn down rather than another word. One
         direction only, and never the first syllable, so 地 taught as dì still
         refuses a sentence reading it de, and 东西 taught light does not take
         east-and-west."""
-        sylls = numbered.split()
+        sylls = reading.split()
         spots = [i for i in range(1, len(sylls)) if not sylls[i].endswith("5")]
         for mask in range(1, 1 << len(spots)):
             worn = {s for b, s in enumerate(spots) if mask >> b & 1}

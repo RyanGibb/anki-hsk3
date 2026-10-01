@@ -313,9 +313,6 @@ def readings_taught(words: list[Word]) -> Readings:
     so it is worked out once and handed to both.
     """
     by_char, entries, variant = {}, {}, set()
-    by_char = {}
-    entries = {}
-    variant = set()
     for w in words:
         if len(w["simplified"]) != 1:
             continue

@@ -99,7 +99,7 @@ def main() -> int:
                 if not any(x["text"] == text for x in sections):
                     sections.append({
                         "text": text,
-                        "type": liushu[0].get("args", {}).get("1") if liushu else "",
+                        "type": (liushu[0].get("args", {}).get("1") or "") if liushu else "",
                         "glosses": [g[:90] for g in glosses],
                         "senses": len(d.get("senses") or []),
                     })

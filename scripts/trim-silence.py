@@ -61,7 +61,8 @@ def opens_loudly(rms) -> tuple:
 
 
 def sound(path: pathlib.Path):
-    """(start, end, duration) of the speech in seconds, or None if there is none.
+    """(start, end, duration, loudness per window) of the speech in seconds, or None
+    if there is none.
 
     Read as loudness over 20 ms rather than sample by sample. A single sample says
     nothing -- a vowel crosses zero eighty times a second and hiss has spikes -- while

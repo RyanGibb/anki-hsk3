@@ -249,8 +249,8 @@ def build_vocabulary(words: list[Word], wiki, media, number, gloss, pos,
                 + (f' (in {heard})' if (heard := w.get("heard_in")) else ""),
                 w["pinyin_numbered"],
                 pos.blocks(w),
-                # Every meaning is headed by its part of speech now, so the line that
-                # used to carry it below said it a second time.
+                # Every meaning is headed by its part of speech, so a line naming
+                # them all again under the senses would say it twice.
                 "、".join(w["pos"]), "",
                 wiki.markup(w.get("classifier", "")), w["audio"],
                 wiki.markup(" ".join(w["homophone"][:12])), also_read(w, by_entry_all, pos),

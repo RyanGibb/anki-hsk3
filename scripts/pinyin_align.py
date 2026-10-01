@@ -6,10 +6,12 @@ word because someone wrote it as one, and nothing in the characters says so.
 """
 import re
 
-CJK = re.compile(r"[㐀-鿿]")
+# The marked vowels, four tones to each: index // 4 is the vowel, index % 4 the tone.
 TONED = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
 FLAT = str.maketrans(TONED + TONED.upper(),
-                     "aaaaeeeeiiiioooouuuuüüüü" * 1 + "AAAAEEEEIIIIOOOOUUUUÜÜÜÜ")
+                     "aaaaeeeeiiiioooouuuuüüüü" + "AAAAEEEEIIIIOOOOUUUUÜÜÜÜ")
+TONE_VALUE = {c: str(i % 4 + 1) for i, c in enumerate(TONED)}
+MARK = re.compile(f"[{TONED}]")
 WORD = re.compile(r"[A-Za-z" + TONED + TONED.upper() + r"ü'()]+")
 
 INITIAL = "zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw]"
@@ -112,20 +114,81 @@ def align(hanzi: str, pinyin: str):
     return out
 
 
-
-
-TONE_VOWELS = "āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ"
-
-
 def numbered(p: str) -> str:   # noqa: D401
     """nǔ -> nu3, the form CC-CEDICT keys its entries by and the syllable recordings
     are named after."""
     out, tone = [], "5"
     for ch in p:
-        i = TONE_VOWELS.find(ch)
+        i = TONED.find(ch)
         if i < 0:
             out.append("v" if ch == "ü" else ch)
         else:
             tone = str(i % 4 + 1)
             out.append("aeiouv"[i // 4])
     return "".join(out) + tone
+
+
+def norm(p: str) -> str:
+    """A reading reduced to what was said.
+
+    The deck's notation is not the recording index's: it divides the halves of a
+    four-character idiom with a hyphen (chéngqiān-shàngwàn) and writes ü, where the
+    index runs the syllables together and types ü as v. None of that is audible.
+    """
+    p = p.split("/")[0].lower()
+    for mark in (" ", "’", "'", "-"):
+        p = p.replace(mark, "")
+    return p.replace("u:", "ü").replace("v", "ü")
+
+
+def toneless(p: str) -> str:
+    return norm(p).translate(FLAT)
+
+
+def tones(word: str, reading: str):
+    """[(character, tone)] for a reading, or None if it will not divide into syllables.
+
+    5 for a syllable written without a mark, as the dictionaries number a neutral tone.
+    """
+    pairs = align(word, norm(reading))
+    if not pairs:
+        return None
+    out = []
+    for char, syl, _starts in pairs:
+        mark = MARK.search(syl)
+        out.append((char, TONE_VALUE[mark.group()] if mark else "5"))
+    return out
+
+
+def same_sound(card: str, recorded: str, word: str, strict: bool = False) -> bool:
+    """Whether a recording says what the card says.
+
+    Loosely by default, because 聪明 is recorded both as cōngmíng and cōngming and
+    they are the same word. Strictly where the deck teaches two words written alike:
+    过 guò and 过 guo are not one word said casually, and a recording of the first
+    teaches the wrong sound on the second's card. Ignoring tones wholesale would put
+    被子 bèizi on 杯子 bēizi's card, and a quilt is not a cup.
+
+    A word of one syllable is read strictly whatever is asked. An unstressed syllable
+    is one that gave its tone to the syllable before it, and a word of one syllable has
+    no syllable before it: 子 the suffix is zi and 子 the noun is zǐ, and a card
+    teaching the first is not taught by a recording of the second.
+    """
+    if norm(card) == norm(recorded):
+        return True
+    if strict or toneless(card) != toneless(recorded):
+        return False
+    alone = len(toneless(card).split()) == 1 and len(word) == 1
+    # The syllables now differ only in their tone marks. Two differences are the
+    # notation and not the speaker: a syllable written unstressed by one source and
+    # not the other, and the sandhi of 一 and 不, which sit wherever the word puts
+    # them -- 进一步, 从容不迫 -- so the tones are read against the characters.
+    ours, theirs = tones(word, card), tones(word, recorded)
+    if ours and theirs and len(ours) == len(theirs):
+        return all(x == y or ("5" in (x, y) and not alone) or char[:1] in "一不"
+                   for (char, x), (_, y) in zip(ours, theirs))
+    a, b = MARK.findall(norm(card)), MARK.findall(norm(recorded))
+    # sheí and shéi are the same syllable with the mark typed on a different vowel
+    if [TONE_VALUE[x] for x in a] == [TONE_VALUE[x] for x in b]:
+        return True
+    return len(a) != len(b) and not alone   # neutral tone
