@@ -182,8 +182,10 @@ class PartsOfSpeech:
         A part of speech the syllabus does not give the word is still worth knowing and
         is not what is being taught: 比 is a preposition and a verb to the syllabus, and
         the dictionary also calls it a noun, "ratio". Those are set quietly under the
-        rest. One the syllabus does give and the dictionary glosses nothing under is a
-        heading on its own -- 小 is a prefix in 小王 with no gloss to show for it.
+        rest. One the syllabus does give and the dictionary glosses nothing under is
+        still said, on one quiet line at the end: 小 is taught as a prefix, as in 小王,
+        and 在 as a preposition, and neither has a sense filed under that heading. Set
+        as a heading of its own it read as a block whose senses had gone missing.
         """
         split = w.get("meaning_by_pos") or []
         if not split:
@@ -200,9 +202,11 @@ class PartsOfSpeech:
             f'{"" if p in taught else "also "}{self.label(p)}'
             f'{self.at_level(self.level_of(w, p), p in taught)} '
             f'{self.wiki.markup(render_senses(m))}</div>'
-            for p, m in split) + "".join(
-            f'<div class=charSense>{self.label(p)}'
-            f'{self.at_level(self.level_of(w, p), True)}</div>' for p in bare)
+            for p, m in split) + (
+            '<div class="charSense beyond">also taught as '
+            + ", ".join(f'{self.label(p)}{self.at_level(self.level_of(w, p), True)}'
+                        for p in bare)
+            + '</div>' if bare else "")
 
 
 Vocabulary = collections.namedtuple("Vocabulary", "decks notes")
