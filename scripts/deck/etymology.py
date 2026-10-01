@@ -6,7 +6,7 @@ import re
 
 from glyph_origin import about_the_glyph, any_about_the_glyph
 from deck.paths import BUILD, ROOT
-from deck.notation import WORDS, gloss_words, mend
+from deck.notation import LATER, MORE, WORDS, gloss_words, mend
 
 
 # Wiktionary writes a list two ways: bulleted, and as a definition list whose term
@@ -18,11 +18,6 @@ BULLET = re.compile(r"^([*#;:]+)\s*")
 # runs to several sentences of its own, and semicolons between those read as breaks
 # in the middle of a sentence.
 AS_A_PHRASE = 120
-# The simplified form's own account, set after the account of the shape it came
-# from, and the paragraphs that follow a lead. Named here because glossary.py
-# takes a block apart at them.
-LATER = '<div class="later">'
-MORE = '<div class="more">'
 
 
 # How Wiktionary writes an account of a character's shape, as opposed to the history

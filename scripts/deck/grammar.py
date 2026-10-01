@@ -11,7 +11,8 @@ import genanki
 from pinyin_align import ALIGNABLE, align, numbered
 from syllabus import LEVELS
 from deck.paths import MEDIA, RAW, ROOT
-from deck.notation import CJK, TITLE, best_entry, clean_xrefs, lvl_of, read_tsv, syllable
+from deck.notation import (CJK, TITLE, best_entry, clean_xrefs, headed, lead_and_rest, lvl_of,
+                           read_tsv, senses_of, syllable)
 from deck.models import deck, sentence_model
 from deck.vocabulary import PartsOfSpeech
 from word import Word
@@ -271,9 +272,6 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
             return []
         w = ws[0]
 
-        def senses(m):
-            return [x.strip() for x in clean_xrefs(m).split("/") if x.strip()]
-
         # Where the meaning is divided by part of speech, the syllabus's own order of
         # them decides: 跟 is 介、连、（名、动） and the preposition is what 跟我说说 and
         # 我的爱好跟他一样 turn on, while the dictionary opens on "heel".
@@ -281,9 +279,9 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
         out: list = []
         for p in PartsOfSpeech.named(w["pos"]):
             if p in split:
-                out += senses(split[p])
+                out += senses_of(split[p])
         seen = {x.casefold() for x in out}
-        return out + [x for x in senses(w["meaning"]) if x.casefold() not in seen]
+        return out + [x for x in senses_of(w["meaning"]) if x.casefold() not in seen]
 
     def gloss_word(sentence: str, w: str, read=(), proper=False) -> str:
         """One entry per word, and per leftover piece of it: 读了 and 人们 are one word
@@ -324,11 +322,6 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                 # and 春, whose traditional form is itself, was labelled with the
                 # variant 旾.
                 trad = chose[0]
-                label = piece if trad == piece else f"{piece} ({trad})"
-                # Every sense is given, the first at full size and the rest quietly
-                # under it, as a word's own card carries a long meaning. 跟 turns on
-                # "compared with", its sixth, and a reader should not have to take the
-                # whole list at once to reach it.
                 said = [p.strip() for p in gloss.split(" / ") if p.strip()]
                 # What the sentence means by the word leads, and the dictionary's other
                 # senses follow rather than being thrown away: a word written down for
@@ -340,14 +333,8 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                 if lead:
                     already = {s.casefold() for s in lead}
                     said = lead + [s for s in said if s.casefold() not in already]
-                body = wiki.markup(html.escape(said[0], quote=False)) if said else ""
-                if len(said) > 1:
-                    body += ('<div class="more">'
-                             + wiki.markup(html.escape(" / ".join(said[1:]),
-                                                       quote=False))
-                             + "</div>")
-                out.append(f'<div class="gloss"><b>{wiki.label(label, trad)}</b> '
-                           f'{body}</div>')
+                out.append(f'<div class="gloss">{headed(wiki, piece, trad)} '
+                           f'{lead_and_rest(wiki, said)}</div>')
                 i += n
                 break
             else:
@@ -468,16 +455,9 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
         # them: the sentence has 帮 and it has 忙, and neither is 帮忙.
         glossed = {p for w, _ in words for p in w}
         for whole, chose in split_verbs(sentence, glossed, point):
-            trad = chose[0]
-            label = whole if trad == whole else f"{whole} ({trad})"
             said = [p.strip() for p in chose[1].split(" / ") if p.strip()]
-            body = wiki.markup(html.escape(said[0], quote=False)) if said else ""
-            if len(said) > 1:
-                body += ('<div class="more">'
-                         + wiki.markup(html.escape(" / ".join(said[1:]), quote=False))
-                         + "</div>")
-            out.append(f'<div class="gloss"><b>{wiki.label(label, trad)}</b> '
-                       f'{body}</div>')
+            out.append(f'<div class="gloss">{headed(wiki, whole, chose[0])} '
+                       f'{lead_and_rest(wiki, said)}</div>')
         return out
 
     def gen_pinyin(sentence: str) -> str:

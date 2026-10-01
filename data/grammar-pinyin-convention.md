@@ -74,7 +74,6 @@ Convert Chinese punctuation to ASCII, spaced as in English:
 | ！ | `!` |
 | ：| `:` |
 | ；| `;` |
-| 、| `,` |
 | （）| `()` |
 | 《》| omit, or use italics if the title is a word |
 | ……  | `...` |
@@ -89,7 +88,7 @@ The grammar point the sentence illustrates is given alongside it: use it. If it 
 still ambiguous after that, pick the reading a beginner would most likely intend and
 flag the sentence.
 
-## 8. Cases the first pass raised
+## 8. Particular words
 
 - Noun + localiser stays separate and the localiser keeps its tone: `zhuōzi shàng`,
   `shūdiàn lǐ`, `fángjiān lǐ`, `dì shàng`, `shìjiè shàng`. It is a word in its own

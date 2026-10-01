@@ -2,7 +2,7 @@
 import html
 import re
 
-from deck.notation import CJK, cedict_lines
+from deck.notation import CJK, cedict_lines, outside_tags
 from word import Word
 
 
@@ -82,10 +82,4 @@ class Wiktionary:
         this point, and a link's href is Chinese as well, so only what lies between the
         tags is linked.
         """
-        out, at = [], 0
-        for m in re.finditer(r"<[^>]+>", fragment):
-            out.append(self.RUN.sub(lambda x: self.word(x.group()), fragment[at:m.start()]))
-            out.append(m.group(0))
-            at = m.end()
-        out.append(self.RUN.sub(lambda x: self.word(x.group()), fragment[at:]))
-        return "".join(out)
+        return outside_tags(fragment, lambda t: self.RUN.sub(lambda x: self.word(x.group()), t))

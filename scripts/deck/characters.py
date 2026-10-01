@@ -9,7 +9,8 @@ import genanki
 from pinyin_align import align, numbered
 from syllabus import LEVELS
 from deck.paths import BUILD, MEDIA, MMAH_DICT, RAW
-from deck.notation import CJK, char_rank, clean_xrefs, lvl_of, mask_answer, read_tsv, render_senses, syllable, toned, ways_read
+from deck.notation import (CJK, char_rank, lvl_of, mask_answer, read_tsv, render_senses,
+                           senses_of, syllable, toned, ways_read)
 from deck.models import char_model, deck
 from word import Word
 
@@ -46,8 +47,8 @@ def build_characters(words: list[Word], wiki, media, number, gloss, pos,
         # The dictionary's own glosses arrive cleaned and spaced about their slashes;
         # these come from the word list, where 之 still reads "literary equivalent of
         # 的[de5]" and 会 reads "to know how to/to be likely to".
-        return [(p, " / ".join(x.strip() for x in clean_xrefs(m).split("/") if x.strip()),
-                 d, lv) for p, m, d, lv in blocks] if len(blocks) > 1 else []
+        return [(p, " / ".join(senses_of(m)), d, lv)
+                for p, m, d, lv in blocks] if len(blocks) > 1 else []
 
     def char_reading_senses(ch: str):
         """[(label, senses, bold, declared)] for a character, one block per way it is

@@ -25,7 +25,9 @@ AFFIX = re.compile(r"前缀|后缀")
 WORDS = re.compile(r"[A-Za-z\u3400-\u9fff]")
 # "erhua variant of 好玩" is a direction elsewhere like any other: the deck follows
 # it rather than printing it, so 一点儿 says "a bit; a little bit" and not where to look.
-POINTER = re.compile(r"^((?:old |erhua )?variant of|see|abbr\. for)\b", re.I)
+# "See you later!" is a sense, so "see" is a pointer only with Chinese after it.
+POINTER = re.compile(r"^(?:(?:old |erhua )?variant of|abbr\. for"
+                     r"|see(?: also)?(?=\s+[㐀-鿿豈-﫿]))\b", re.I)
 # ...and what it points at. "See you later!" is a sense, not a pointer, so the
 # target has to be Chinese.
 TARGET = re.compile(r"^(?:(?:old |erhua )?variant of|see(?: also)?|abbr\. for)\s+"
@@ -271,6 +273,47 @@ TITLE = re.compile(r"^(老师|先生|女士|小姐|医生|经理|教授|同学|�
                    r"|校长|老板|某)")
 
 
+# The simplified form's own account, set after the account of the shape it came
+# from; and the paragraphs that follow a lead, or the senses after the first. Named
+# here because glossary.py takes a block apart at them and grammar.py builds one.
+LATER = '<div class="later">'
+MORE = '<div class="more">'
+
+
+def senses_of(meaning: str) -> list:
+    """The senses of a "/"-joined gloss, each trimmed, cross-references read."""
+    return [x.strip() for x in clean_xrefs(meaning).split("/") if x.strip()]
+
+
+def headed(wiki, ch: str, trad: str) -> str:
+    """The bold head of a gloss row: the character as written, with the traditional
+    form beside it where that differs, linked to the entry it came from."""
+    label = ch if trad == ch else f"{ch} ({trad})"
+    return f"<b>{wiki.label(label, trad)}</b>"
+
+
+def lead_and_rest(wiki, said: list) -> str:
+    """The first sense at full size and the rest quietly under it, as a word's own
+    card carries a long meaning: 跟 turns on "compared with", its sixth, and a
+    reader should not have to take the whole list at once to reach it."""
+    body = wiki.markup(html.escape(said[0], quote=False)) if said else ""
+    if len(said) > 1:
+        body += MORE + wiki.markup(html.escape(" / ".join(said[1:]), quote=False)) + "</div>"
+    return body
+
+
+def outside_tags(text: str, f) -> str:
+    """f applied to the text between the tags, leaving the markup itself alone: a
+    link's href is Chinese as well, and must not be linked or masked again."""
+    out, i = [], 0
+    for m in re.finditer(r"<[^>]+>", text):
+        out.append(f(text[i:m.start()]))
+        out.append(m.group(0))
+        i = m.end()
+    out.append(f(text[i:]))
+    return "".join(out)
+
+
 def mask_answer(text: str, ch: str) -> str:
     """Hide the character inside prose that the writing card asks you to produce.
 
@@ -281,13 +324,7 @@ def mask_answer(text: str, ch: str) -> str:
     """
     if not ch or ch not in text:
         return text
-    out, i = [], 0
-    for m in re.finditer(r"<[^>]+>", text):
-        out.append(text[i:m.start()].replace(ch, f'<span class=mask>{ch}</span>'))
-        out.append(m.group(0))
-        i = m.end()
-    out.append(text[i:].replace(ch, f'<span class=mask>{ch}</span>'))
-    return "".join(out)
+    return outside_tags(text, lambda t: t.replace(ch, f'<span class=mask>{ch}</span>'))
 
 
 def cedict_lines():

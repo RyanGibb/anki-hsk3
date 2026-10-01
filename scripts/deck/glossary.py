@@ -8,10 +8,10 @@ import re
 
 from syllabus import LEVELS
 from deck.paths import BUILD, MMAH_DICT, RAW, ROOT
-from deck.notation import (CJK, POINTER, SANDHI, TARGET, cedict_lines, char_rank,
-                           citation_readings, clean_xrefs, sense_key, short_gloss,
-                           syllable, toned)
-from deck.etymology import LATER, MORE, load_etymology
+from deck.notation import (CJK, LATER, MORE, POINTER, SANDHI, TARGET, cedict_lines,
+                           char_rank, citation_readings, clean_xrefs, headed, sense_key,
+                           senses_of, short_gloss, syllable, toned)
+from deck.etymology import load_etymology
 from word import Word
 
 
@@ -276,6 +276,10 @@ class Glossary:
         for seen_in in self.words_using.values():
             seen_in.sort()
 
+    def meta(self, ch: str) -> dict:
+        """What char-meanings.json gathered about the character, or nothing."""
+        return self.char_meta.get(ch) or {}
+
     def pick_char(self, ch: str, reading: str, want_trad: str):
         """Among the entries sharing a reading, the one the deck already settled on.
 
@@ -366,8 +370,20 @@ class Glossary:
                     i = at[sense_key(s)].pop(0)
                     used.add(i)
                     mine.append(here[i])
-            if mine:
-                out.append((p, mine, taught, lv))
+            if not mine:
+                continue
+            # Two entries at one reading can both be verbs -- 为1 and 为2 at wéi --
+            # and their senses go under one heading where the heading would say the
+            # same thing twice. Taught at different levels they stay apart, since the
+            # level is the point: 等 waits at HSK 2 and equals at HSK 4.
+            prior = next((r for r in out if r[0] == p and (not lv or not r[3] or lv == r[3])),
+                         None)
+            if prior:
+                prior[1] += mine
+                prior[2] = prior[2] or taught
+                prior[3] = prior[3] or lv
+            else:
+                out.append([p, mine, taught, lv])
         if not out:
             return ""
         rest = [s for i, s in enumerate(here) if i not in used]
@@ -421,20 +437,16 @@ class Glossary:
         out = []
         for ch in dict.fromkeys(chars):
             by_reading = self.pick_char(ch, reading_of.get(ch, ""),
-                                        trad_of.get(ch, (self.char_meta.get(ch) or {})
-                                                    .get("traditional") or ch))
+                                        trad_of.get(ch, self.meta(ch).get("traditional") or ch))
             if by_reading:
                 trad = by_reading[0]
                 senses = by_reading[1]
             else:
-                senses = (self.char_meta.get(ch) or {}).get("meaning", "")
-                senses = clean_xrefs(" / ".join(
-                    p.strip() for p in senses.split("/") if p.strip()))
-                trad = (self.char_meta.get(ch) or {}).get("traditional") or ch
+                senses = " / ".join(senses_of(self.meta(ch).get("meaning", "")))
+                trad = self.meta(ch).get("traditional") or ch
             origin = self.etym_char(ch, full=True)
             if not (senses or origin):
                 continue
-            label = ch if trad == ch else f"{ch} ({trad})"
             # The character's own reading, not the word's: 朋友 is péngyou and 友 is
             # yǒu. A compound flattens a tone and the row beneath it restores one.
             #
@@ -473,8 +485,8 @@ class Glossary:
             if lead and any(sense_key(s) == sense_key(lead) for s in split):
                 self.drawn.add((simplified, ch))
                 senses = " / ".join(self.leading(split, lead))
-            body = (f'<b>{self.wiki.label(label, trad)}</b>'
-                    f'{f" <span class=charRead>{said}</span>" if said else ""} '
+            body = (headed(self.wiki, ch, trad)
+                    + f'{f" <span class=charRead>{said}</span>" if said else ""} '
                     f'{self.under_pos(ch, reading_of.get(ch, ""), senses, lead)
                        or self.wiki.markup(html.escape(senses, quote=False))}'
                     f'{self.also_read(ch, shown)}'
@@ -738,11 +750,9 @@ class Glossary:
             # only where the dictionary has nothing under any reading.
             here = self.part_numbers(ch)
             senses = " / ".join(g for g in (self.gloss_at(ch, r) for r in here) if g)
-            trad = (self.char_meta.get(ch) or {}).get("traditional") or ch
+            trad = self.meta(ch).get("traditional") or ch
             if not senses:
-                senses = clean_xrefs(" / ".join(
-                    p.strip() for p in
-                    (self.char_meta.get(ch) or {}).get("meaning", "").split("/") if p.strip()))
+                senses = " / ".join(senses_of(self.meta(ch).get("meaning", "")))
             if not senses:
                 # char-meanings.json covers the characters the syllabus words are made
                 # of, and a part is not one: 攵 is absent from it while the dictionary
@@ -768,11 +778,10 @@ class Glossary:
                 aimed = re.search(self.PART, senses)
                 if aimed and aimed.group() not in seen:
                     queue.insert(0, (aimed.group(), step))
-            label = ch if trad == ch else f"{ch} ({trad})"
             said = (self.part_readings(ch)
                     or " / ".join((self.mmah.get(ch) or {}).get("pinyin") or []))
-            body = (f'<b>{self.wiki.label(label, trad)}</b>'
-                    f'{f" <span class=charRead>{said}</span>" if said else ""} ')
+            body = (headed(self.wiki, ch, trad)
+                    + f'{f" <span class=charRead>{said}</span>" if said else ""} ')
             if not senses and not origin:
                 continue
             if senses:
@@ -798,7 +807,7 @@ class Glossary:
         # The fallback is for a character the syllabus never lists on its own, so it
         # must not undo the rule above by supplying an example for one that it does.
         if not out and not any((ch, num) in self.alone_level for _, num, _ in ways):
-            e = (self.char_meta.get(ch) or {}).get("example") or {}
+            e = self.meta(ch).get("example") or {}
             if e:
                 out.append((e["word"], e["pinyin"], short_gloss(e["meaning"])))
         return out
@@ -837,7 +846,7 @@ class Glossary:
         # A character the syllabus never lists on its own has no reading from the
         # syllabus either, and 物 should still say wù.
         return self.components(ch, numbered or " ".join(self.dictionary_readings(ch)[:1]),
-                               (self.char_meta.get(ch) or {}).get("traditional") or ch)
+                               self.meta(ch).get("traditional") or ch)
 
     def example_word(self, ch: str, level: str = "") -> str:
         """The same examples with their characters, for the side that has answered.
