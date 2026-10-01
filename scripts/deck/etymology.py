@@ -9,9 +9,9 @@ from deck.paths import BUILD, ROOT
 from deck.notation import WORDS, gloss_words, mend
 
 
-# Wiktionary writes a list two ways: bulleted, and as a definition list whose term is
-# marked and whose description is the plain paragraph after it.
-BULLET = re.compile(r"^([*#;]+)\s*")
+# Wiktionary writes a list two ways: bulleted, and as a definition list whose term
+# is marked ; and whose description is marked : on the line after it.
+BULLET = re.compile(r"^([*#;:]+)\s*")
 # How long an item of a list can be and still be read as part of the sentence that
 # promises it. "Square or round block" is one of 天's four head variants and belongs
 # in the line naming them; each of 水's eight proposals for where the word comes from
@@ -158,12 +158,23 @@ def load_etymology():
                 out[-1] = (out[-1][0], f"{out[-1][1]} {p}")
             else:
                 out.append((mark, p))
-        # A term in a definition list names what the paragraph under it describes. With
+        # A term in a definition list names what the paragraph under it describes, so
+        # the two are set as one -- 子 is "child: From Proto-Sino-Tibetan ...". With
         # nothing under it -- the account ends, or the next line is another term -- it
         # names nothing: 商 ended on "dynasty's name" and "“to trade” → “trader,
         # merchant”", the description of each lost from the dump.
-        return [(m, p) for k, (m, p) in enumerate(out)
-                if m != ";" or (k + 1 < len(out) and out[k + 1][0] != ";")]
+        kept, k = [], 0
+        while k < len(out):
+            m, p = out[k]
+            if m == ";" and k + 1 < len(out) and out[k + 1][0] == ":":
+                kept.append((":", f"{p.rstrip(':')}: {out[k + 1][1]}"))
+                k += 2
+            elif m != ";" or (k + 1 < len(out) and out[k + 1][0] != ";"):
+                kept.append((m, p))
+                k += 1
+            else:
+                k += 1
+        return kept
 
     def joined(ps: list, k: int) -> tuple[str, int]:
         """The paragraph starting at k with the list under it pulled up, and where
@@ -182,9 +193,9 @@ def load_etymology():
         # something else: 洛 is a phono-semantic compound, and what follows is a note
         # on clipping 洛必達法則 for l'Hôpital's rule.
         j = i
-        while re.search(r"[:：]$", head) and j < len(ps) \
-                and (ps[j][0] or ps[j - 1][0] == ";"):
-            items.append(ps[j][1].rstrip("."))
+        while re.search(r"[:：]$", head) and j < len(ps) and ps[j][0]:
+            # an item closes on its own stop, or on the "; and" that led to the next
+            items.append(re.sub(r"(?:;\s*and|[;.])\s*$", "", ps[j][1]))
             j += 1
         # Short ones are phrases and belong in the sentence promising them. Ones that
         # are paragraphs stay paragraphs: 水 lists eight proposals for where the word
@@ -221,6 +232,10 @@ def load_etymology():
         while i < len(ps):
             text, i = joined(ps, i)
             out.append(text)
+        # 累 ends "Various semantic fields can be distinguished:" with the fields lost
+        # from the dump: a last paragraph that promises what nothing delivers goes.
+        while out and re.search(r"[:：]$", out[-1]):
+            out.pop()
         return out
 
     def paragraphs(ch: str) -> list[tuple[str, str]]:
@@ -299,4 +314,10 @@ def load_etymology():
             return head + block
         return f'{head}{quietly(tail)}{block}'
 
+    def glosses(ch: str) -> list:
+        """What the chosen section says the character means, for a part no
+        dictionary has an entry for."""
+        return (choose(ch) or {}).get("glosses") or []
+
+    one.glosses = glosses
     return one

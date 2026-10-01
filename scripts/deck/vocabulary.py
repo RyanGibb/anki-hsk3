@@ -60,9 +60,11 @@ def tone_hint(w: Word, siblings: dict[str, list[Word]], gloss: dict) -> str:
     share both -- 乘 rides and multiplies, a verb read chéng either way -- only their
     order in the syllabus is left.
     """
-    if not w["homograph_index"]:
-        return ""
+    # 为 is listed as 为, 为1 and 为2, and the one with no digit is as ambiguous as
+    # the two with: what counts is whether anything else is written the same way.
     others = [o for o in siblings.get(w["simplified"], []) if o["entry"] != w["entry"]]
+    if not others:
+        return ""
 
     def tones(x):
         return "".join(TONE_MARK.get(c, "")
@@ -82,9 +84,10 @@ def tone_hint(w: Word, siblings: dict[str, list[Word]], gloss: dict) -> str:
             return mine
     # 称 weighs and names, both as a verb read chēng at the same level: nothing but
     # the order in the syllabus separates the two cards, so say that much plainly
-    # rather than printing a bare digit.
-    return (f'{w["homograph_index"]} <span class=en>of '
-            f'{len(others) + 1}</span>')
+    # rather than printing a bare digit. Counted from the order rather than read
+    # from the entry, since the first of 露's three is written with no digit.
+    order = sorted([w] + others, key=lambda x: int(x["key"]))
+    return (f'{order.index(w) + 1} <span class=en>of {len(order)}</span>')
 
 
 class PartsOfSpeech:

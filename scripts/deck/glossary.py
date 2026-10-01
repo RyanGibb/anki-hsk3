@@ -7,7 +7,7 @@ import json
 import re
 
 from syllabus import LEVELS
-from deck.paths import BUILD, RAW, ROOT
+from deck.paths import BUILD, MMAH_DICT, RAW, ROOT
 from deck.notation import (CJK, POINTER, SANDHI, TARGET, cedict_lines, char_rank,
                            citation_readings, clean_xrefs, sense_key, short_gloss,
                            syllable, toned)
@@ -95,7 +95,16 @@ class Glossary:
                         entries[i] = (trad, other[1], reading, other[3], True)
                         break
         # Memoised: part_origins asks after one character dozens of times over.
-        self.etym_char = functools.lru_cache(maxsize=None)(load_etymology())
+        origins = load_etymology()
+        self.etym_char = functools.lru_cache(maxsize=None)(origins)
+        self.etym_glosses = origins.glosses
+        # makemeahanzi's one-line definitions, for a part no dictionary enters: 钅 is
+        # "gold, metal; money" read jīn to it, and nothing to CC-CEDICT.
+        self.mmah: dict = {}
+        if MMAH_DICT.exists():
+            for line in MMAH_DICT.read_text(encoding="utf-8").splitlines():
+                d = json.loads(line)
+                self.mmah[d["character"]] = d
 
         self.char_meta = json.loads((BUILD / "char-meanings.json").read_text(encoding="utf-8"))
         # Wiktionary names a character's parts in their traditional forms while the deck's
@@ -743,6 +752,13 @@ class Glossary:
                 if best:
                     senses = best[1]
                     trad = best[0]
+            # A part no dictionary enters at all -- 钅, 呂, 叀 -- still has a row, and
+            # a row with a bold character and an origin under it says nothing of what
+            # the character means. makemeahanzi's line answers for most, Wiktionary's
+            # own glosses for the rest.
+            if not senses:
+                senses = ((self.mmah.get(ch) or {}).get("definition")
+                          or " / ".join(self.etym_glosses(ch)[:3]))
             # A part the dictionary only points elsewhere for explains nothing: 夊 is
             # entered as "see 夂", and 退 answered what it is built from with a
             # cross-reference. The character it points at is the same shape rather than
@@ -753,7 +769,8 @@ class Glossary:
                 if aimed and aimed.group() not in seen:
                     queue.insert(0, (aimed.group(), step))
             label = ch if trad == ch else f"{ch} ({trad})"
-            said = self.part_readings(ch)
+            said = (self.part_readings(ch)
+                    or " / ".join((self.mmah.get(ch) or {}).get("pinyin") or []))
             body = (f'<b>{self.wiki.label(label, trad)}</b>'
                     f'{f" <span class=charRead>{said}</span>" if said else ""} ')
             if not senses and not origin:

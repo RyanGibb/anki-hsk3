@@ -111,7 +111,7 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
     point_en_of = {}
     pt = ROOT / "data/grammar-point-translations.csv"
     if pt.exists():
-        point_en_of = {r["chinese"]: r["english"]
+        point_en_of = {re.sub(r" {2,}", " ", r["chinese"]): re.sub(r" {2,}", " ", r["english"])
                        for r in csv.DictReader(pt.open(encoding="utf-8"))}
 
     def label_en(s: str) -> str:
@@ -574,8 +574,10 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                 i += 1
             grouped.append(turn)
             i += 1
-        point = (r["content"].strip() or r.get("grammarDetail", "").strip()
-                 or r.get("categoryType", "").strip())
+        # the source pads a point's numbered parts with runs of spaces
+        point = re.sub(r" {2,}", " ", r["content"].strip()
+                       or r.get("grammarDetail", "").strip()
+                       or r.get("categoryType", "").strip())
         for turn in grouped:
             lines = [x[1] for x in turn]
             key = "\n".join(lines)
@@ -602,9 +604,13 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                     join(html.escape(translated.get(x, ""), quote=False)
                          for x in lines),
                     # Each turn is glossed on its own, and a word both speakers say --
-                    # 的, 手机 -- is explained once.
-                    "".join(dict.fromkeys(g for x in lines
-                                          for g in sentence_words(x, point))),
+                    # 的, 手机 -- is explained once. A word's gloss can be several
+                    # rows, 学了 being 学 and 了, so the rows are what is kept once:
+                    # the 了 of 学了 and the 了 that ends the sentence are one row.
+                    "".join(dict.fromkeys(
+                        '<div class="gloss">' + row
+                        for x in lines for g in sentence_words(x, point)
+                        for row in g.split('<div class="gloss">')[1:])),
                     point, point_en_of.get(point) or label_en(point),
                     " &middot; ".join(
                         v + (f' <span class=en>{en}</span>' if en else "")
