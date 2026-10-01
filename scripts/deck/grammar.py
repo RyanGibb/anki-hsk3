@@ -395,9 +395,10 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                 out.append((w, best_entry(cands, wiki.to_trad.get(w), "", False, w)))
         return out
 
-    def sentence_words(sentence: str, point: str = "") -> str:
+    def sentence_words(sentence: str, point: str = "") -> list:
         """Each word of the sentence with what it means, as a compound's card does for
-        its characters. Words are as the checked pinyin divides them."""
+        its characters, one block to a word. Words are as the checked pinyin divides
+        them."""
         pinyin = checked.get(sentence)
         pairs = align(sentence, pinyin) if pinyin else None
         if not pairs:
@@ -407,8 +408,8 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
             # without one.
             words = [(w, ()) for run in re.findall(r"[㐀-鿿]+", sentence)
                      for w in longest_match(run)]
-            return "".join(gloss_word(sentence, w, read) for w, read in
-                           dict.fromkeys(words))
+            return [gloss_word(sentence, w, read) for w, read in
+                    dict.fromkeys(words)]
         words, word, reading = [], "", []
         for text, syllable, starts in pairs:
             if starts and word:
@@ -431,6 +432,10 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
             cursor = i + len(w)
         for w, read in dict.fromkeys(words):
             here = at.get(w, 0)
+            # A：你的手机呢？ is said by A, and A is no word of it: glossed, it came out as
+            # CC-CEDICT's "A", Taiwanese slang for to steal.
+            if here == 0 and SPEAKER.match(sentence) and w == sentence[0]:
+                continue
             key0 = "".join(numbered(x) for x in read)
             # A card can hold more than one sentence, and the word after a full stop
             # or an opening quote is capitalised for the same reason the first one is.
@@ -461,7 +466,7 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                          + "</div>")
             out.append(f'<div class="gloss"><b>{wiki.label(label, trad)}</b> '
                        f'{body}</div>')
-        return "".join(out)
+        return out
 
     def gen_pinyin(sentence: str) -> str:
         if sentence in checked:
@@ -584,7 +589,10 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                     join(html.escape(gen_pinyin(x), quote=False) for x in lines),
                     join(html.escape(translated.get(x, ""), quote=False)
                          for x in lines),
-                    "".join(sentence_words(x, point) for x in lines),
+                    # Each turn is glossed on its own, and a word both speakers say --
+                    # 的, 手机 -- is explained once.
+                    "".join(dict.fromkeys(g for x in lines
+                                          for g in sentence_words(x, point))),
                     point, point_en_of.get(point) or label_en(point),
                     " &middot; ".join(
                         v + (f' <span class=en>{en}</span>' if en else "")
