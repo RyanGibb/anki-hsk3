@@ -2042,7 +2042,7 @@ class Numbering:
 Glossary = collections.namedtuple(
     "Glossary",
     "cedict_defs char_any shown_chars pick_char components part_origins"
-    " etym_block examples example_of example_word")
+    " etym_block examples example_of example_word undrawn")
 
 
 def read_glossary(words, wiki, readings, pos) -> Glossary:
@@ -2203,7 +2203,26 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
                               for f, side in forms)
                 + " inside another character</div>")
 
-    def under_pos(ch: str, reading: str, senses: str) -> str:
+    # Which of a character's senses a word draws on. The row lists the character's
+    # senses in the dictionary's order, and 要's opens on "to want": under 重要 it is
+    # "(bound form) important" that the word is made of, and the row leads with it.
+    draws_on: dict = {}
+    path = ROOT / "data/compound-senses.csv"
+    if path.exists():
+        for r in csv.DictReader(path.open(encoding="utf-8")):
+            draws_on[(r["word"], r["character"])] = r["sense"]
+    drawn: set = set()
+
+    def leading(senses: list, lead: str) -> list:
+        """The senses with the one named first, or as they were if none is it."""
+        hit = [i for i, s in enumerate(senses) if lead and sense_key(s) == sense_key(lead)]
+        return ([senses[hit[0]]] + senses[:hit[0]] + senses[hit[0] + 1:]) if hit else senses
+
+    def undrawn() -> list:
+        """Rows of data/compound-senses.csv naming a sense no card showed."""
+        return sorted(set(draws_on) - drawn)
+
+    def under_pos(ch: str, reading: str, senses: str, lead: str = "") -> str:
         """The row's senses set out under the parts of speech the syllabus divides them
         into, or nothing where it divides them into one.
 
@@ -2238,14 +2257,23 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
         if not out:
             return ""
         rest = [s for i, s in enumerate(here) if i not in used]
+        # The block holding the sense the word draws on comes first, that sense at its
+        # head: 重要's 要 is an adjective before it is a verb.
+        rows = [(p, leading(mine, lead), taught, lv) for p, mine, taught, lv in out]
+        if rest:
+            rows.append((None, leading(rest, lead), True, ""))
+        rows.sort(key=lambda r: not (lead and sense_key(r[1][0]) == sense_key(lead)))
+        # A part of speech the syllabus does not teach is set aside as "also" -- unless
+        # it is the one this word is made of, which leads the row and is set as such,
+        # though with no level to give it.
+        drawn_on = lead and rows and sense_key(rows[0][1][0]) == sense_key(lead)
         return "".join(
-            f'<div class="charSense{"" if taught else " beyond"}">'
-            f'{"" if taught else "also "}{pos.label(p)}{pos.at_level(lv, taught)} '
-            f'{wiki.markup(html.escape(" / ".join(mine), quote=False))}</div>'
-            for p, mine, taught, lv in out) + (
-            f'<div class=charSense>'
-            f'{wiki.markup(html.escape(" / ".join(rest), quote=False))}</div>'
-            if rest else "")
+            (f'<div class="charSense{"" if taught or (drawn_on and i == 0) else " beyond"}">'
+             f'{"" if taught or (drawn_on and i == 0) else "also "}'
+             f'{pos.label(p)}{pos.at_level(lv, taught)} '
+             if p else '<div class=charSense>')
+            + f'{wiki.markup(html.escape(" / ".join(mine), quote=False))}</div>'
+            for i, (p, mine, taught, lv) in enumerate(rows))
 
     def components(simplified: str, numbered: str = "",
                    traditional: str = "") -> str:
@@ -2326,9 +2354,14 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
             said = " / ".join(spoken_here)
             if said and worn:
                 said += (' <span class=sandhi>(' + " / ".join(worn) + " here)</span>")
+            lead = draws_on.get((simplified, ch), "")
+            split = [x.strip() for x in senses.split("/") if x.strip()]
+            if lead and any(sense_key(s) == sense_key(lead) for s in split):
+                drawn.add((simplified, ch))
+                senses = " / ".join(leading(split, lead))
             body = (f'<b>{wiki.label(label, trad)}</b>'
                     f'{f" <span class=charRead>{said}</span>" if said else ""} '
-                    f'{under_pos(ch, reading_of.get(ch, ""), senses)
+                    f'{under_pos(ch, reading_of.get(ch, ""), senses, lead)
                        or wiki.markup(html.escape(senses, quote=False))}'
                     f'{also_read(ch, shown or spoken_numbers(ch, heard))}'
                     f'{as_a_part(ch)}')
@@ -2860,7 +2893,8 @@ def read_glossary(words, wiki, readings, pos) -> Glossary:
                     pick_char=pick_char, components=components,
                     part_origins=part_origins, etym_block=etym_block,
                     examples=examples,
-                    example_of=example_of, example_word=example_word)
+                    example_of=example_of, example_word=example_word,
+                    undrawn=undrawn)
 
 
 def main() -> int:
@@ -2888,6 +2922,11 @@ def main() -> int:
 
     vocabulary = build_vocabulary(words, wiki, media, number, gloss, pos,
                                   groups, by_entry_all)
+    # A row of data/compound-senses.csv names a sense in the character's row as the
+    # card shows it; one that matches nothing has gone stale and says nothing.
+    if gloss.undrawn():
+        sys.exit(f"data/compound-senses.csv names senses no card shows: "
+                 f"{gloss.undrawn()[:5]}")
     decks += vocabulary.decks
     vocab_notes = vocabulary.notes
 
