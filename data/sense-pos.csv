@@ -289,8 +289,6 @@ entry,pos,meaning
 本来,副,originally/at first/it goes without saying/of course
 标准,名,standard; norm; criterion
 标准,形,(adjective) standard/good; correct; conforming to a standard
-表,名,exterior surface/family relationship via females/a model/a table (listing information)/a form/a meter (measuring sth)
-表,动,to show (one's opinion)
 并,动,to combine/to join/to merge/to amalgamate
 并,副,furthermore/also/(not) at all/simultaneously
 并,连,and/together with
@@ -574,9 +572,6 @@ entry,pos,meaning
 正好,动,to happen to/to chance to
 证明,动,to prove/to testify/to confirm the truth of
 证明,名,proof/certificate/identification/testimonial
-值,动,to happen to/to be on duty
-值,形,(to be) worth
-值,名,value
 重点,名,important point; main point; focus
 重点,副,to focus on; to put the emphasis on
 重点,形,key (project etc)
@@ -856,9 +851,6 @@ entry,pos,meaning
 力,副,strenuously
 联合,动,to combine/to join/unite
 联合,名,alliance
-恋爱,动,to have an affair
-恋爱,名,(romantic) love
-恋爱,形,in love
 临时,副,as the time draws near/at the last moment
 临时,形,temporary/interim/ad hoc
 领,名,neck/collar
@@ -1589,8 +1581,6 @@ entry,pos,meaning
 当真,形,serious
 导向,动,to be oriented towards
 导向,名,orientation
-盗版,名,see also 正版[zheng4 ban3]
-盗版,形,pirated/illegal
 到位,动,to get to the intended location/to be in place/to be in position
 到位,形,precise/well (done)
 低调,名,low pitch
@@ -2349,8 +2339,6 @@ entry,pos,meaning
 当2,动,to regard as/to think/to replace/to pawn/(coll.) to fail (a student)
 当2,形,suitable/adequate/fitting/proper
 当2,副,at or in the very same...
-录,动,to copy/to hit
-录,名,record/diary
 胜,动,to beat/to defeat/to surpass/to get the better of/equal to (a task)
 胜,名,victory/success
 胜,形,victorious/superior to/better than/surpassing/superb (of vista)/beautiful (scenery)/wonderful (view)
@@ -3719,9 +3707,6 @@ entry,pos,meaning
 主动,形,spontaneous/active/to take the initiative/to do sth of one's own accord/opposite: passive 被動|被动[bei4 dong4]/drive (of gears and shafts etc)
 综合,动,to sum up/to integrate/to synthesize
 综合,形,comprehensive/composite/synthesized/mixed
-总体,名,population (statistics)
-总体,形,total/entire/overall
-总体,副,completely/totally
 按摩,动,to massage/massage
 白白,副,in vain/to no purpose/for nothing
 白白,形,white
@@ -3731,8 +3716,6 @@ entry,pos,meaning
 保健,动,to maintain in good health/health protection/health care
 爆炸,动,to explode/to blow up/to detonate/explosion
 残疾,名,deformity on a person or animal/disabled/handicapped
-策划,动,to plot/to scheme/to bring about/to engineer/planning
-策划,名,producer/planner
 测量,动,to measure/to gauge/to determine/survey
 策略,名,strategy; tactics
 策略,形,crafty; adroit
@@ -3826,8 +3809,6 @@ entry,pos,meaning
 罢工,动,to go on strike/a strike
 逼真,形,lifelike/true to life
 逼真,副,distinctly/clearly
-编制,动,to establish (a unit or department)
-编制,名,authorized staffing allocation in government or public institutions (excluding temporary or contract staff)
 辩论,动,to argue over/debate/argument
 变通,动,to act differently in different situations/to accommodate to circumstances/pragmatic/flexible
 标点,名,punctuation/a punctuation mark
@@ -4050,3 +4031,44 @@ entry,pos,meaning
 拟,形,doubtful/suspicious
 精练,形,refined/polished/succinct/skilled/capable
 精练,动,"to refine (a substance)/to purify/to refine (one's skills, writing etc)/(textiles) to scour/to degum (silk)"
+穿,动,"to wear; to put on (clothes, shoes etc.)/to bore through; to pierce; to perforate/to go through (e.g. a tunnel); to cross (e.g. a street)/to thread; to string together/verb complement indicating thoroughness or completion"
+酒店,名,hotel/wine shop/pub (public house)/restaurant/(Tw) hostess club
+一块儿,副,together; in the same place; in company
+一块儿,名,"a piece; a chunk/(fig.) (coll.) (typically preceded by a specifier such as 這|这[zhe4]) aspect; area; dimension (Example: 情感這一塊|情感这一块[qing2 gan3 zhe4 yi1 kuai4] ""the emotional aspect (of it)"")/(coll.) one yuan; a dollar"
+表,名,a table (listing information)/a form/watch (timepiece)/a meter (measuring sth)/meter; gauge/exterior surface/family relationship via females/a model
+表,动,to show (one's opinion)
+打印,动,to print out (with a printer)/to affix a seal/to stamp
+订,动,to order/to subscribe to (a newspaper etc)/to agree/to conclude/to draw up
+寄,动,to send by post; to mail/to entrust; to place in sb's care/(bound form) to depend on; to attach oneself to; to reside temporarily/(bound form) foster (as in 寄女[ji4 nu : 3] foster daughter)
+家长,名,parent or guardian of a child/head of a household/family head/patriarch
+修,动,to repair/to build/to decorate/to embellish/to write/to cultivate/to study/to take (a class)
+应聘,动,to apply for an advertised position/to accept a job offer
+值,动,(to be) worth/to happen to/to be on duty
+值,名,value
+质量,名,quality (i.e. degree of excellence)/(physics) mass/quality and quantity
+中餐,名,Chinese meal; Chinese food/lunch
+大厦,名,large building; skyscraper; edifice/(used in the names of grand buildings such as 百老匯大廈|百老汇大厦 Broadway Mansions (in Shanghai) or 帝國大廈|帝国大厦 Empire State Building etc)
+恋爱,动,in love/to have an affair
+恋爱,名,(romantic) love
+录,动,to record; to write down/to record (using instruments)/to copy/to hit
+录,名,record/diary
+在乎,动,(often used in the negative) to care about/to rest with; to lie in; to be due to (a certain attribute)
+总体,名,total/entire/overall/population (statistics)
+总体,副,completely/totally
+策划,动,planning/to bring about/to engineer/to plot/to scheme
+策划,名,producer/planner
+好不,副,how very .../not at all ...
+酷,形,(loanword) cool/hip/ruthless/strong (e.g. of wine)
+易于,动,to be apt to; to be easy to/very likely/prone to
+编制,动,"to compile; to put together (a lesson plan, budget etc)/to weave; to plait/to establish (a unit or department)"
+编制,名,authorized staffing allocation in government or public institutions (excluding temporary or contract staff)
+盗版,名,pirated/illegal/see also 正版[zheng4 ban3]
+点子,名,idea/spot/point/dot/speck/drop (of liquid)/droplet/point (of argument)/crux/indication/pointer
+发火,动,to get angry/to catch fire/to ignite/to detonate
+敷衍,动,perfunctory/to skimp/to botch/to do sth half-heartedly or just for show/barely enough to get by/to elaborate (on a theme)/to expound (the classics)
+忽悠,动,to trick sb into doing sth/to dupe/to con/to rock/to sway/to flicker (e.g. of lights reflected on water)/to flutter (e.g. of a flag)
+家伙,名,"(coll.) guy/chap/household dish, implement or furniture/domestic animal/weapon"
+开朗,形,(of character) optimistic/cheerful/carefree/spacious and well-lit/open and clear
+麻1,形,to have pins and needles or tingling/to feel numb/(of materials) rough or coarse/pocked/pitted
+小人,名,"nasty person/vile character/person of low social status (old)/I, me (used to refer humbly to oneself)"
+引领,动,to lead/to show the way/to crane one's neck/to await eagerly
