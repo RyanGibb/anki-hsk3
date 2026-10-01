@@ -16,6 +16,7 @@ import genanki
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from glyph_origin import about_the_glyph, any_about_the_glyph   # noqa: E402
 from pinyin_align import ALIGNABLE, align, numbered   # noqa: E402
+from syllabus import LEVELS, POS_SPLIT   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -25,7 +26,6 @@ MMAH_DICT = pathlib.Path(
     os.environ.get("MAKEMEAHANZI", "~/projects/makemeahanzi")
 ).expanduser() / "dictionary.txt"
 
-LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 MID_VOCAB, MID_GRAMMAR, MID_CHAR = 1758100001, 1758100002, 1758100003
@@ -265,7 +265,6 @@ def make_pinyin(words):
 
 # The syllabus writes a word's parts of speech as one string, and marks the ones
 # taught at a later level in brackets: 对 is 形、介、（动、量）.
-POS_SPLIT = re.compile(r"[、,（）()]")
 # a word that is only ever the end or the start of another
 AFFIX = re.compile(r"前缀|后缀")
 WORDS = re.compile(r"[A-Za-z\u3400-\u9fff]")

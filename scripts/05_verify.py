@@ -12,6 +12,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import align, syllabify   # noqa: E402
+from syllabus import LEVELS   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -19,7 +20,6 @@ APKG = BUILD / "HSK-3.0-2025.apkg"
 
 OFFICIAL_CUMULATIVE = {"1": 300, "2": 500, "3": 1000, "4": 2000,
                        "5": 3600, "6": 5400, "7-9": 11000}
-LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 
 fails: list[str] = []
 

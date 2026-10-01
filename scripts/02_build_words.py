@@ -12,13 +12,12 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import apostrophes  # noqa: E402
+from syllabus import LEVEL_ORDER, LEVELS, POS_SPLIT  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RAW = ROOT / "data/raw"
 BUILD = ROOT / "build"
 
-LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
-LEVEL_ORDER = {lv: i for i, lv in enumerate(LEVELS)}
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 HOMOGRAPH = re.compile(r"^(.+?)(\d+)$")
@@ -260,8 +259,6 @@ def main() -> int:
         levels[entry_of(r)].add(r["level"])
     entries_all = set(first)
 
-    POS_SPLIT = re.compile(r"[、,／/（）()]+")
-
     def pos_tokens(s: str) -> frozenset:
         return frozenset(t for t in POS_SPLIT.split(s) if t.strip())
 
@@ -453,9 +450,9 @@ def main() -> int:
         if {p for group in (w["pos"] or []) for p in group} != {"量"}:
             continue
         senses = [x for x in w["meaning"].split("/") if x.strip()]
-        first = next((i for i, x in enumerate(senses) if CLASSIFIER_SENSE.match(x)), 0)
-        if first:
-            w["meaning"] = "/".join([senses[first]] + senses[:first] + senses[first + 1:])
+        at = next((i for i, x in enumerate(senses) if CLASSIFIER_SENSE.match(x)), 0)
+        if at:
+            w["meaning"] = "/".join([senses[at]] + senses[:at] + senses[at + 1:])
             promoted += 1
     print(f"  classifier sense first  : {promoted} entries")
 

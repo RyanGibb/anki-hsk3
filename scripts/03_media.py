@@ -19,6 +19,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import TONE_VOWELS, align, numbered   # noqa: E402
+from syllabus import LEVELS   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -36,7 +37,6 @@ SWAC = ROOT / "data/swac-index.csv"
 # the deck ships passes through stage(), so preferring them here covers all of it.
 TRIMMED = ROOT / ".cache/trimmed"
 
-LEVELS = ["1", "2", "3", "4", "5", "6", "7-9"]
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
 
 

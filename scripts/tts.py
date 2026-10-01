@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Synthesise the audio the recorded corpus does not cover, saying the checked reading.
 
-Words with no recording, and the grammar sentences, which no corpus has. Every syllable
-is given to the engine as pinyin, so 长 is zhǎng or cháng because the deck decided which
-and not because the synthesiser guessed. That is the whole reason for using a service
-that accepts phonemes.
+Words with no recording, and the grammar sentences, which no corpus has. The engine is
+given the characters, not the reading: Azure takes no phonemes for zh-CN, so which way
+长 is read is the engine's choice. A sentence gives it the context to choose right; a
+word on its own gives it none, so a word written like another but read differently is
+not voiced at all.
 
 Writes into .cache/tts and leaves an index the build reads. Nothing here runs during a
 build: a checkout without a key still produces a deck, just a quieter one.
@@ -17,7 +18,6 @@ import hashlib
 import json
 import os
 import pathlib
-import re
 import sys
 import time
 import urllib.error
