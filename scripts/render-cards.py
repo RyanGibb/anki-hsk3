@@ -155,7 +155,11 @@ def shoot(html: str, out: pathlib.Path, width: int, scale: int, chromium: str) -
              f"--force-device-scale-factor={scale}",
              f"--window-size={width},4000", "--virtual-time-budget=4000",
              f"--screenshot={raw}", f"file://{src}"],
-            check=True, capture_output=True)
+            check=True, capture_output=True,
+            # A library path inherited from whatever launched the build is the caller's,
+            # not chromium's: the nixpkgs claude-code wrapper prepends an alsa-lib built
+            # against a newer glibc than chromium's own, and chromium fails to start.
+            env={k: v for k, v in os.environ.items() if k != "LD_LIBRARY_PATH"})
         trim(raw, out)
 
 
