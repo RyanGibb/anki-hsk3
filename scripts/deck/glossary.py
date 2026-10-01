@@ -9,6 +9,7 @@ from syllabus import LEVELS
 from deck.paths import BUILD, RAW, ROOT
 from deck.notation import CJK, POINTER, SANDHI, cedict_lines, char_rank, citation_readings, clean_xrefs, sense_key, short_gloss, syllable, toned
 from deck.etymology import load_etymology
+from word import Word
 
 
 class Glossary:
@@ -20,7 +21,7 @@ class Glossary:
     are one apparatus over one body of state, not eight separate ideas.
     """
 
-    def __init__(self, words: list[dict], wiki, readings, pos) -> None:
+    def __init__(self, words: list[Word], wiki, readings, pos) -> None:
         self.wiki = wiki
         self.readings = readings
         self.pos = pos

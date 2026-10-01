@@ -3,6 +3,7 @@ import html
 import re
 
 from deck.notation import CJK, cedict_lines
+from word import Word
 
 
 class Wiktionary:
@@ -15,7 +16,7 @@ class Wiktionary:
 
     RUN = re.compile(r"[㐀-鿿豈-﫿]+")
 
-    def __init__(self, words: list):
+    def __init__(self, words: list[Word]):
         self.to_trad = {}
         for line in cedict_lines():
             m = re.match(r"^(\S+) (\S+) \[", line)

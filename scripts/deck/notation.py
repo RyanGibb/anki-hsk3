@@ -6,6 +6,7 @@ import html
 import re
 
 from deck.paths import RAW
+from word import Word
 
 
 CJK = re.compile(r"[㐀-鿿豈-﫿]")
@@ -42,7 +43,7 @@ def syllable(s: str) -> str:
     return s.replace(" ", "").replace("u:", "v").replace("ü", "v").lower()
 
 
-def ways_read(w: dict) -> list:
+def ways_read(w: Word) -> list:
     """Every way the syllabus reads a word, each spelled as syllable() spells it: 谁 is
     one word read shei2/shui2."""
     return [syllable(x) for x in w["pinyin_numbered"].split("/") if x.strip()]

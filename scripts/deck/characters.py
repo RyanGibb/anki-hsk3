@@ -11,9 +11,11 @@ from syllabus import LEVELS
 from deck.paths import BUILD, MEDIA, MMAH_DICT, RAW
 from deck.notation import CJK, char_rank, clean_xrefs, lvl_of, mask_answer, read_tsv, render_senses, syllable, toned, ways_read
 from deck.models import char_model, deck
+from word import Word
 
 
-def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
+def build_characters(words: list[Word], wiki, media, number, gloss, pos,
+                     readings) -> list:
     """The writing cards: a character, how it is read, what it means, how it is
     written, the words it is met in and what it is made of.
 
@@ -303,7 +305,7 @@ def build_characters(words, wiki, media, number, gloss, pos, readings) -> list:
 Readings = collections.namedtuple("Readings", "by_char entries variant")
 
 
-def readings_taught(words) -> Readings:
+def readings_taught(words: list[Word]) -> Readings:
     """How the syllabus teaches each single character: the ways it is read, the
     entries that teach it, and whether it is one word said two ways.
 

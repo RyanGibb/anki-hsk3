@@ -12,6 +12,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import align, syllabify   # noqa: E402
+from word import load_words   # noqa: E402
 from syllabus import LEVELS   # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -31,7 +32,7 @@ def check(label: str, ok: bool, detail: str = "") -> None:
 
 
 def main() -> int:
-    words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
+    words = load_words()
 
     print("counts vs the official syllabus")
     running = 0

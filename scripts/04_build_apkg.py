@@ -12,6 +12,7 @@ import genanki
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pinyin_align import numbered   # noqa: E402
+from word import load_words   # noqa: E402
 from deck.paths import BUILD, MEDIA, ROOT   # noqa: E402
 from deck.notation import AFFIX, syllable   # noqa: E402
 from deck.models import VOCAB_FIELDS   # noqa: E402
@@ -24,13 +25,7 @@ from deck.glossary import Glossary   # noqa: E402
 
 def main() -> int:
     decks, media = [], set()
-    words = json.loads((BUILD / "words.json").read_text(encoding="utf-8"))
-    # 02_build_words.py writes the words and 03_media.py adds the recordings and the
-    # stroke diagrams to them. Run out of order the fields are simply absent, and the
-    # first thing to ask for one fails a thousand lines later with a bare KeyError.
-    if words and "audio" not in words[0]:
-        raise SystemExit("build/words.json carries no media: run scripts/03_media.py "
-                         "after scripts/02_build_words.py and before this")
+    words = load_words()
     by_entry_all = {w["entry"]: w for w in words}
     groups = collections.defaultdict(list)
     for w in words:

@@ -14,6 +14,7 @@ from deck.paths import MEDIA, RAW, ROOT
 from deck.notation import CJK, TITLE, best_entry, clean_xrefs, lvl_of, read_tsv, syllable
 from deck.models import deck, sentence_model
 from deck.vocabulary import PartsOfSpeech
+from word import Word
 
 
 PROPER = {"ns", "nt", "nz"}   # place, organisation, other proper noun -- 上海 is not 上 + 海
@@ -21,7 +22,7 @@ SPEAKER = re.compile(r"^[A-Z]：")
 SUFFIX = set("们儿子头过着")    # attaches to its stem: 人们, 点儿, 看过
 
 
-def make_pinyin(words):
+def make_pinyin(words: list[Word]):
     """Sentence reading: the syllabus's pinyin where the token is an HSK word, pypinyin
     for the rest. pypinyin has no erhua, rendering 哪儿 as "nǎér"."""
     import jieba
@@ -92,7 +93,7 @@ Sentences = collections.namedtuple(
     "decks example_sentence inside wanted_audio audio_for py_stats")
 
 
-def build_grammar(words, wiki, media, cedict_defs, number) -> Sentences:
+def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Sentences:
     """The sentence cards, and the sentence each vocabulary card borrows.
 
     Everything the syllabus's grammar file has to say: the points, the sentences

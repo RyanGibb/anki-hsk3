@@ -12,9 +12,10 @@ from syllabus import LEVELS, POS_SPLIT
 from deck.paths import BUILD, ROOT
 from deck.notation import TONE_MARK, clean_xrefs, render_senses, spoken, ways_read
 from deck.models import deck, vocab_model
+from word import Word
 
 
-def also_read(w, by_entry: dict, pos: "PartsOfSpeech") -> str:
+def also_read(w: Word, by_entry: dict[str, Word], pos: "PartsOfSpeech") -> str:
     """The other word written this way, named by whatever tells it apart, and what it
     means.
 
@@ -50,7 +51,7 @@ def also_read(w, by_entry: dict, pos: "PartsOfSpeech") -> str:
     return "".join(rows)
 
 
-def tone_hint(w, siblings: dict, gloss: dict) -> str:
+def tone_hint(w: Word, siblings: dict[str, list[Word]], gloss: dict) -> str:
     """Which of the words written this way is being asked for.
 
     The part of speech first, because it says nothing about the pronunciation: the
@@ -104,7 +105,7 @@ class PartsOfSpeech:
         en = self.en.get(p, "")
         return f'{p}{f" <span class=en>{en}</span>" if en else ""}'
 
-    def glossed(self, parts: list[str], w: dict | None = None) -> str:
+    def glossed(self, parts: list[str], w: Word | None = None) -> str:
         """The labels with their English, and given the word they belong to, the level
         each arrives at."""
         def one(m):
@@ -116,7 +117,7 @@ class PartsOfSpeech:
         return "、".join(re.sub(r"[^、,／/（）()]+", one, p) for p in parts)
 
     @staticmethod
-    def level_of(w: dict, p: str) -> str:
+    def level_of(w: Word, p: str) -> str:
         """The level the syllabus teaches the word as this part of speech: 半 is one
         entry, a numeral at HSK 1 and an adverb at HSK 4. A part of speech the word list
         does not give it takes the entry's own level."""
@@ -140,7 +141,7 @@ class PartsOfSpeech:
         named = set(cls.named(pos))
         return named if any(p in named for p, *_ in split) else {p for p, *_ in split}
 
-    def divided(self, entries: list, numbered: str) -> list:
+    def divided(self, entries: list[Word], numbered: str) -> list:
         """[(part of speech, senses, taught, level)] for the entries reading a character
         the way the card reads it.
 
@@ -175,7 +176,7 @@ class PartsOfSpeech:
             x for x in (html.escape(clean_xrefs(p.strip()), quote=False)
                         for p in m.split("/")) if x.strip()))
 
-    def blocks(self, w: dict) -> str:
+    def blocks(self, w: Word) -> str:
         """The meaning under the part of speech it belongs to.
 
         A part of speech the syllabus does not give the word is still worth knowing and
@@ -207,7 +208,7 @@ class PartsOfSpeech:
 Vocabulary = collections.namedtuple("Vocabulary", "decks notes")
 
 
-def build_vocabulary(words, wiki, media, number, gloss, pos,
+def build_vocabulary(words: list[Word], wiki, media, number, gloss, pos,
                      groups, by_entry_all) -> Vocabulary:
     """The recognition cards: a word, how it is read, what it means, how it is
     written and what its characters are.
@@ -241,7 +242,7 @@ def build_vocabulary(words, wiki, media, number, gloss, pos,
                 # A syllable said light is said inside a word, and the card says which
                 # word, since what plays is not the word written above it.
                 spoken(w["pinyin"])
-                + (f' (in {w["heard_in"]})' if w.get("heard_in") else ""),
+                + (f' (in {heard})' if (heard := w.get("heard_in")) else ""),
                 w["pinyin_numbered"],
                 pos.blocks(w),
                 # Every meaning is headed by its part of speech now, so the line that

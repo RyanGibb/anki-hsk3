@@ -16,7 +16,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHECKED = ROOT / "data/grammar-pinyin.csv"
 
-from pinyin_align import CJK, FLAT, RULED, align  # noqa: E402
+from pinyin_align import FLAT, RULED, align  # noqa: E402
 
 def kind(variants) -> str:
     flat = [v.replace(" ", "") for v in variants]
