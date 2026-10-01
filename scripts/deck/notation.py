@@ -289,11 +289,35 @@ def mask_answer(text: str, ch: str) -> str:
 
 
 def cedict_lines():
-    """The dictionary, then the patch of words it does not carry."""
-    for name in ("cedict_ts.u8", "cedict_patch.u8"):
-        path = RAW / name
-        if path.exists():
-            yield from path.read_text(encoding="utf-8").splitlines()
+    """The dictionary, with the patch read into it.
+
+    A patched sense of a word the dictionary carries joins that word's own lines: 在
+    is patched with "in; at", and as a line of its own it was a second entry that
+    nothing choosing one entry ever chose, so a sentence's 在 could not be glossed
+    "at". It joins every line with that heading, so that which of them is chosen --
+    by how much each says -- is what it was. A word the dictionary does not carry is
+    a line of its own after the rest.
+    """
+    main = (RAW / "cedict_ts.u8").read_text(encoding="utf-8").splitlines() \
+        if (RAW / "cedict_ts.u8").exists() else []
+    patch = (RAW / "cedict_patch.u8").read_text(encoding="utf-8").splitlines() \
+        if (RAW / "cedict_patch.u8").exists() else []
+    head = re.compile(r"^(\S+ \S+ \[[^\]]*\]) /(.*)/$")
+    at: dict[str, list] = {}
+    for i, line in enumerate(main):
+        m = head.match(line)
+        if m:
+            at.setdefault(m.group(1), []).append(i)
+    alone = []
+    for line in patch:
+        m = head.match(line)
+        if m and m.group(1) in at:
+            for i in at[m.group(1)]:
+                main[i] = main[i] + m.group(2) + "/"
+        else:
+            alone.append(line)
+    yield from main
+    yield from alone
 
 
 def char_rank(entry):
