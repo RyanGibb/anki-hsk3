@@ -337,6 +337,69 @@ def main() -> int:
                  or r["word"] not in r["chinese"]]
         check(f"{len(rows)} hand-picked sentence glosses all still match", not stale,
               ", ".join(stale) if stale else "")
+        # The file is read into a dict, so a key written twice keeps only the last row
+        # and the first is a judgement nobody sees.
+        twice = [k for k, n in collections.Counter(
+            (r["chinese"], r["word"]) for r in rows).items() if n > 1]
+        check("no sentence gloss is written twice", not twice,
+              f"{len(twice)}: {[w for _, w in twice[:4]]}" if twice else "")
+
+    # The checked readings and translations are keyed on the sentence as the build
+    # cuts it. A row for a sentence it no longer cuts -- the half of one it has since
+    # joined -- is read by nothing, and a sentence it cuts with no row is read by a
+    # machine instead.
+    if APKG.exists():
+        shown = set()
+        with zipfile.ZipFile(APKG) as z:
+            name = next(x for x in z.namelist() if x.startswith("collection.anki"))
+            with tempfile.TemporaryDirectory() as td:
+                z.extract(name, td)
+                con = sqlite3.connect(pathlib.Path(td) / name)
+                mods = json.loads(con.execute("select models from col").fetchone()[0])
+                mid = [k for k, m in mods.items() if m["name"] == "HSK 3.0 Sentence"]
+                if mid:
+                    flds = [f["name"] for f in mods[mid[0]]["flds"]]
+                    at = flds.index("Hanzi")
+                    for (f,) in con.execute("select flds from notes where mid=?",
+                                            (int(mid[0]),)):
+                        for x in f.split("\x1f")[at].split("<br>"):
+                            shown.add(re.sub("<[^>]+>", "", x))
+                con.close()
+        for table in ("grammar-pinyin.csv", "grammar-translations.csv"):
+            path = ROOT / "data" / table
+            if not path.exists():
+                continue
+            keys = [r["chinese"] for r in csv.DictReader(path.open(encoding="utf-8"))]
+            # 呢1 is the source's index and the card drops it; a digit that is part of
+            # the sentence -- 2022年 -- stays, so the digits are compared as they are.
+            unread = [k[:20] for k in keys if re.sub(r"(?<=[㐀-鿿])[0-9](?![0-9])", "", k)
+                      not in shown and k not in shown]
+            check(f"{table}: every row is a sentence a card shows", not unread,
+                  f"{len(unread)}: {unread[:3]}" if unread else "")
+
+    # Every table in data/ is read by csv.DictReader, which pairs a short row's fields
+    # with the wrong columns in silence, and the hand-edited ones have been saved with
+    # both kinds of line ending at once.
+    ragged, mixed = [], []
+    for path in sorted((ROOT / "data").glob("*.csv")):
+        # a quoted field may hold a newline of its own, so the fields are emptied
+        # first and only the newlines between records are counted
+        raw = re.sub(rb'"(?:[^"]|"")*"', b'""', path.read_bytes())
+        crlf = raw.count(b"\r\n")
+        if 0 < crlf < raw.count(b"\n"):
+            mixed.append(path.name)
+        with path.open(encoding="utf-8", newline="") as fh:
+            width = None
+            for n, row in enumerate(csv.reader(fh), 1):
+                if width is None:
+                    width = len(row)
+                elif len(row) != width:
+                    ragged.append(f"{path.name}:{n}")
+                    break
+    check("every data table has the same number of columns in every row", not ragged,
+          ", ".join(ragged) if ragged else "")
+    check("no data table mixes its line endings", not mixed,
+          ", ".join(mixed) if mixed else "")
 
     check("no curated gloss invents a sense", not invented,
           f"{len(invented)}: {invented[:3]}" if invented else "")

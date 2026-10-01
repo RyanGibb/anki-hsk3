@@ -1,7 +1,7 @@
 entry,traditional,why
 台风,颱風,"sense-dependent: 颱風 is the typhoon, 臺風 is stage presence. CC-CEDICT lists both at tai2feng1 with one gloss each, so nothing automatic can choose."
-合伙,合夥,CC-CEDICT gives 合伙 as its own traditional; adjudicated against Wiktionary as 合夥.
-事迹,事蹟,CC-CEDICT gives 事跡; adjudicated against Wiktionary as 事蹟.
+合伙,合夥,Wiktionary gives 合夥; pinned so that a dictionary entry under 合伙 cannot change it.
+事迹,事蹟,Wiktionary gives 事蹟; pinned so that a dictionary entry under 事跡 cannot change it.
 丑,醜,"syllabus marks it 形 (adjective), so it is 醜 (ugly, shameful), not 丑 (clown, 2nd earthly branch). Wiktionary types both merely as 'character', so POS cannot break it automatically."
 签1,簽,"syllabus POS 动: 簽 /to sign one's name/visa/. Confirmed, matches the automatic pick."
 签2,籤,"syllabus POS 名: the noun is 籤 /inscribed bamboo stick/label/tag/, not the verb 簽. The automatic pick was wrong -- 签1 and 签2 were both getting 簽."

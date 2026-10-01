@@ -1,9 +1,6 @@
 chinese,english
 专用名量词：本、个、家、口、块、件、只、元,"Dedicated nominal measure words: 本, 个, 家, 口, 块, 件, 只, 元"
 借用名量词：杯,Borrowed nominal measure word: 杯
-连接词语或短语,Joining words or phrases
-基本结构类型,Basic structural types
-其他结构类型,Other structural types
 名词、代词或名词性短语作主语,"Nouns, pronouns or nominal phrases as the subject"
 名词、代词、数词或数量短语作谓语,"Nouns, pronouns, numerals or numeral-measure phrases as the predicate"
 动词或动词性短语、形容词或形容词性短语作谓语,"Verbs or verbal phrases, adjectives or adjectival phrases, as the predicate"
@@ -15,8 +12,6 @@ chinese,english
 主谓句2：形容词谓语句,Subject-predicate sentences 2: adjectival predicate
 主谓句3：名词谓语句,Subject-predicate sentences 3: nominal predicate
 表示等同或类属,Stating identity or class membership
-“是”字句1,是 sentences 1
-“有”字句1,有 sentences 1
 处所+是+名词,Place + 是 + noun
 处所+有+数量短语+名词,Place + 有 + numeral-measure phrase + noun
 前后动作先后发生，后一动作是前一动作的目的,"Two actions in sequence, the second the purpose of the first"
@@ -24,14 +19,11 @@ chinese,english
 主语+动词+宾语1+宾语2,Subject + verb + object 1 + object 2
 不用关联词语的复句,Complex sentences with no connective
 用动态助词“了1”表示,Expressed with the aspect particle 了1
-用语气助词“了2”表示,Expressed with the modal particle 了2
 ……在/正在+动词,… 在/正在 + verb
 ……在/正在+动词……+呢,… 在/正在 + verb … + 呢
 序数表达法1：第+数词,Ordinal numbers 1: 第 + numeral
 专用名量词：条、位、间、名,"Dedicated nominal measure words: 条, 位, 间, 名"
 借用名量词：包,Borrowed nominal measure word: 包
-连接词或短语,Joining words or phrases
-连接分句或者句子,Joining clauses or sentences
 “的”字短语,的 phrases
 形容词性短语,Adjectival phrases
 名词性短语作谓语,Nominal phrases as the predicate
@@ -45,22 +37,17 @@ chinese,english
 形容词+数量补语,Adjective + quantity complement
 主谓句4：主谓谓语句,Subject-predicate sentences 4: a subject-predicate phrase as the predicate
 用“还是”连接的选择问句,Alternative questions joined by 还是
-用“别”的祈使句,Imperatives with 别
 表示说明或特征,Stating an explanation or a characteristic
-“是”字句2,是 sentences 2
-“有”字句2,有 sentences 2
 处所+动词+着(+数量短语)+名词,Place + verb + 着 (+ numeral-measure phrase) + noun
 A比B+形容词,A 比 B + adjective
 A比B+形容词+数量补语/程度补语,A 比 B + adjective + quantity complement / degree complement
 A有/没有B（+这么/那么）+形容词,A 有/没有 B (+ 这么/那么) + adjective
 A比B+动词+得+形容词/A+动词+得+比+B+形容词,A 比 B + verb + 得 + adjective / A + verb + 得 + 比 B + adjective
-“是……的”句1,是……的 sentences 1
 表使令：主语+请/叫/让……+宾语1+动词+宾语2,Directing someone: subject + 请/叫/让 … + object 1 + verb + object 2
 主语+动词+给+宾语1+宾语2,Subject + verb + 给 + object 1 + object 2
 一……就……,"一 … 就 …: as soon as …, …"
 动词+着：表示状态的持续,Verb + 着: a state continuing
 动词+着：表示动作的持续,Verb + 着: an action continuing
-用动态助词“过”表示,Expressed with the aspect particle 过
 序数表示法2：数词+量词,Ordinal numbers 2: numeral + measure word
 概数表达法1：用“几”表示概数,Approximate numbers 1: 几
 概数表达法1：数词+多+量词,Approximate numbers 1: numeral + 多 + measure word
@@ -71,8 +58,6 @@ A比B+动词+得+形容词/A+动词+得+比+B+形容词,A 比 B + verb + 得 + a
 疑问代词的非疑问用法：不定指用法,"Interrogative pronouns used non-interrogatively, referring to no one in particular"
 专用名量词：把、双、张、种、层、封、页、辆、节、所、班、段、头、句、公斤、斤、角、毛、刻、米,"Dedicated nominal measure words: 把, 双, 张, 种, 层, 封, 页, 辆, 节, 所, 班, 段, 头, 句, 公斤, 斤, 角, 毛, 刻, 米"
 借用名量词：碗、盘,"Borrowed nominal measure words: 碗, 盘"
-连接词或者短语,Joining words or phrases
-连接分句或句子,Joining clauses or sentences
 数量重叠：数词+量词+数词+量词,Reduplicated numeral-measure phrases: numeral + measure word + numeral + measure word
 不A 不 B,不 A 不 B: neither A nor B
 一……也/都+不/没……,一 … 也/都 + 不/没 …: not even one
@@ -90,7 +75,6 @@ A比B+动词+得+形容词/A+动词+得+比+B+形容词,A 比 B + verb + 得 + a
 “怎样+动词”的特指问句,Specific questions with 怎样 + verb
 用反问句表示强调：不是……吗？,Emphasis by rhetorical question: 不是 … 吗？
 主语+把+宾语+动词+在/到+处所,Subject + 把 + object + verb + 在/到 + place
-“把”字句1,把 sentences 1
 主语+把+宾语1+动词（+给）+宾语2,Subject + 把 + object 1 + verb (+ 给) + object 2
 主语+把+宾语+动词+结果补语/趋向补语/状态补语,"Subject + 把 + object + verb + resultative, directional or state complement"
 主语+被+宾语+动词+其他成分,Subject + 被 + object + verb + other elements
@@ -103,14 +87,12 @@ A比B+多/少/早/晚+动词+数量短语,A 比 B + 多/少/早/晚 + verb + num
 表示出现：处所词+动词+趋向补语/结果补语+动态助词（了）+数量短语+人/物,Something appearing: place word + verb + directional or resultative complement + the aspect particle 了 + numeral-measure phrase + person or thing
 表示消失：处所词+动词+结果补语+动态助词（了）+数量短语+人/物,Something disappearing: place word + verb + resultative complement + the aspect particle 了 + numeral-measure phrase + person or thing
 强调说话人的看法或态度,Emphasising the speaker's view or attitude
-“是……的”句2,是……的 sentences 2
 主语+动词+宾语+动词+补语,Subject + verb + object + verb + complement
 ……了……（就）……,… 了 … （就） …
 概数表达法2：用“大概”表示概数,Approximate numbers 2: 大概
 概数表达法2：相邻数词连用表示概数,Approximate numbers 2: consecutive numerals together
 专用名量词：打、袋、棵、台、幅,"Dedicated nominal measure words: 打, 袋, 棵, 台, 幅"
 借用名量词：脸、手、盒、屋子、桌子,"Borrowed nominal measure words: 脸, 手, 盒, 屋子, 桌子"
-连接词或词组,Joining words or phrases
 数词+形容词+量词,Numeral + adjective + measure word
 一+量词+比+一+量词,一 + measure word + 比 + 一 + measure word
 怎么都/也+不/没……,"怎么 + 都/也 + 不/没 …: no matter how, not …"
@@ -122,7 +104,6 @@ A比B+多/少/早/晚+动词+数量短语,A 比 B + 多/少/早/晚 + verb + num
 难道……吗？,难道 … 吗？: surely not …?
 由疑问代词构成的反问句,Rhetorical questions built on an interrogative pronoun
 主语+把+宾语+动词（+一/了）+动词,Subject + 把 + object + verb (+ 一/了) + verb
-“把”字句2,把 sentences 2
 主语+把+宾语+动词+了,Subject + 把 + object + verb + 了
 主语+把+宾语+动词+动量补语/时量补语,Subject + 把 + object + verb + action-measure or duration complement
 主语+把+宾语+状语+动词,Subject + 把 + object + adverbial + verb
@@ -138,7 +119,7 @@ A比B+多/少/早/晚+动词+数量短语,A 比 B + 多/少/早/晚 + verb + num
 用“大约、左右、前后”表示概数,"Approximate numbers with 大约, 左右 and 前后"
 小数、分数、百分数、倍数的表示法,"Writing decimals, fractions, percentages and multiples"
 X着也是X着,X 着也是 X 着: it is X either way
-动词+什么（就）是什么,Verb + 什么（就）是什么: whatever …, that is what goes
+动词+什么（就）是什么,"Verb + 什么（就）是什么: whatever …, that is what goes"
 动词+得/不得,Verb + 得/不得
 形容词/心理动词+得+不得了,Adjective or verb of feeling + 得 + 不得了
 趋向补语的引申用法：表示状态意义：动词/形容词+下来/下去/起来/过来/过去,"Directional complements extended, standing for a state: verb or adjective + 下来/下去/起来/过来/过去"
@@ -146,10 +127,8 @@ X着也是X着,X 着也是 X 着: it is X either way
 动词/形容词+得+主谓短语,Verb or adjective + 得 + subject-predicate phrase
 动词/形容词+得+固定短语,Verb or adjective + 得 + set phrase
 表示存在、具有：主语+有+着+宾语,Existence or possession: subject + 有 + 着 + object
-“有”字句3,有 sentences 3
 表示附着：主语+动词+有+宾语,Something attached to something: subject + verb + 有 + object
 主语+把+宾语+一+动词,Subject + 把 + object + 一 + verb
-“把”字句3,把 sentences 3
 主语+把+宾语1+动词+宾语2,Subject + 把 + object 1 + verb + object 2
 前后两个动词性词语具有因果、转折、条件关系,"The two verbal expressions stand in a causal, adversative or conditional relation"
 A+形容词+B+数量补语,A + adjective + B + quantity complement
@@ -164,10 +143,8 @@ X到Y头上来了,X 到 Y 头上来了: X has landed on Y
 看/瞧+把+宾语（施事）+X得,"看/瞧 + 把 + object, the one acting + X 得"
 动词/形容词+透+了,Verb or adjective + 透 + 了
 主语（非生物体）+把+宾语+动词+其他成分,"Subject, something inanimate + 把 + object + verb + other elements"
-“把”字句4,把 sentences 4
 主语+把+宾语（施事）+动词+其他成分,"Subject + 把 + object, the one acting + verb + other elements"
 一时……一时……,"一时 … 一时 …: now …, now …"
-连接词或词组以及分句或句子,"Joining words or phrases, and clauses or sentences"
 说到哪儿去了,"说到哪儿去了: don't be silly, not at all"
 X到这个地步/份上,X 到这个地步/份上: X has come to this
 别提（有）多+形容词+了,别提（有）多 + adjective + 了: unbelievably …

@@ -15,10 +15,6 @@ if [ ! -s data/raw/cedict_ts.u8 ]; then
   curl -fL --progress-bar "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz" \
     | gunzip > data/raw/cedict_ts.u8.part && mv data/raw/cedict_ts.u8.part data/raw/cedict_ts.u8
 fi
-# Words CC-CEDICT does not carry, written in its format by the syllabus parser. Without
-# them 压轴 and 致力于 have no entry at all, so nothing gives their traditional form.
-fetch data/raw/cedict_patch.u8 \
-  https://raw.githubusercontent.com/Punpuf/hsk-syllabus-vocabulary-parser/main/data/cedict_patch.u8
 # What each character breaks down into, in Ideographic Description Sequences. Wiktionary
 # names the parts; this says whether the character carries the shape it names.
 fetch data/raw/ids.txt \
