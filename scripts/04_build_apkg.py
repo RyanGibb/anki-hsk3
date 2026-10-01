@@ -391,7 +391,7 @@ def clean_xrefs(text: str) -> str:
     # closing the classifier is no longer the first one to come along: 念 was left
     # reading "to give (sb) a tongue-lashing dùn)".
     text = re.sub(r"\s*\(CL:[^)]*\)", "", text)
-    text = re.sub(r"\s*/?\s*CL:[^/]*", "", text)
+    text = drop_slot(text, "CL:")
     out = PIPE.sub(r"\2", BARE.sub(bare, XREF.sub(one, text)))
     # The deck teaches one standard: the syllabus's readings, spoken by mainland
     # voices, tested by a mainland exam. A reading from another standard is not a
@@ -399,8 +399,18 @@ def clean_xrefs(text: str) -> str:
     # offers a card its own recording contradicts. An "also pr." is kept: that is an
     # alternative within the standard, and the reading field carries it too.
     out = re.sub(r"\s*\(Taiwan pr\.[^)]*\)", "", out)
-    out = re.sub(r"\s*/?\s*Taiwan pr\.[^/]*", "", out)
+    out = drop_slot(out, "Taiwan pr.")
     return out.strip(" /")
+
+
+def drop_slot(text: str, opening: str) -> str:
+    """The text without any sense that opens with these words, and without the one
+    separator that set it off. The separator after it stays, spaced as it was: 载 is
+    "...etc) / Taiwan pr. zài / year", and taking the note with the spaces around both
+    slashes left "...etc)/ year" reading as one sense."""
+    o = re.escape(opening)
+    text = re.sub(rf"\s*/\s*{o}[^/]*?(?=\s*/|\s*$)", "", text)
+    return re.sub(rf"^\s*{o}[^/]*(?:/\s*|$)", "", text)
 
 
 def sense_key(text: str) -> str:
