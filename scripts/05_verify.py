@@ -334,13 +334,13 @@ def main() -> int:
                                     .open(encoding="utf-8"))}
         stale = [f'{r["word"]} in {r["chinese"][:18]}' for r in rows
                  if bare(r["chinese"]) not in sentences
-                 or r["word"] not in r["chinese"]]
+                 or r["chinese"].count(r["word"]) < int(r["nth"] or 1)]
         check(f"{len(rows)} hand-picked sentence glosses all still match", not stale,
               ", ".join(stale) if stale else "")
         # The file is read into a dict, so a key written twice keeps only the last row
         # and the first is a judgement nobody sees.
         twice = [k for k, n in collections.Counter(
-            (r["chinese"], r["word"]) for r in rows).items() if n > 1]
+            (r["chinese"], r["word"], r["nth"]) for r in rows).items() if n > 1]
         check("no sentence gloss is written twice", not twice,
               f"{len(twice)}: {[w for _, w in twice[:4]]}" if twice else "")
 

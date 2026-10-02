@@ -222,12 +222,15 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
 
     # Words whose entry no rule picks correctly: 京 is Beijing and not the surname
     # Jing, 春节 is a festival and not 春 the surname, 经医生 is "after the doctor" and
-    # not a name before a title. 05_verify fails if one stops matching a sentence.
+    # not a name before a title. A row answers for every occurrence of the word in
+    # the sentence unless it names which: 没考好 and 好难过 are two senses of 好 in
+    # one sentence, and the second row is keyed 2. 05_verify fails if one stops
+    # matching a sentence.
     word_gloss = {}
     fixes = ROOT / "data/sentence-word-glosses.csv"
     if fixes.exists():
         for row in csv.DictReader(fixes.open(encoding="utf-8")):
-            word_gloss[(row["chinese"], row["word"])] = row["meaning"]
+            word_gloss[(row["chinese"], row["word"], row["nth"])] = row["meaning"]
 
     def longest_match(run: str) -> list:
         """Split a run of characters on the longest words the dictionary knows."""
@@ -283,10 +286,11 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
         seen = {x.casefold() for x in out}
         return out + [x for x in senses_of(w["meaning"]) if x.casefold() not in seen]
 
-    def gloss_word(sentence: str, w: str, read=(), proper=False) -> str:
+    def gloss_word(sentence: str, w: str, read=(), proper=False, here=None) -> str:
         """One entry per word, and per leftover piece of it: 读了 and 人们 are one word
         to the reading and no word to the dictionary, and 了 and 们 are usually the
-        point of the sentence."""
+        point of the sentence. Given where the word stands, a piece knows which
+        occurrence of itself it is, which is how a row written for one is found."""
         out, i = [], 0
         while i < len(w):
             for n in range(len(w) - i, 0, -1):
@@ -303,7 +307,10 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
                     or cedict_defs.get(piece)
                 if not cands:
                     continue
-                written = word_gloss.get((sentence, piece))
+                nth = (str(sentence[:here + i + n].count(piece)) if here is not None
+                       else "")
+                written = (word_gloss.get((sentence, piece, nth))
+                           or word_gloss.get((sentence, piece, "")))
                 # A sense written down for this sentence says which entry is meant, not
                 # only which of its senses leads. 游 in 游游泳 is the 游 that swims and
                 # not the 遊 that tours, and taking the sense without the entry left the
@@ -422,15 +429,16 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
         out = []
         # Found in the sentence rather than counted from the words, which leaves out
         # the punctuation: one comma is enough to make 老师和同学 look like 老 + 和.
-        at, cursor = {}, 0
+        # Every occurrence is glossed, since a word can mean two things in one
+        # sentence; rows that come out the same are kept once by the card.
+        places, cursor = [], 0
         for w, _reading in words:
             i = sentence.find(w, cursor)
             if i < 0:
                 i = cursor
-            at.setdefault(w, i)
+            places.append(i)
             cursor = i + len(w)
-        for w, read in dict.fromkeys(words):
-            here = at.get(w, 0)
+        for (w, read), here in zip(words, places):
             # A：你的手机呢？ is said by A, and A is no word of it: glossed, it came out as
             # CC-CEDICT's "A", Taiwanese slang for to steal.
             if here == 0 and SPEAKER.match(sentence) and w == sentence[0]:
@@ -450,7 +458,7 @@ def build_grammar(words: list[Word], wiki, media, cedict_defs, number) -> Senten
             # Glossing the longest piece it knows and stopping would leave 了 and 们
             # unexplained, and those are usually the point of the sentence, so what is
             # left over is glossed in turn.
-            out.append(gloss_word(sentence, w, read, proper))
+            out.append(gloss_word(sentence, w, read, proper, here))
         # The halves are glossed where they stand, and the word they make is said after
         # them: the sentence has 帮 and it has 忙, and neither is 帮忙.
         glossed = {p for w, _ in words for p in w}

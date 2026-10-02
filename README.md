@@ -129,7 +129,8 @@ is a line in a diff rather than a rule buried in code.
   written alike, so 本 the classifier does not teach 本 the root as well.
 - `sentence-word-glosses.csv` says which sense a word carries in a particular
   sentence, where nothing else can: 游 in 游游泳 is the swimming, not the
-  touring.
+  touring. A row can name which occurrence it is for, since 没考好 and
+  好难过 are two senses of 好 in one sentence.
 - `compound-senses.csv` says which of a character's senses a word is built
   from, so that 要 under 重要 leads with "important" rather than "to want".
 - `grammar-pinyin.csv` is the reading of every example sentence, written to the
