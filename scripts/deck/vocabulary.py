@@ -274,7 +274,7 @@ def build_vocabulary(words: list[Word], wiki, media, number, gloss, pos,
                 html.escape(literal.get(w["traditional"], ""), quote=False),
                 # filled in once the sentences have been built, below
                 "",
-                gloss.part_origins(w["simplified"]),
+                gloss.part_origins(w["simplified"], w["traditional"]),
             ],
             tags=tags,
         )

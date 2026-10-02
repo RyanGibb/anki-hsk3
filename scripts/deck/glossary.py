@@ -589,7 +589,7 @@ class Glossary:
         """
         if named != ch or (self.meta(ch).get("traditional") or ch) == ch:
             return None
-        fringe = re.compile(r"surname|abbr\.|short (?:name|for)|used (?:in|as)", re.I)
+        fringe = re.compile(r"surname|abbr\.|short (?:name|for)|^used (?:in|as)|^also pr\.", re.I)
         own = [e for e in self.char_any.get(ch, []) if e[0] == ch and e[2]
                and not all(fringe.search(s) for s in e[1].split(" / "))]
         return max(own, key=char_rank) if own else None
@@ -640,8 +640,11 @@ class Glossary:
         # apart in words with no plus to read -- 只 is "airflow coming out of a mouth
         # (口)" -- and then the breakdown says what is on the page: 口 and 八.
         if own:
-            return [c for c in dict.fromkeys(found or self.breaks_into.get(ch, ()))
-                    if c != ch]
+            if not found and head:
+                shapes = list(self.breaks_into.get(ch, ()))
+                if any(c in self.account(ch, own) for c in shapes):
+                    found = shapes
+            return [c for c in dict.fromkeys(found) if c != ch]
         # An account can be about a shape the card does not show, and then none of the
         # parts it names is in the character at all. 響 is 鄉 + 音, and 响 on the page is
         # 口 + 向: the origin is fetched from the traditional page because 响 has no
@@ -768,8 +771,12 @@ class Glossary:
         return [r for r in keep
                 if not (r.endswith("5") and re.sub(r"[0-9]", "", r) in toneful)][:2]
 
-    def part_origins(self, simplified: str) -> str:
+    def part_origins(self, simplified: str, traditional: str = "") -> str:
         """The origins of the parts, and of their parts, under the word's own.
+
+        A character the word writes the same way in both forms is itself, whatever
+        the deck teaches the character as on its own: the 只 of 只是 is 只 "only"
+        and not 隻 the classifier, so it is taken apart as 口 and 八 and not 隹 and 又.
 
         A step at a time rather than a branch at a time, so what the word is made of
         comes before what those are made of, and a rule divides the two: 答 gives 竹
@@ -779,7 +786,11 @@ class Glossary:
         """
         seen = {c for c in simplified if CJK.match(c)}
         self.shown_chars.update(seen)
-        queue = [(c, 1) for ch in simplified if CJK.match(ch) for c in self.made_of(ch)]
+        trad_of = (dict(zip(simplified, traditional))
+                   if len(traditional) == len(simplified) else {})
+        queue = [(c, 1) for ch in simplified if CJK.match(ch)
+                 for c in self.made_of(ch, trad_of.get(ch) == ch
+                                       and bool(self.as_itself(ch, ch)))]
         out, drawn, printed = [], 1, set()
         while queue:
             named, step = queue.pop(0)

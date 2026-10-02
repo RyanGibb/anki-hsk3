@@ -104,7 +104,8 @@ def load_etymology():
             # 台's own page says only "This character is a variant form of 鮐", which
             # is a direction elsewhere and no account of the shape
             sections = [x for x in glyphed(etym.get(ch))
-                        if not re.match(r"\(?(?:This character is a )?variant form of|See ",
+                        if not re.match(r"\(?(?:This character is a )?variant form of|See "
+                                        r"|For pronunciation and definitions of",
                                         x.get("text", ""))]
             if not sections:
                 return {}

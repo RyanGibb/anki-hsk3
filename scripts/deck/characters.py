@@ -291,7 +291,7 @@ def build_characters(words: list[Word], wiki, media, number, gloss, pos,
                     n for _, n, _ in readings.by_char.get(c, []))),
                 mask_answer(gloss.example_of(c, lv), c),
                 gloss.example_word(c, lv),
-                gloss.part_origins(c),
+                gloss.part_origins(c, char_info.get(c, {}).get("traditional") or c),
             ],
             tags=[f"HSK3.0::char::write-L{lv}"],
         )
