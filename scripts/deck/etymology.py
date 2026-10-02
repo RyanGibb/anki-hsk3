@@ -101,7 +101,11 @@ def load_etymology():
                     if about_the_glyph(x.get("text", ""), x.get("type", ""))]
 
         if own:
-            sections = glyphed(etym.get(ch))
+            # 台's own page says only "This character is a variant form of 鮐", which
+            # is a direction elsewhere and no account of the shape
+            sections = [x for x in glyphed(etym.get(ch))
+                        if not re.match(r"\(?(?:This character is a )?variant form of|See ",
+                                        x.get("text", ""))]
             if not sections:
                 return {}
         else:

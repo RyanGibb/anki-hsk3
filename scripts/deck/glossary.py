@@ -86,9 +86,6 @@ class Glossary:
         # has no origin yet; and which rows of compound-senses.csv a card has used.
         self.shown_chars: set = set()
         self.drawn: set = set()
-        # The parts being read as the characters they are in their own right, for
-        # the origin lookups made while their rows are built.
-        self.itself: set = set()
         self._read_dictionary()
         self._read_tables()
         self._read_breakdown()
@@ -236,8 +233,8 @@ class Glossary:
         # A radical is written one way and named another: makemeahanzi breaks 焦 into 隹 and
         # 灬, and the sentence saying 小 corrupted into 火 is talking about that 灬. So a
         # shape answers for the character it is the radical form of as well as for itself.
-        # ...and what Wiktionary says a shape is a variant of, which is a different
-        # thing from where it is met: 𠂇 is met in 左 and 有 and is a form of neither.
+        # ...and the characters Wiktionary enters a shape as a variant form of, which
+        # is where a part no dictionary glosses gets its name: 𠂇 is a form of 左 and 有.
         self.variant_of: dict[str, list] = collections.defaultdict(list)
         if (BUILD / "variants.json").exists():
             for target, forms in json.loads(
@@ -555,13 +552,15 @@ class Glossary:
                 queue += self.breaks_into.get(c, ())
         return seen | {t for s in seen for t in self.same_shape.get(s, ())}
 
-    def account(self, ch: str) -> str:
+    def account(self, ch: str, own: bool = False) -> str:
         """The character's own account of its shape, without the prose that wanders off
-        it and without the separate account of the simplified form."""
-        text = self.etym_char(ch, full=True, own=ch in self.itself) or ""
+        it and without the separate account of the simplified form. Asked with own,
+        the account of the character itself rather than of the traditional one the
+        deck teaches it as: see as_itself."""
+        text = self.etym_char(ch, full=True, own=own) or ""
         return re.split(f"{re.escape(MORE)}|{re.escape(LATER)}", text)[0]
 
-    def simplification(self, ch: str) -> str:
+    def simplification(self, ch: str, own: bool = False) -> str:
         """How the simplified character came to be written that way.
 
         Usually an account of its own, set apart from the account of the shape it was
@@ -572,32 +571,31 @@ class Glossary:
         read, later paragraphs included, since the breakdown guards what they name:
         that is where 何 gets 可 from, and 告 its 口 and 牛.
         """
-        parts = (self.etym_char(ch, full=True, own=ch in self.itself) or "").split(LATER)
+        parts = (self.etym_char(ch, full=True, own=own) or "").split(LATER)
         return parts[1].split(MORE)[0] if len(parts) > 1 else parts[0]
 
-    def as_itself(self, ch: str, parent: str):
+    def as_itself(self, ch: str, named: str):
         """The character's own dictionary entry, where a part is the character it is
         in its own right rather than the traditional one the deck teaches it as.
 
-        An account names its parts in traditional-form prose, so a part the deck
-        writes for another traditional character is, on the page, itself: the 厂
-        inside 跪 is the cliff radical and not 廠 the factory, 广 under 店 is the
-        shelter and not 廣. Only where the shape is in the breakdown of the
-        character that named it -- 厅's account names 聽, and the 听 the deck writes
-        for it is not on 厅's page -- and only an entry that defines the character:
-        虫's own says "variant of 蟲", 万's "used in 万俟", 台's "(classical) you".
+        An account names its parts in traditional-form prose, so where it writes the
+        simplified character that character is what is meant: the 厂 inside 跪 is
+        the cliff radical and not 廠 the factory, 广 under 店 is the shelter and not
+        廣. Where it wrote a traditional character the deck maps to a simplified one
+        -- 厅's account names 聽, written 听 -- the traditional one is meant. And
+        only an entry that defines the character: not 虫's "variant of 蟲", nor one
+        that is all surname, abbreviation or transliteration note, as 万's "used in
+        万俟" and 台's "Taiwan (abbr.) / surname Tai".
         """
-        if (self.meta(ch).get("traditional") or ch) == ch:
+        if named != ch or (self.meta(ch).get("traditional") or ch) == ch:
             return None
-        if parent and ch not in self.shapes_in(parent):
-            return None
+        fringe = re.compile(r"surname|abbr\.|short (?:name|for)|used (?:in|as)", re.I)
         own = [e for e in self.char_any.get(ch, []) if e[0] == ch and e[2]
-               and not re.match(r"used (?:in|as)|surname|short (?:name|for)|abbr\."
-                                r"|\((?:classical|archaic|literary|coll)", e[1], re.I)]
+               and not all(fringe.search(s) for s in e[1].split(" / "))]
         return max(own, key=char_rank) if own else None
 
-    def lead(self, ch: str) -> str:
-        return self.account(ch).split(". ")[0]
+    def lead(self, ch: str, own: bool = False) -> str:
+        return self.account(ch, own).split(". ")[0]
 
     def named_parts(self, head: str) -> list:
         """The parts an account takes the character apart into, before any pointer
@@ -609,8 +607,8 @@ class Glossary:
         return (ROLE.findall(head) or self.either_side(head)
                 or [c for pair in COMPOUND.findall(head) for c in pair])
 
-    def made_of(self, ch: str) -> list:
-        head = self.lead(ch)
+    def made_of(self, ch: str, own: bool = False) -> list:
+        head = self.lead(ch, own)
         found = self.named_parts(head)
         if not found and GRAPHIC.search(head):
             named = FROM.search(head)
@@ -633,11 +631,17 @@ class Glossary:
         # character is not that at all but 木 plus phonetic 卜, which its own account
         # says in full rather than as an arrow. So that account is taken apart too.
         carries = self.shapes_in(ch)
-        later = self.simplification(ch)
-        named = (BECAME.findall(self.account(ch))
+        later = self.simplification(ch, own)
+        named = (BECAME.findall(self.account(ch, own))
                  + [b for _, b in ARROW.findall(later)]
                  + self.named_parts(later))
         found = found + [c for c in named if c in carries]
+        # A character read as itself is explained by its own page, which may take it
+        # apart in words with no plus to read -- 只 is "airflow coming out of a mouth
+        # (口)" -- and then the breakdown says what is on the page: 口 and 八.
+        if own:
+            return [c for c in dict.fromkeys(found or self.breaks_into.get(ch, ()))
+                    if c != ch]
         # An account can be about a shape the card does not show, and then none of the
         # parts it names is in the character at all. 響 is 鄉 + 音, and 响 on the page is
         # 口 + 向: the origin is fetched from the traditional page because 响 has no
@@ -775,28 +779,28 @@ class Glossary:
         """
         seen = {c for c in simplified if CJK.match(c)}
         self.shown_chars.update(seen)
-        queue = [(c, 1, ch) for ch in simplified if CJK.match(ch) for c in self.made_of(ch)]
+        queue = [(c, 1) for ch in simplified if CJK.match(ch) for c in self.made_of(ch)]
         out, drawn, printed = [], 1, set()
         while queue:
-            ch, step, parent = queue.pop(0)
-            ch = self.deck_form.get(ch, ch)
+            named, step = queue.pop(0)
+            ch = self.deck_form.get(named, named)
             if ch in seen:
                 continue
             seen.add(ch)
             self.shown_chars.add(ch)
-            # Decided before anything is read about the character, since its account
-            # and its parts follow from which character it is.
-            entry = self.as_itself(ch, parent)
-            (self.itself.add if entry else self.itself.discard)(ch)
-            queue += [(c, step + 1, ch) for c in self.made_of(ch)]
+            # Which character the part is decides its account and its parts as well as
+            # its reading, so it is settled before anything is read about it.
+            entry = self.as_itself(ch, named)
+            own = bool(entry)
+            queue += [(c, step + 1) for c in self.made_of(ch, own)]
             # The whole account, as the card teaching that character gives it: 退's
             # lead takes it apart as its oracle bone form, and the paragraphs after say
             # the vessel 皀 became 艮, which is the part about the shape on the page.
-            origin = self.etym_char(ch, full=True, own=bool(entry))
+            origin = self.etym_char(ch, full=True, own=own)
             # A part Wiktionary has nothing to say about ends the walk -- unless it is
             # a character in its own right, whose reading and sense still earn the row:
             # 广 has no page of its own and is the shelter over 店 all the same.
-            if not origin and not entry:
+            if not origin and not own:
                 continue
             # Once. A radical form borrows its parent's whole account and names it as
             # the parent's -- "Radical form of 手. Pictogram ..." -- so the parent's
@@ -841,18 +845,22 @@ class Glossary:
             # character, and a shape the dump redirects is named as a form of what it
             # redirects to.
             if not senses:
-                senses = (self.mmah.get(ch) or {}).get("definition", "")
+                # 呂 is "a musical note; surname" to makemeahanzi, and a surname is
+                # not what a part means
+                senses = re.sub(r";?\s*surname\b[^;]*", "",
+                                (self.mmah.get(ch) or {}).get("definition", "")).strip("; ")
             if not senses:
                 glosses = [re.sub(r"^\(=[^)]*\)\s*", "", g).rstrip(".")
                            for g in self.etym_glosses(ch)
-                           if len(g) < 80 and not re.search(
+                           if not re.search(
                                r"\(Classifier:|^(?:alternative|variant) form of|^only used in"
-                               r"|^used in|surname|short for|slang|COVID|\(zodiac\)", g, re.I)]
+                               r"|^used in|surname|short for|slang|COVID|zodiac", g, re.I)]
                 senses = " / ".join(list(dict.fromkeys(glosses))[:3])
-            if not senses and self.variant_of.get(ch):
-                senses = "form of " + " or ".join(dict.fromkeys(self.variant_of[ch]))
-            if not senses and self.same_shape.get(ch):
-                senses = "part of " + " and ".join(sorted(self.same_shape[ch]))
+            if not senses:
+                forms = list(dict.fromkeys(self.variant_of.get(ch, [])
+                                           + sorted(self.same_shape.get(ch, ()))))
+                if forms:
+                    senses = "form of " + " or ".join(forms)
             # A part the dictionary only points elsewhere for explains nothing: 夊 is
             # entered as "see 夂", and 退 answered what it is built from with a
             # cross-reference. The character it points at is the same shape rather than
@@ -861,7 +869,7 @@ class Glossary:
             if senses and POINTER.match(senses):
                 aimed = re.search(PART, senses)
                 if aimed and aimed.group() not in seen:
-                    queue.insert(0, (aimed.group(), step, parent))
+                    queue.insert(0, (aimed.group(), step))
             said = (" / ".join(toned(r) for r in here)
                     or " / ".join((self.mmah.get(ch) or {}).get("pinyin") or []))
             body = (headed(self.wiki, ch, trad)
