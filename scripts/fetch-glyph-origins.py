@@ -216,15 +216,18 @@ def main() -> int:
     # Not only the characters with no etymology at all: where the dump kept the word's
     # history instead of the glyph's, the slot is full but the card still has no answer
     # to the question it asks. 簡 is "borrowed from English Jane" and nothing else.
+    # The simplified page as well, where it is another character's: a part read as
+    # the character it is in its own right -- 厂 the cliff under 跪, 广 the shelter
+    # under 店 -- is explained on its own page and not on 廠's or 廣's.
     missing = []
     for c in writing:
         t = trad.get(c, c)
-        if t in have:
-            continue
-        if any_about_the_glyph(etym.get(t) or etym.get(c)):
-            continue
-        if t not in missing:
-            missing.append(t)
+        for x in dict.fromkeys([t, c]):
+            if x in have or x in missing or any_about_the_glyph(etym.get(x)):
+                continue
+            if x == c and x != t and not any_about_the_glyph(etym.get(t)):
+                continue      # the traditional page is being looked up for it already
+            missing.append(x)
     if args.limit:
         missing = missing[:args.limit]
     print(f"{len(missing)} characters to look up")

@@ -38,11 +38,22 @@ def load_etymology():
     # origin" section beside the Etymology sections is missing from the dump, and where
     # the dump kept a borrowing instead the slot is full but says nothing about the
     # shape. fetch-glyph-origins.py reads those sections off the page itself.
+    # A row comes from the page's own Glyph origin section, so it is about the glyph
+    # whatever words it uses -- 哥 is "Stacked form of 可" -- and is marked as such.
+    # One that only names a variant, "Variant of 兌.", is no account, and the
+    # redirects below find the account it points at.
     origins = ROOT / "data/glyph-origins.csv"
     if origins.exists():
         for row in csv.DictReader(origins.open(encoding="utf-8")):
-            if row["text"] and not any_about_the_glyph(etym.get(row["character"])):
-                etym[row["character"]] = [{"text": row["text"], "type": row["type"],
+            text = row["text"].strip()
+            pointer = re.match(r"^(?:Variant|Alternative form|Combining form) of \S+"
+                               r"[^.]*\.?\s*(?:see there for more\.?)?$"
+                               r"|^(?:Unknown|Uncertain|Unclear)\.?$", text)
+            # a stub whose glyph the dump lost -- "Derived from its seal script form, ."
+            # -- is judged as any text is, and fails
+            said = (row["type"] or "glyph") if len(text) >= 60 else row["type"]
+            if text and not pointer and not any_about_the_glyph(etym.get(row["character"])):
+                etym[row["character"]] = [{"text": text, "type": said,
                                            "glosses": [], "senses": 0}]
 
     # A page that only says "see X" has no account of its own, and the deck shows such
