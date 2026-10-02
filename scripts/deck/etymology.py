@@ -146,8 +146,10 @@ def load_etymology():
             # first paragraph, so an empty one would be the whole of it.
             if not (p and WORDS.search(p)):
                 continue
+            # the whole marker, since its length is the depth: 臺's ": Jin slips:"
+            # heads three ":*" items and is followed by ": Qin dynasty", a sibling
             mark = BULLET.match(p)
-            mark, p = (mark.group(1)[:1] if mark else ""), BULLET.sub("", p).strip()
+            mark, p = (mark.group(1) if mark else ""), BULLET.sub("", p).strip()
             if out and not mark and p[:1].islower() \
                     and not re.search(r"[.!?:]$", out[-1][1]):
                 out[-1] = (out[-1][0], f"{out[-1][1]} {p}")
@@ -161,7 +163,7 @@ def load_etymology():
         kept, k = [], 0
         while k < len(out):
             m, p = out[k]
-            if m == ";" and k + 1 < len(out) and out[k + 1][0] == ":":
+            if m == ";" and k + 1 < len(out) and out[k + 1][0].startswith(":"):
                 kept.append((":", f"{p.rstrip(':')}: {out[k + 1][1]}"))
                 k += 2
             elif m != ";" or (k + 1 < len(out) and out[k + 1][0] != ";"):
@@ -181,16 +183,17 @@ def load_etymology():
         read "Two kinds of glyph are found in Warring States era:" and stopped, with
         the Sanjin glyph and the Chu glyph each described a line below its own term.
         """
-        head, i, items = ps[k][1], k + 1, []
+        depth, head, i, items = len(ps[k][0]), ps[k][1], k + 1, []
         # Only where the head asks for them. A colon promises a list and says nothing
         # without it -- "Two kinds of glyph are found in Warring States era:" -- while
         # a head that closes itself is complete, and the bullets under it belong to
         # something else: 洛 is a phono-semantic compound, and what follows is a note
-        # on clipping 洛必達法則 for l'Hôpital's rule.
+        # on clipping 洛必達法則 for l'Hôpital's rule. Only the items nested under the
+        # head: a head that is itself an item is followed by its siblings.
         j = i
-        while re.search(r"[:：]$", head) and j < len(ps) and ps[j][0]:
+        while re.search(r"[:：]$", head) and j < len(ps) and len(ps[j][0]) > depth:
             # an item closes on its own stop, or on the "; and" that led to the next
-            items.append(re.sub(r"(?:;\s*and|[;.])\s*$", "", ps[j][1]))
+            items.append(re.sub(r"(?:;\s*and|[;.,])\s*$", "", ps[j][1]))
             j += 1
         # Short ones are phrases and belong in the sentence promising them. Ones that
         # are paragraphs stay paragraphs: 水 lists eight proposals for where the word

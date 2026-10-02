@@ -26,10 +26,11 @@ def main() -> int:
     decks, media = [], set()
     words = load_words()
     by_entry_all = {w["entry"]: w for w in words}
+    # Every word by its spelling: 为 is listed as 为, 为1 and 为2, and the one with no
+    # digit needs telling from the other two as much as they need telling from it.
     groups = collections.defaultdict(list)
     for w in words:
-        if w["homograph_index"]:
-            groups[w["simplified"]].append(w)
+        groups[w["simplified"]].append(w)
 
     wiki = Wiktionary(words)
     number = Numbering()

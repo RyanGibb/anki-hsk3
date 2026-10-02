@@ -7,8 +7,8 @@ from syllabus import LEVELS
 from deck.paths import TPL
 
 
-# 1758100002 was a grammar-point note type the sentence cards replaced; it stays
-# unused so no new type can collide with the one old collections still hold.
+# 1758100002 is reserved: collections built before the sentence cards hold a
+# grammar-point note type under it, and a new type there would collide with it.
 MID_VOCAB, MID_CHAR, MID_SENTENCE = 1758100001, 1758100003, 1758100004
 DID_ROOT = 1758100100
 

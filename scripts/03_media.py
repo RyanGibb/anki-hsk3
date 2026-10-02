@@ -212,7 +212,7 @@ def main() -> int:
         if len(simp) < 2 or len(simp) != len(nums) or simp not in cmn:
             continue
         for ch, num in zip(simp, nums):
-            in_word.setdefault((ch, num.lower()), simp)
+            in_word.setdefault((ch, syllable(num)), simp)
 
     def clip_for(c: str, reading: str):
         """A recording of this character said this way, and the word it was said in.

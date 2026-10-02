@@ -345,9 +345,9 @@ def main() -> int:
               f"{len(twice)}: {[w for _, w in twice[:4]]}" if twice else "")
 
     # The checked readings and translations are keyed on the sentence as the build
-    # cuts it. A row for a sentence it no longer cuts -- the half of one it has since
-    # joined -- is read by nothing, and a sentence it cuts with no row is read by a
-    # machine instead.
+    # cuts it. A row for a sentence it does not cut -- half of one it joins, say -- is
+    # read by nothing, and a sentence it cuts with no row is read by a machine
+    # instead.
     if APKG.exists():
         shown = set()
         with zipfile.ZipFile(APKG) as z:

@@ -111,10 +111,10 @@ class Glossary:
             senses = [d for d in body.split("/") if not d.startswith("CL:")]
             if not senses:
                 continue
-            # Keyed by reading, the way the vocabulary path chooses, with the case left
-            # alone: CC-CEDICT capitalises a proper noun's reading, so 那 [Na4] "surname
-            # Na" cannot match a sentence reading nà written [na4]. The syllabus writes
-            # nü3 where the dictionary writes nu:3, so every key goes through syllable().
+            # Keyed by reading, the way the vocabulary path chooses. The entry keeps the
+            # reading's case: CC-CEDICT capitalises a proper noun's, so 那 [Na4] "surname
+            # Na" can be told from 那 nà. The syllabus writes nü3 where the dictionary
+            # writes nu:3, so every key goes through syllable().
             spelled = syllable(reading)
             entry = (trad, clean_xrefs(" / ".join(senses)),
                      reading.replace(" ", "").replace("u:", "v"), len(senses), False)
@@ -394,16 +394,13 @@ class Glossary:
                     mine.append(here[i])
             if not mine:
                 continue
-            # Two entries at one reading can both be verbs -- 为1 and 为2 at wéi --
-            # and their senses go under one heading where the heading would say the
-            # same thing twice. Taught at different levels they stay apart, since the
-            # level is the point: 等 waits at HSK 2 and equals at HSK 4.
-            prior = next((r for r in out if r[0] == p and (not lv or not r[3] or lv == r[3])),
-                         None)
+            # Two entries at one reading can both be verbs -- 称1 and 称2 at chēng,
+            # both HSK 5 -- and their senses go under one heading where two headings
+            # would say the same thing. Taught at different levels they stay apart,
+            # since the level is the point: 等 waits at HSK 2 and equals at HSK 4.
+            prior = next((r for r in out if r[:1] + r[2:] == [p, taught, lv]), None)
             if prior:
                 prior[1] += mine
-                prior[2] = prior[2] or taught
-                prior[3] = prior[3] or lv
             else:
                 out.append([p, mine, taught, lv])
         if not out:

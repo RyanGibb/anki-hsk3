@@ -13,7 +13,8 @@ fetch data/raw/kaikki-zh.jsonl \
 # keep improving -- 俘虏 grew its verb in 2026 -- and a refresh is a re-download.
 if [ ! -s data/raw/cedict_ts.u8 ]; then
   curl -fL --progress-bar "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz" \
-    | gunzip > data/raw/cedict_ts.u8.part && mv data/raw/cedict_ts.u8.part data/raw/cedict_ts.u8
+    | gunzip > data/raw/cedict_ts.u8.part
+  mv data/raw/cedict_ts.u8.part data/raw/cedict_ts.u8
 fi
 # What each character breaks down into, in Ideographic Description Sequences. Wiktionary
 # names the parts; this says whether the character carries the shape it names.

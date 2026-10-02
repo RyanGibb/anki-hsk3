@@ -28,8 +28,7 @@ WORDS = re.compile(r"[A-Za-z\u3400-\u9fff]")
 # "See you later!" is a sense, so "see" is a pointer only with Chinese after it.
 POINTER = re.compile(r"^(?:(?:old |erhua )?variant of|abbr\. for"
                      r"|see(?: also)?(?=\s+[㐀-鿿豈-﫿]))\b", re.I)
-# ...and what it points at. "See you later!" is a sense, not a pointer, so the
-# target has to be Chinese.
+# ...and what it points at.
 TARGET = re.compile(r"^(?:(?:old |erhua )?variant of|see(?: also)?|abbr\. for)\s+"
                     r"([㐀-鿿豈-﫿]+)")
 # "abbr. for 超級市場|超级市场[chao1 ji2 shi4 chang3]"
