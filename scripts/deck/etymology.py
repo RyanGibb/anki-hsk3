@@ -72,8 +72,12 @@ def load_etymology():
         explained_by = {r["character"]: r["explained_by"]
                         for r in csv.DictReader(links.open(encoding="utf-8"))}
 
-    def choose(ch: str) -> dict:
+    def choose(ch: str, own: bool = False) -> dict:
         """Which of a character's etymologies explains its shape.
+
+        Asked for the character's own page only, where a part is the character it
+        is in its own right -- the 厂 inside 跪 is the cliff radical, and 廠's
+        account of a factory is not an account of it.
 
         The card asks where the glyph came from, so a section that accounts for the
         graph beats one that accounts for the word: 吧 is borrowed from English "bar",
@@ -96,8 +100,13 @@ def load_etymology():
             return [x for x in sections or []
                     if about_the_glyph(x.get("text", ""), x.get("type", ""))]
 
-        sections = (glyphed(etym.get(trad.get(ch, ch))) or glyphed(etym.get(ch))
-                    or etym.get(trad.get(ch, ch)) or etym.get(ch) or [])
+        if own:
+            sections = glyphed(etym.get(ch))
+            if not sections:
+                return {}
+        else:
+            sections = (glyphed(etym.get(trad.get(ch, ch))) or glyphed(etym.get(ch))
+                        or etym.get(trad.get(ch, ch)) or etym.get(ch) or [])
         if not glyphed(sections):
             taken = {}
             parent = radical_of.get(ch)
@@ -153,8 +162,10 @@ def load_etymology():
             # an item can open on the marker of an image the dump lost: 卒's "# : same
             # as 衣", and "# ,: 𧙻 having 又 omitted"
             p = re.sub(r"^[,:;\s]+", "", p)
-            if out and not mark and p[:1].islower() \
-                    and not re.search(r"[.!?:]$", out[-1][1]):
+            # ...or that stopped on a bare word: 經's "how it relates to" is finished by
+            # the line after it. One that closes on a bracket or a quote is whole.
+            if out and not mark and not p[:1].isupper() \
+                    and re.search(r"[A-Za-z,]$", out[-1][1]):
                 out[-1] = (out[-1][0], f"{out[-1][1]} {p}")
             else:
                 out.append((mark, p))
@@ -245,8 +256,8 @@ def load_etymology():
             out.pop()
         return out
 
-    def paragraphs(ch: str) -> list[tuple[str, str]]:
-        e = choose(ch)
+    def paragraphs(ch: str, own: bool = False) -> list[tuple[str, str]]:
+        e = choose(ch, own)
         if not e:
             return []
         out = split_up(e["text"])
@@ -285,8 +296,8 @@ def load_etymology():
                 return head, rest_of(ps, i)
         return "", []
 
-    def one(ch: str, full: bool) -> str:
-        ps = paragraphs(ch)
+    def one(ch: str, full: bool, own: bool = False) -> str:
+        ps = paragraphs(ch, own)
         if not ps:
             return ""
         lead, i = lead_of(ps)
@@ -303,7 +314,8 @@ def load_etymology():
         def quietly(paras: list) -> str:
             return "".join(f'{MORE}{tidy(p)}</div>' for p in paras)
 
-        later, after = simplification(ch)
+        # the character's own page is the account of the simplified form already
+        later, after = ("", []) if own else simplification(ch)
         block = (f'{LATER}<b><a href="https://en.wiktionary.org/wiki/'
                  f'{ch}#Chinese">{ch}</a></b> {tidy(later)}'
                  + (quietly(after) if full else "")

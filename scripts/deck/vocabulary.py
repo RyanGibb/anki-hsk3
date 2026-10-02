@@ -51,6 +51,17 @@ def also_read(w: Word, by_entry: dict[str, Word], pos: "PartsOfSpeech") -> str:
     return "".join(rows)
 
 
+def own_lead(w: Word) -> str:
+    """The sense a single-character card leads its own row with: the first of the
+    first part of speech the syllabus teaches it as, so 热 opens on "hot" and not
+    on the dictionary's "to warm up"."""
+    split = dict(w.get("meaning_by_pos") or [])
+    for p in PartsOfSpeech.named(w["pos"]):
+        if senses_of(split.get(p, "")):
+            return senses_of(split[p])[0]
+    return (senses_of(w["meaning"]) or [""])[0]
+
+
 def tone_hint(w: Word, siblings: dict[str, list[Word]], gloss: dict) -> str:
     """Which of the words written this way is being asked for.
 
@@ -259,8 +270,7 @@ def build_vocabulary(words: list[Word], wiki, media, number, gloss, pos,
                 wiki.markup(" ".join(w["homophone"][:12])), also_read(w, by_entry_all, pos),
                 w["stroke_order"],
                 gloss.components(w["simplified"], w["pinyin_numbered"], w["traditional"],
-                                 lead=(senses_of(w["meaning"]) or [""])[0]
-                                 if len(w["simplified"]) == 1 else ""),
+                                 lead=own_lead(w) if len(w["simplified"]) == 1 else ""),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
                 # filled in once the sentences have been built, below
                 "",
