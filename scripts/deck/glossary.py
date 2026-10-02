@@ -15,6 +15,59 @@ from deck.etymology import load_etymology
 from word import Word
 
 
+# A compound's origin names what it is built from -- 纸 is semantic 糸 plus phonetic
+# 氏 -- and those parts have origins of their own, which is where the account of the
+# character actually bottoms out. Only the first clause is read: the prose after it
+# compares the character to others, so 氏 mentions 氐, 低, 昏, 柢 and 匕, none of
+# which it is made of. The walk stops of its own accord, at a pictogram or at a part
+# Wiktionary has nothing to say about. These are the ways an account names a part.
+#
+# A part can be a character no ordinary font has, which is the whole reason the
+# deck carries glyphs for them: 餐 is phonetic 𣦼, up in Extension B.
+PART = "[㐀-鿿豈-﫿\U00020000-\U0003134F]"
+ROLE = re.compile(rf"\b(?:semantic|phonetic)\s+({PART})")
+# Each part is usually glossed where it is named -- 門 (“door”) + 月 (“moon”) -- so
+# the character and the plus are rarely neighbours, and a compound of three parts
+# has two pluses to read. Both sides of every one are taken.
+BEFORE = re.compile(rf"({PART})\s*(?:\([^)]*\))?\s*$")
+AFTER = re.compile(rf"\s*({PART})")
+# An account that spells the sum out in words rather than writing it with a plus:
+# 意 is "Modern form is a compound of 音 and 心".
+COMPOUND = re.compile(rf"compound of ({PART})\s*(?:\([^)]*\))?\s*and\s+({PART})")
+
+# An account can answer by pointing at another character instead of taking this
+# one apart: 间 is 閒 with 月 replaced by 日, and what 閒 is stands one step on.
+# Followed only where the sentence says the shape changed, because a bare "variant
+# of" covers two words as readily as two shapes -- 耶 is a variant of 邪 and is not
+# built like it, 惹 is called a corruption of 了 and looks nothing like it.
+GRAPHIC = re.compile(r"replaced by|styliz|stylis|radical form|cursive"
+                     r"|simplified form|abbreviat|written as|clerical", re.I)
+FROM = re.compile(rf"\bform of ({PART})|\bstyliz(?:ation|ed) of ({PART})"
+                  rf"|\bof ({PART})")
+
+# A part can be named twice over: once as the shape the character was built from,
+# and again as the shape that became. 般 is "the proto-form of 盤 + 攴", and the
+# sentence after says 盤 was corrupted into 舟 and 攴 evolved into 殳 -- the two
+# halves actually on the page. Both earn a row: one says where the character came
+# from, the other says what the reader is looking at. Read past the lead for this
+# and nothing else, since a shape the account says the character now carries is not
+# the loose comparison the rest of the prose is full of. Whether the character
+# carries that shape is a question about the glyph and not about the prose, and the
+# prose alone gets it wrong: the same sentence pattern says 子 corrupted into 于
+# under 智, which is 知 over 日 and has no 于 in it. So the shape is looked up, in
+# the Ideographic Description Sequences, by _read_breakdown.
+BECAME = re.compile(rf"(?:corrupt(?:ed)?|evolved|develop(?:ed)?|chang(?:ed)?"
+                    rf"|merged|turn(?:ed)?|deform(?:ed)?)\s+(?:in)?to\s+({PART})",
+                    re.I)
+
+# Wiktionary takes the traditional character apart -- 輕 is semantic 車 plus phonetic
+# 巠 -- and says in the same breath what the simplified one writes instead: 車 → 车
+# and 巠 → 𢀖. Both are worth a row and neither answers for the other: 巠 is why 轻
+# sounds as it does, 𢀖 is the mark on the page. deck_form reaches only a shape the
+# deck teaches in its own right, which 车 is and 𢀖 is not. Wiktionary has an account
+# of 𢀖, and of 讠 and 饣, as cursive and as the 1956 scheme's own components.
+ARROW = re.compile(rf"({PART})\s*(?:→|->|⇒)\s*({PART})")
+
 class Glossary:
     """What a character means, what it is made of, and the words it is met in.
 
@@ -29,6 +82,19 @@ class Glossary:
         self.readings = readings
         self.pos = pos
         self.neutralised = citation_readings()
+        # Every character a card shows, the parts among them, for the fetch of what
+        # has no origin yet; and which rows of compound-senses.csv a card has used.
+        self.shown_chars: set = set()
+        self.drawn: set = set()
+        self._read_dictionary()
+        self._read_tables()
+        self._read_breakdown()
+        self._index_words(words)
+
+    def _read_dictionary(self) -> None:
+        """CC-CEDICT, as the sentence cards and the character rows look things up:
+        every entry by word and by reading, the single characters by reading with
+        the fullest entry first, and where a pointer entry sends the reader."""
         self.char_by_reading = {}
         self.char_any = {}
         self.cedict_defs = {}
@@ -94,6 +160,10 @@ class Glossary:
                         # begun to ripen", the entry that happens to come first.
                         entries[i] = (trad, other[1], reading, other[3], True)
                         break
+
+    def _read_tables(self) -> None:
+        """The glyph origins and what stands beside them: makemeahanzi's lines, the
+        character glosses 02 gathered, the radical forms and compound-senses.csv."""
         # Memoised: part_origins asks after one character dozens of times over.
         origins = load_etymology()
         self.etym_char = functools.lru_cache(maxsize=None)(origins)
@@ -138,57 +208,15 @@ class Glossary:
         if path.exists():
             for r in csv.DictReader(path.open(encoding="utf-8")):
                 self.draws_on[(r["word"], r["character"])] = r["sense"]
-        self.drawn: set = set()
 
-        # A compound's origin names what it is built from -- 纸 is semantic 糸 plus phonetic
-        # 氏 -- and those parts have origins of their own, which is where the account of the
-        # character actually bottoms out. Only the first clause is read: the prose after it
-        # compares the character to others, so 氏 mentions 氐, 低, 昏, 柢 and 匕, none of
-        # which it is made of. The walk stops of its own accord, at a pictogram or at a part
-        # Wiktionary has nothing to say about.
-        self.shown_chars: set = set()
-        # A part can be a character no ordinary font has, which is the whole reason the
-        # deck carries glyphs for them: 餐 is phonetic 𣦼, up in Extension B.
-        self.PART = "[㐀-鿿豈-﫿\U00020000-\U0003134F]"
-        self.ROLE = re.compile(rf"\b(?:semantic|phonetic)\s+({self.PART})")
-        # Each part is usually glossed where it is named -- 門 (“door”) + 月 (“moon”) -- so
-        # the character and the plus are rarely neighbours, and a compound of three parts
-        # has two pluses to read. Both sides of every one are taken.
-        self.BEFORE = re.compile(rf"({self.PART})\s*(?:\([^)]*\))?\s*$")
-        self.AFTER = re.compile(rf"\s*({self.PART})")
-        # An account that spells the sum out in words rather than writing it with a plus:
-        # 意 is "Modern form is a compound of 音 and 心".
-        self.COMPOUND = re.compile(rf"compound of ({self.PART})\s*(?:\([^)]*\))?\s*and\s+({self.PART})")
-
-        # An account can answer by pointing at another character instead of taking this
-        # one apart: 间 is 閒 with 月 replaced by 日, and what 閒 is stands one step on.
-        # Followed only where the sentence says the shape changed, because a bare "variant
-        # of" covers two words as readily as two shapes -- 耶 is a variant of 邪 and is not
-        # built like it, 惹 is called a corruption of 了 and looks nothing like it.
-        self.GRAPHIC = re.compile(r"replaced by|styliz|stylis|radical form|cursive"
-                                  r"|simplified form|abbreviat|written as|clerical", re.I)
-        self.FROM = re.compile(rf"\bform of ({self.PART})|\bstyliz(?:ation|ed) of ({self.PART})"
-                               rf"|\bof ({self.PART})")
-
-        # A part can be named twice over: once as the shape the character was built from,
-        # and again as the shape that became. 般 is "the proto-form of 盤 + 攴", and the
-        # sentence after says 盤 was corrupted into 舟 and 攴 evolved into 殳 -- the two
-        # halves actually on the page. Both earn a row: one says where the character came
-        # from, the other says what the reader is looking at. Read past the lead for this
-        # and nothing else, since a shape the account says the character now carries is not
-        # the loose comparison the rest of the prose is full of.
-        # Whether the character carries that shape is a question about the glyph and not
-        # about the prose, and the prose alone gets it wrong: the same sentence pattern says
-        # 子 corrupted into 于 under 智, which is 知 over 日 and has no 于 in it. So the shape
-        # is looked up, in the Ideographic Description Sequences: 般 is ⿰舟殳. A part can sit
-        # further down -- 邑 is inside the 邕 of 雝 -- so the breakdown is followed all the
-        # way. Where the regions disagree about a character both answers are read, since a
-        # part named by any of them is a part the reader may be looking at: 寒 is ⿱𡨄⺀ to
-        # four of them and ⿱𡨄冫 to Korea, and 冫 is the 仌 the account names.
-        self.BECAME = re.compile(rf"(?:corrupt(?:ed)?|evolved|develop(?:ed)?|chang(?:ed)?"
-                                 rf"|merged|turn(?:ed)?|deform(?:ed)?)\s+(?:in)?to\s+({self.PART})",
-                                 re.I)
-        IS_PART = re.compile(self.PART)
+    def _read_breakdown(self) -> None:
+        """What shape each character carries, from the Ideographic Description
+        Sequences, followed all the way down: a part can sit further in -- 邑 is
+        inside the 邕 of 雝. Where the regions disagree both answers are read, since
+        a part named by any of them is a part the reader may be looking at: 寒 is
+        ⿱𡨄⺀ to four of them and ⿱𡨄冫 to Korea, and 冫 is the 仌 the account names.
+        """
+        IS_PART = re.compile(PART)
         REGION = re.compile(r"\[[A-Z]*\]")
         # Kept in the order the breakdown writes them, not as a set: these become rows on
         # a card, and a set of characters is ordered by a hash Python seeds afresh each
@@ -213,14 +241,9 @@ class Glossary:
                     self.same_shape[shape].update(
                              target if isinstance(target, list) else [target])
 
-        # Wiktionary takes the traditional character apart -- 輕 is semantic 車 plus phonetic
-        # 巠 -- and says in the same breath what the simplified one writes instead: 車 → 车
-        # and 巠 → 𢀖. Both are worth a row and neither answers for the other: 巠 is why 轻
-        # sounds as it does, 𢀖 is the mark on the page. deck_form reaches only a shape the
-        # deck teaches in its own right, which 车 is and 𢀖 is not. Wiktionary has an account
-        # of 𢀖, and of 讠 and 饣, as cursive and as the 1956 scheme's own components.
-        self.ARROW = re.compile(rf"({self.PART})\s*(?:→|->|⇒)\s*({self.PART})")
-
+    def _index_words(self, words: list[Word]) -> None:
+        """What the syllabus's words say about each character: how often it is read
+        each way, the first word it is met in at each reading, and the rest."""
         # How often each character is read each way across the words the syllabus teaches.
         self.in_words = collections.Counter()
         for w in words:
@@ -239,7 +262,7 @@ class Glossary:
                 continue
             for ch, num in zip(simp, nums):
                 self.example_by_reading.setdefault(
-                         (ch, num.replace("ü", "v").lower()),
+                         (ch, syllable(num)),
                          (simp, w["pinyin"], short_gloss(w["meaning"])))
 
         # A character met on its own before it is met in a compound needs no compound to
@@ -251,7 +274,7 @@ class Glossary:
         for w in words:
             if len(w["simplified"]) != 1:
                 continue
-            key = (w["simplified"], w["pinyin_numbered"].replace("ü", "v").lower())
+            key = (w["simplified"], syllable(w["pinyin_numbered"]))
             if key not in self.alone_level or LEVELS.index(w["level"]) < self.alone_level[key]:
                 self.alone_level[key] = LEVELS.index(w["level"])
 
@@ -275,7 +298,6 @@ class Glossary:
                                                 short_gloss(w["meaning"])))
         for seen_in in self.words_using.values():
             seen_in.sort()
-
     def meta(self, ch: str) -> dict:
         """What char-meanings.json gathered about the character, or nothing."""
         return self.char_meta.get(ch) or {}
@@ -499,8 +521,8 @@ class Glossary:
     def either_side(self, head: str) -> list:
         out = []
         for plus in re.finditer(r"\+", head):
-            for m in (self.BEFORE.search(head[:plus.start()]),
-                      self.AFTER.match(head[plus.end():])):
+            for m in (BEFORE.search(head[:plus.start()]),
+                      AFTER.match(head[plus.end():])):
                 if m:
                     out.append(m.group(1))
         return out
@@ -544,14 +566,14 @@ class Glossary:
         # Most accounts name the parts around a plus sign or by their role. A few say
         # it in words instead -- 意 is "a compound of 音 and 心" -- and read only by
         # the two patterns above, those characters end up with no parts at all.
-        return (self.ROLE.findall(head) or self.either_side(head)
-                or [c for pair in self.COMPOUND.findall(head) for c in pair])
+        return (ROLE.findall(head) or self.either_side(head)
+                or [c for pair in COMPOUND.findall(head) for c in pair])
 
     def made_of(self, ch: str) -> list:
         head = self.lead(ch)
         found = self.named_parts(head)
-        if not found and self.GRAPHIC.search(head):
-            named = self.FROM.search(head)
+        if not found and GRAPHIC.search(head):
+            named = FROM.search(head)
             if named:
                 other = next(g for g in named.groups() if g)
                 # not where the other is built out of this one, which would be a
@@ -572,8 +594,8 @@ class Glossary:
         # says in full rather than as an arrow. So that account is taken apart too.
         carries = self.shapes_in(ch)
         later = self.simplification(ch)
-        named = (self.BECAME.findall(self.account(ch))
-                 + [b for _, b in self.ARROW.findall(later)]
+        named = (BECAME.findall(self.account(ch))
+                 + [b for _, b in ARROW.findall(later)]
                  + self.named_parts(later))
         found = found + [c for c in named if c in carries]
         # An account can be about a shape the card does not show, and then none of the
@@ -775,7 +797,7 @@ class Glossary:
             # a part of it, so it joins this step instead of opening another, and
             # arrives with its own gloss and its own account.
             if senses and POINTER.match(senses):
-                aimed = re.search(self.PART, senses)
+                aimed = re.search(PART, senses)
                 if aimed and aimed.group() not in seen:
                     queue.insert(0, (aimed.group(), step))
             said = (self.part_readings(ch)
