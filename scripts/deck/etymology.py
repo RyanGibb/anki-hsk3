@@ -150,6 +150,9 @@ def load_etymology():
             # heads three ":*" items and is followed by ": Qin dynasty", a sibling
             mark = BULLET.match(p)
             mark, p = (mark.group(1) if mark else ""), BULLET.sub("", p).strip()
+            # an item can open on the marker of an image the dump lost: 卒's "# : same
+            # as 衣", and "# ,: 𧙻 having 又 omitted"
+            p = re.sub(r"^[,:;\s]+", "", p)
             if out and not mark and p[:1].islower() \
                     and not re.search(r"[.!?:]$", out[-1][1]):
                 out[-1] = (out[-1][0], f"{out[-1][1]} {p}")
@@ -163,7 +166,10 @@ def load_etymology():
         kept, k = [], 0
         while k < len(out):
             m, p = out[k]
-            if m == ";" and k + 1 < len(out) and out[k + 1][0].startswith(":"):
+            # a term is short and closes on nothing; 洋's "“multitudinous; vast;
+            # ocean”: Schuessler (2007) compares it..." is a paragraph marked as one
+            if (m == ";" and k + 1 < len(out) and out[k + 1][0].startswith(":")
+                    and len(p) < AS_A_PHRASE and not re.search(r"[.!?]$", p)):
                 kept.append((":", f"{p.rstrip(':')}: {out[k + 1][1]}"))
                 k += 2
             elif m != ";" or (k + 1 < len(out) and out[k + 1][0] != ";"):
@@ -191,7 +197,10 @@ def load_etymology():
         # on clipping 洛必達法則 for l'Hôpital's rule. Only the items nested under the
         # head: a head that is itself an item is followed by its siblings.
         j = i
-        while re.search(r"[:：]$", head) and j < len(ps) and len(ps[j][0]) > depth:
+        # ...and a term's description, which is the plain paragraph after it: 幸's
+        # "The glyph in Sanjin (三晉)" is followed by what that glyph is.
+        while re.search(r"[:：]$", head) and j < len(ps) and (
+                len(ps[j][0]) > depth or (ps[j - 1][0] == ";" and not ps[j][0])):
             # an item closes on its own stop, or on the "; and" that led to the next
             items.append(re.sub(r"(?:;\s*and|[;.,])\s*$", "", ps[j][1]))
             j += 1

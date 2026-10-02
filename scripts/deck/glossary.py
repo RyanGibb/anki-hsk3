@@ -411,6 +411,9 @@ class Glossary:
         rows = [(p, self.leading(mine, lead), taught, lv) for p, mine, taught, lv in out]
         if rest:
             rows.append((None, self.leading(rest, lead), True, ""))
+        # What the syllabus teaches first, then what it does not label, then what it
+        # teaches as nothing; and before all of them, the sense the word draws on.
+        rows.sort(key=lambda r: 0 if r[0] and r[2] else 2 if r[0] else 1)
         rows.sort(key=lambda r: not (lead and sense_key(r[1][0]) == sense_key(lead)))
         # A part of speech the syllabus does not teach is set aside as "also" -- unless
         # it is the one this word is made of, which leads the row and is set as such,
@@ -425,7 +428,7 @@ class Glossary:
             for i, (p, mine, taught, lv) in enumerate(rows))
 
     def components(self, simplified: str, numbered: str = "",
-                   traditional: str = "") -> str:
+                   traditional: str = "", lead: str = "") -> str:
         """One entry per character: what it means, then where the glyph came from.
         The whole account, wherever the row stands -- 较 under 比较 is the same
         character as 较 on its own card, and the paragraph saying its phonetic was 爻
@@ -499,11 +502,19 @@ class Glossary:
             said = " / ".join(spoken_here)
             if said and worn:
                 said += (' <span class=sandhi>(' + " / ".join(worn) + " here)</span>")
-            lead = self.draws_on.get((simplified, ch), "")
+            # The sense the word is built from leads, where one is written down. A
+            # card for a single character is a word of its own, and leads with the
+            # sense it teaches rather than its homograph's: 花 the noun opens on
+            # "flower", not on 花1's "to spend".
             split = [x.strip() for x in senses.split("/") if x.strip()]
-            if lead and any(sense_key(s) == sense_key(lead) for s in split):
+            written = self.draws_on.get((simplified, ch), "")
+            if written and any(sense_key(s) == sense_key(written) for s in split):
                 self.drawn.add((simplified, ch))
+                lead = written
+            if lead and any(sense_key(s) == sense_key(lead) for s in split):
                 senses = " / ".join(self.leading(split, lead))
+            else:
+                lead = ""
             body = (headed(self.wiki, ch, trad)
                     + f'{f" <span class=charRead>{said}</span>" if said else ""} '
                     f'{self.under_pos(ch, reading_of.get(ch, ""), senses, lead)
@@ -767,9 +778,18 @@ class Glossary:
             # gathers a character's senses without regard to reading -- 子 is the suffix
             # and son and child and the first earthly branch all at once -- and stands in
             # only where the dictionary has nothing under any reading.
-            here = self.part_numbers(ch)
-            senses = " / ".join(g for g in (self.gloss_at(ch, r) for r in here) if g)
-            trad = self.meta(ch).get("traditional") or ch
+            # An account names its parts in the traditional-form prose, so a part the
+            # deck writes for another traditional character is, on the page, the
+            # character it is in its own right: the 厂 inside 跪 is the cliff radical
+            # and not 廠 the factory, and 广 under 店 is the shelter and not 廣.
+            own = [e for e in self.char_any.get(ch, []) if e[0] == ch]
+            if own and (self.meta(ch).get("traditional") or ch) != ch:
+                best = max(own, key=char_rank)
+                here, senses, trad = [syllable(best[4])], best[1], ch
+            else:
+                here = self.part_numbers(ch)
+                senses = " / ".join(g for g in (self.gloss_at(ch, r) for r in here) if g)
+                trad = self.meta(ch).get("traditional") or ch
             if not senses:
                 senses = " / ".join(senses_of(self.meta(ch).get("meaning", "")))
             if not senses:
@@ -784,10 +804,18 @@ class Glossary:
             # A part no dictionary enters at all -- 钅, 呂, 叀 -- still has a row, and
             # a row with a bold character and an origin under it says nothing of what
             # the character means. makemeahanzi's line answers for most, Wiktionary's
-            # own glosses for the rest.
+            # own glosses for others, less the ones that are notation or about another
+            # character, and a shape the dump redirects is named as a form of what it
+            # redirects to.
             if not senses:
-                senses = ((self.mmah.get(ch) or {}).get("definition")
-                          or " / ".join(self.etym_glosses(ch)[:3]))
+                senses = (self.mmah.get(ch) or {}).get("definition", "")
+            if not senses:
+                glosses = [g.rstrip(".") for g in self.etym_glosses(ch)
+                           if not re.search(r"\(Classifier:|^(?:alternative|variant) form of"
+                                            r"|^only used in|^used in", g, re.I)]
+                senses = " / ".join(list(dict.fromkeys(glosses))[:3])
+            if not senses and self.same_shape.get(ch):
+                senses = "form of " + " or ".join(sorted(self.same_shape[ch]))
             # A part the dictionary only points elsewhere for explains nothing: 夊 is
             # entered as "see 夂", and 退 answered what it is built from with a
             # cross-reference. The character it points at is the same shape rather than
@@ -797,7 +825,7 @@ class Glossary:
                 aimed = re.search(PART, senses)
                 if aimed and aimed.group() not in seen:
                     queue.insert(0, (aimed.group(), step))
-            said = (self.part_readings(ch)
+            said = (" / ".join(toned(r) for r in here)
                     or " / ".join((self.mmah.get(ch) or {}).get("pinyin") or []))
             body = (headed(self.wiki, ch, trad)
                     + f'{f" <span class=charRead>{said}</span>" if said else ""} ')

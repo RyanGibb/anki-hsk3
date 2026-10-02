@@ -10,7 +10,7 @@ import genanki
 
 from syllabus import LEVELS, POS_SPLIT
 from deck.paths import BUILD, ROOT
-from deck.notation import TONE_MARK, clean_xrefs, render_senses, spoken, ways_read
+from deck.notation import TONE_MARK, clean_xrefs, render_senses, senses_of, spoken, ways_read
 from deck.models import SECTIONS, deck, vocab_model
 from word import Word
 
@@ -258,7 +258,9 @@ def build_vocabulary(words: list[Word], wiki, media, number, gloss, pos,
                 wiki.markup(w.get("classifier", "")), w["audio"],
                 wiki.markup(" ".join(w["homophone"][:12])), also_read(w, by_entry_all, pos),
                 w["stroke_order"],
-                gloss.components(w["simplified"], w["pinyin_numbered"], w["traditional"]),
+                gloss.components(w["simplified"], w["pinyin_numbered"], w["traditional"],
+                                 lead=(senses_of(w["meaning"]) or [""])[0]
+                                 if len(w["simplified"]) == 1 else ""),
                 html.escape(literal.get(w["traditional"], ""), quote=False),
                 # filled in once the sentences have been built, below
                 "",

@@ -225,7 +225,7 @@ chinese,word,meaning
 哥哥早我两年上学。,两,two / both / some / a few
 哥哥比我大两岁。,两,two / both / some / a few
 喂，你去哪儿？,喂,hey
-喂，请问，李老师在吗？,喂,hey
+喂，请问，李老师在吗？,喂,hello (when answering the phone)
 回国前，我给父母买了两大包中国茶作为礼物。,两,two / both / some / a few
 回国前，我给父母买了两大包中国茶作为礼物。,作为,as (in the capacity of) / to act as / qua / to view as / to look upon (sth as) / to take sth to be
 团购的产品价格十分优惠，可商家对待使用团购券的客人却很不热情，总摆出一副爱吃不吃、爱住不住、爱买不买的姿态。,副,"classifier for pairs, sets of things & facial expressions"
@@ -385,7 +385,7 @@ chinese,word,meaning
 手机也好，电脑也好，长时间使用都会造成眼睛疲劳。,会,to be likely to; to be sure to / can; to have the skill; to know how to / to meet; to get together
 打归打，骂归骂，父母永远是最疼你的人。,打,"to hit; to strike / to fight / a semantically light, transitive verb that is combined with various grammatical objects to form compound verbs and verb-object phrases with a diverse range of meanings (e.g. 打傘|打伞[da3 san3] ""to hold an umbrella"", 打電話|打电话[da3 dian4 hua4] ""to make a phone call"", 打針|打针[da3 zhen1] ""to get an injection"", 打手套[da3 shou3 tao4] ""to knit gloves"", 打氣|打气[da3 qi4] ""to inflate"")"
 打这天起，小赵替父亲担起了全家的重担。,打,"(coll.) from; since (as in 打那以後|打那以后[da3 na4 yi3 hou4] ""since then"")"
-排练时需要的演员比实际演出的时候要多一些，一则考察演员的表现，不合适的话就换掉；二则可以相互提出意见，完善表演；三则不上场的演员也可以做一些剧务工作。,则,(literary) (conjunction used to express contrast with a previous clause) but; then / (bound form) standard; norm / (bound form) principle / (literary) to imitate; to follow
+排练时需要的演员比实际演出的时候要多一些，一则考察演员的表现，不合适的话就换掉；二则可以相互提出意见，完善表演；三则不上场的演员也可以做一些剧务工作。,则,"(after 一, 二, 三, listing reasons) for one thing; for another"
 提起朝阳，人们往往会想到北京的朝阳区。然而我们今日前往参观的此“朝阳”非彼“朝阳”，乃是被誉为“三燕古都”的辽宁省朝阳市。,会,to be likely to; to be sure to / can; to have the skill; to know how to / to meet; to get together
 提起朝阳，人们往往会想到北京的朝阳区。然而我们今日前往参观的此“朝阳”非彼“朝阳”，乃是被誉为“三燕古都”的辽宁省朝阳市。,省,province / provincial capital / a ministry (of the Japanese government)
 放心，我一定不会迟到。,会,to be likely to; to be sure to / can; to have the skill; to know how to / to meet; to get together
@@ -566,7 +566,7 @@ chinese,word,meaning
 这次机会非常难得，一旦错过了，你会后悔的。,会,to be likely to; to be sure to / can; to have the skill; to know how to / to meet; to get together
 这次比赛中，9号选手的表现尤为突出，给评委和观众都留下了深刻的印象。,和,(joining two nouns) and; together with; with (Taiwan pr. [han4])
 这点儿小事你竟然能唠叨两个多小时，真是的！,两,two / both / some / a few
-这种药品一则价格高昂，二则产量较少，三则副作用明显，因此难以推广。,则,(literary) (conjunction used to express contrast with a previous clause) but; then / (bound form) standard; norm / (bound form) principle / (literary) to imitate; to follow
+这种药品一则价格高昂，二则产量较少，三则副作用明显，因此难以推广。,则,"(after 一, 二, 三, listing reasons) for one thing; for another"
 这部剧除男女主角之外，其他演员皆一人分饰数角，但每个人物特点鲜明，并不会让观众混淆。,之,"(possessive particle, literary equivalent of 的[de5])"
 这部剧除男女主角之外，其他演员皆一人分饰数角，但每个人物特点鲜明，并不会让观众混淆。,会,to be likely to; to be sure to / can; to have the skill; to know how to / to meet; to get together
 这部电影是根据人们所熟悉的故事改编的。,所,particle introducing a relative clause or passive / that which
@@ -3756,24 +3756,24 @@ B：我的手机在房间里。,在,(of sb or sth) to be (located) at
 由于周边建筑都比较低矮，这座大楼显得分外高大。,建筑,building
 我只是提供一些建议，到底怎么做由你决定。,建议,proposal; suggestion; recommendation
 这院是出得还是出不得，得先问问医生的建议。,建议,proposal; suggestion; recommendation
-他不会开车。,开,"(of ships, vehicles, troops etc) to start"
-他会开车吗？,开,"(of ships, vehicles, troops etc) to start"
-爸爸每天开车上班。,开,"(of ships, vehicles, troops etc) to start"
-车开过来了，大家快上车。,开,"(of ships, vehicles, troops etc) to start"
-咱们的车能开进学校去吗？,开,to turn on; to put in operation; to operate; to run
+他不会开车。,开,to drive (a vehicle)
+他会开车吗？,开,to drive (a vehicle)
+爸爸每天开车上班。,开,to drive (a vehicle)
+车开过来了，大家快上车。,开,to drive (a vehicle)
+咱们的车能开进学校去吗？,开,to drive (a vehicle)
 我的中文越来越好，跟老师的帮助是分不开的。,开,(directional complement) away; off
-上学的时候，我总是让爸爸开车送我。,开,to turn on; to put in operation; to operate; to run
-前边开过来一辆出租车。,开,"(of ships, vehicles, troops etc) to start"
-我刚学会开车，不敢开得很快。,开,"(of ships, vehicles, troops etc) to start"
-我们自北京出发，开车往南走，来到了上海。,开,"(of ships, vehicles, troops etc) to start"
-我开车去学校接你，你在门口等我就是了。,开,"(of ships, vehicles, troops etc) to start"
-沿着这条高速公路一直开，就能到达那座城市。,开,"(of ships, vehicles, troops etc) to start"
-那辆旧车你很少开，放着也是放着，要不卖了吧。,开,"(of ships, vehicles, troops etc) to start"
-回国当天，朋友特地开车把我送到了机场。,开,"(of ships, vehicles, troops etc) to start"
-你为什么放着自己的车不开，跑去借别人的车？,开,to turn on; to put in operation; to operate; to run
-那条盘山公路很险，一个接一个的急转弯。汽车开着像是扭秧歌，忽上忽下，忽左忽右。,开,"(of ships, vehicles, troops etc) to start"
-司机对这里的道路不太熟悉，竟七拐八绕地把车开到了海边，现在陷在烂泥里出不来了。,开,"(of ships, vehicles, troops etc) to start"
-现在很多公交车驾驶座旁安装了包围门，保证司机专注开车。话说回来，司机安全驾驶，乘客才能安全到站。,开,"(of ships, vehicles, troops etc) to start"
+上学的时候，我总是让爸爸开车送我。,开,to drive (a vehicle)
+前边开过来一辆出租车。,开,to drive (a vehicle)
+我刚学会开车，不敢开得很快。,开,to drive (a vehicle)
+我们自北京出发，开车往南走，来到了上海。,开,to drive (a vehicle)
+我开车去学校接你，你在门口等我就是了。,开,to drive (a vehicle)
+沿着这条高速公路一直开，就能到达那座城市。,开,to drive (a vehicle)
+那辆旧车你很少开，放着也是放着，要不卖了吧。,开,to drive (a vehicle)
+回国当天，朋友特地开车把我送到了机场。,开,to drive (a vehicle)
+你为什么放着自己的车不开，跑去借别人的车？,开,to drive (a vehicle)
+那条盘山公路很险，一个接一个的急转弯。汽车开着像是扭秧歌，忽上忽下，忽左忽右。,开,to drive (a vehicle)
+司机对这里的道路不太熟悉，竟七拐八绕地把车开到了海边，现在陷在烂泥里出不来了。,开,to drive (a vehicle)
+现在很多公交车驾驶座旁安装了包围门，保证司机专注开车。话说回来，司机安全驾驶，乘客才能安全到站。,开,to drive (a vehicle)
 我在孩子的成长过程中，给予他充分的自由。我不逼他学奥数，除非他自己愿意学；不逼他音乐考级，只求培养些许乐感；不逼他学外语，只为他提供开口讲外语的机会。,开口,to start to talk
 刚开始，我对这里的生活很不适应，尤其不习惯吃中国菜。,开始,to begin; to start
 其实，来中国留学一开始并不在我的计划之内。,开始,beginning
@@ -3840,7 +3840,7 @@ B：我的手机在房间里。,在,(of sb or sth) to be (located) at
 既然你这么喜欢小孩儿，毕业以后就当老师吧。,当,to act as
 她曾经当过导游，在设计旅行线路方面很有经验。,当,to act as
 假如有一天你当了校长，你会制定什么规则？,当,to act as
-回国当天，朋友特地开车把我送到了机场。,当,just at (a time or place)
+回国当天，朋友特地开车把我送到了机场。,当,at or in the very same...
 当他们第一次品尝这道精致的菜肴时，大为惊叹，味蕾感到前所未有的满足。,当,when
 当电梯关门时，不可强行挤入，以免发生危险。,当,when
 当被问及该片是否以悲剧结尾，女主表示已签署保密协议，对此无可奉告。,当,when
@@ -8145,7 +8145,7 @@ B：我的手机在房间里。,里,inside
 我所做的一切，归根到底，不还是为了你吗？,不,(bound form) not; un-
 他问同事怕不怕，他们总是说：“这有什么好怕的？”话是这么说，但他依然有些恐惧。但怕也没有用，因为活是要干的，你怕不怕都得干！,不,(bound form) not; un-
 如果一个人的事业能够被社会所认可，那么这种感受是超越物质的。话是这么说，但谁不想拥有好的物质条件呢？,不,(bound form) not; un-
-现在很多公交车驾驶座旁安装了包围门，保证司机专注开车。话说回来，司机安全驾驶，乘客才能安全到站。,驾驶,driver; pilot; captain
+现在很多公交车驾驶座旁安装了包围门，保证司机专注开车。话说回来，司机安全驾驶，乘客才能安全到站。,驾驶,"to drive (vehicle); to pilot (ship, airplane etc)"
 现在很多公交车驾驶座旁安装了包围门，保证司机专注开车。话说回来，司机安全驾驶，乘客才能安全到站。,了,"(modal particle indicating change of state, situation now)"
 我一定得去问问，她这本书是在哪淘来的？不过话又说回来了，打听出来了又怎么样？反正已经被她买走了。,是,(adverb for emphatic assertion)
 我和我老公现在的状态是，只要我不主动和他说话，他也绝不会找我说话，老实说，有时候我觉得这样也挺好的，默契就行。,不,(bound form) not; un-
@@ -8290,3 +8290,5 @@ B：我的手机在房间里。,里,inside
 生态经济学认为，一切经济活动都是在一定的生态经济系统中进行的。它是由生态系统和经济系统两个子系统有机结合形成的。经济活动不单在经济系统中进行，同时也在生态系统中运行。也就是说，同时要受经济规律和生态规律的双重制约。有的地区比其他地区发展得好、前景也更广阔，关键就在于主政者能够不但遵循商业经营规律，同时也满足生态平衡的自然规律要求。综上所述，创造经济效益、增强地区的竞争力与可持续发展密不可分，关键之处是人类是否在合理地利用资源、是否在改善和保护环境。,平衡,balance
 登山的游客可以欣赏到众多书画名家留下的石刻题词。石刻题词最密集地方，莫过于我们现在看到的这处崖壁了。,密集,concentrated
 在广泛听取各方意见之后，工信部决定实施宽带提速计划，以实现上网速度与国际平均水平接轨。,平均,average; on average
+假若你不愿待在家里，你可以到湖边散散步，或在公园喝喝茶、下下棋。,下,to play (chess)
+苏州历来是经济富饶的鱼米之乡，与杭州齐名，并称“苏杭”。,苏,abbr. for Suzhou 蘇州|苏州[Su1 zhou1]

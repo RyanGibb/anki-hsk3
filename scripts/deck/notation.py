@@ -106,7 +106,7 @@ def clean_xrefs(text: str) -> str:
     # CC-CEDICT spells the umlaut u: and writes it apart in 27 entries -- 女孩兒 is
     # "erhua form of 女孩[nu : 3 hai2]". The syllable will not parse spelled that way
     # and is dropped without a word, leaving 女孩儿 glossed "erhua form of 女孩 hái".
-    text = re.sub(r"(?<=[a-zA-Z])\s*:\s*(?=[1-5])", ":", text)
+    text = re.sub(r"(?<=[nl]u)\s*:\s*(?=[1-5])", ":", text)
 
     def reading(numbered: str) -> str:
         """The syllables as one word, broken where a capital starts another.

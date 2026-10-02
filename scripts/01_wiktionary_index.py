@@ -100,7 +100,7 @@ def main() -> int:
                     sections.append({
                         "text": text,
                         "type": (liushu[0].get("args", {}).get("1") or "") if liushu else "",
-                        "glosses": [g[:90] for g in glosses],
+                        "glosses": glosses,
                         "senses": len(d.get("senses") or []),
                     })
             lit = (d.get("literal_meaning") or "").strip()
